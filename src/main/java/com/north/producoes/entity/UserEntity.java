@@ -1,6 +1,6 @@
 package com.north.producoes.entity;
 
-import com.north.producoes.entity.postStatusEnum.RoleEnum;
+import com.north.producoes.entity.enums.UserRoleEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,7 +30,7 @@ public class UserEntity {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private RoleEnum role = RoleEnum.USER;
+    private UserRoleEnum role = UserRoleEnum.USER;
 
     @Column
     @CreationTimestamp

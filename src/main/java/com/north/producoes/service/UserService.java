@@ -18,11 +18,6 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public UserEntity findById(Long id){
-        return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
-    }
-
     public UserEntity findUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
