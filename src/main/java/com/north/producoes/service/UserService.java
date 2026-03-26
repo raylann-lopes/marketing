@@ -4,18 +4,28 @@ import com.north.producoes.entity.UserEntity;
 import com.north.producoes.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.jspecify.annotations.NonNull;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
 @AllArgsConstructor
-public class UserService {
+public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     public List<UserEntity> findAllUser() {
         return userRepository.findAll();
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(@NonNull String email) throws UsernameNotFoundException {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario nao encontrado: " + email));
     }
 
     public UserEntity findUserByEmail(String email) {
@@ -25,7 +35,7 @@ public class UserService {
 
     @Transactional
     public UserEntity saveUser(UserEntity user) {
-        if (userRepository.findByEmail(user.getEmail()).isEmpty()) {
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new RuntimeException("Usuario ja cadastrado");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
