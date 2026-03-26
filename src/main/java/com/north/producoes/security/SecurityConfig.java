@@ -21,7 +21,7 @@ public class SecurityConfig {
     private final JwtService jwtService;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception  {
         http
                 // Desabilita CSRF — não necessário em APIs stateless (sem sessão/cookie)
                 .csrf(csrf -> csrf.disable())
@@ -32,9 +32,8 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        // Rotas de login/registro acessíveis sem token
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Toda outra rota exige JWT válido
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
 
                 // Registra o JwtFilter para rodar antes do filtro padrão do Spring Security
