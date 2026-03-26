@@ -1,0 +1,59 @@
+package com.north.producoes.security;
+
+import lombok.AllArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@AllArgsConstructor
+public class SecurityConfig {
+
+    private final JwtService jwtService;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
+        http
+                // Desabilita CSRF — não necessário em APIs stateless (sem sessão/cookie)
+                .csrf(csrf -> csrf.disable())
+
+                // Define que a API não mantém sessão no servidor
+                // cada requisição precisa se autenticar pelo token
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .authorizeHttpRequests(auth -> auth
+                        // Rotas de login/registro acessíveis sem token
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // Toda outra rota exige JWT válido
+                        .anyRequest().authenticated())
+
+                // Registra o JwtFilter para rodar antes do filtro padrão do Spring Security
+                // assim o token é validado antes de qualquer tentativa de autenticação
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    // BCrypt para hash de senhas — usado no UserService ao salvar usuário
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    // Expõe o AuthenticationManager como bean — usado no AuthController para autenticar no login
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+}
