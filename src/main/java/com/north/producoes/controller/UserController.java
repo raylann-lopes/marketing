@@ -1,7 +1,6 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.dto.request.UserRequest;
-import com.north.producoes.dto.response.ClientResponse;
 import com.north.producoes.dto.response.UserResponse;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.service.UserService;
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static java.util.stream.Collectors.toList;
 
 @RestController
 @RequestMapping("/api/users")
