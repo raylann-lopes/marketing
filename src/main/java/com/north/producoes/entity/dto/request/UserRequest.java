@@ -1,4 +1,4 @@
-package com.north.producoes.dto.request;
+package com.north.producoes.entity.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

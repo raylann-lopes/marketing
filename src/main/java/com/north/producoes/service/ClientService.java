@@ -29,7 +29,11 @@ public class ClientService {
     }
 
     public List<ClientEntity> findByStatus(ClientStatusEnum status){
-        return clientRepository.findByStatus(status);
+        List<ClientEntity> clientStatus = clientRepository.findByStatus(status);
+        if(clientRepository.findByStatus(status).isEmpty()){
+            throw new RuntimeException("Cliente nao encontrado");
+        }
+        return clientStatus;
     }
 
     @Transactional

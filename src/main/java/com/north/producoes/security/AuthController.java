@@ -1,7 +1,7 @@
 package com.north.producoes.security;
 
-import com.north.producoes.dto.request.LoginRequest;
-import com.north.producoes.dto.response.LoginResponse;
+import com.north.producoes.entity.dto.request.LoginRequest;
+import com.north.producoes.entity.dto.response.LoginResponse;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.security.refreshToken.RefreshRequest;
 import com.north.producoes.security.refreshToken.RefreshTokenEntity;

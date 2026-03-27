@@ -1,4 +1,4 @@
-package com.north.producoes.dto.response;
+package com.north.producoes.entity.dto.response;
 
 import com.north.producoes.entity.UserEntity;
 

@@ -1,7 +1,7 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.dto.request.UserRequest;
-import com.north.producoes.dto.response.UserResponse;
+import com.north.producoes.entity.dto.request.UserRequest;
+import com.north.producoes.entity.dto.response.UserResponse;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.service.UserService;
 import jakarta.validation.Valid;

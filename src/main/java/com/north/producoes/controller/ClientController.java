@@ -1,7 +1,7 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.dto.request.ClientRequest;
-import com.north.producoes.dto.response.ClientResponse;
+import com.north.producoes.entity.dto.request.ClientRequest;
+import com.north.producoes.entity.dto.response.ClientResponse;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.service.ClientService;
