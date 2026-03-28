@@ -1,7 +1,7 @@
 package com.north.producoes.entity;
 
+import com.north.producoes.entity.enums.PostStatusEnum;
 import jakarta.persistence.*;
-import jdk.jfr.Timestamp;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,9 +31,9 @@ public class PostEntity {
     private String objective;
 
     @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private PostStatusEnum status = PostStatusEnum.DEMAND;
 
-    @Timestamp
     @Column(nullable = false)
     private LocalDateTime scheduledAt;
 
@@ -41,11 +41,11 @@ public class PostEntity {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
     private ClientEntity client;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 }
