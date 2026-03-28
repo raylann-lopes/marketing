@@ -49,5 +49,5 @@ public class ClientEntity {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "client")
-    private List<PostEntity> clientId;
+    private List<PostEntity> posts;
 }

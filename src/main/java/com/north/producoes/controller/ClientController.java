@@ -60,6 +60,19 @@ public class ClientController {
                 .body(ClientResponse.from(clientService.saveClient(client)));
     }
 
+    @PutMapping("/update/{id}")
+    public ResponseEntity<ClientResponse> updateClient(@PathVariable Long id, @Valid @RequestBody ClientRequest request){
+        ClientEntity client = new ClientEntity();
+        client.setId(id);
+        client.setName(request.name());
+        client.setEmail(request.email());
+        client.setNumber(request.number());
+        client.setDriveLink(request.driveLink());
+        client.setVoiceTone(request.voiceTone());
+        client.setNiche(request.niche());
+        return ResponseEntity.ok(ClientResponse.from(clientService.updateClient(client)));
+    }
+
     @DeleteMapping("/id/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable Long id){
         clientService.deleteClientById(id);

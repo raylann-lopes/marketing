@@ -14,23 +14,23 @@ import java.util.List;
 public class ClientService {
     private final ClientRepository clientRepository;
 
-    public List<ClientEntity> findAllClient(){
+    public List<ClientEntity> findAllClient() {
         return clientRepository.findAll();
     }
 
-    public ClientEntity findByEmail(String email){
+    public ClientEntity findByEmail(String email) {
         return clientRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Cliente nao encontrado"));
     }
 
-    public ClientEntity findByNumber(String number){
+    public ClientEntity findByNumber(String number) {
         return clientRepository.findByNumber(number)
                 .orElseThrow(() -> new RuntimeException("Numero de telefone nao encontrado"));
     }
 
-    public List<ClientEntity> findByStatus(ClientStatusEnum status){
+    public List<ClientEntity> findByStatus(ClientStatusEnum status) {
         List<ClientEntity> clientStatus = clientRepository.findByStatus(status);
-        if(clientRepository.findByStatus(status).isEmpty()){
+        if (clientRepository.findByStatus(status).isEmpty()) {
             throw new RuntimeException("Cliente nao encontrado");
         }
         return clientStatus;
@@ -38,18 +38,25 @@ public class ClientService {
 
     @Transactional
     public ClientEntity saveClient(ClientEntity client){
-        if(clientRepository.findByEmail(client.getEmail()).isPresent()){
+        if (clientRepository.findByEmail(client.getEmail()).isPresent()) {
             throw new RuntimeException("Cliente ja cadastrado");
         }
         return clientRepository.save(client);
     }
 
     @Transactional
-    public void deleteClientById(Long id){
+    public ClientEntity updateClient(ClientEntity client) {
+        if (clientRepository.findById(client.getId()).isEmpty()) {
+            throw new RuntimeException("Cliente nao encontrado");
+        }
+        return clientRepository.save(client);
+    }
+
+    @Transactional
+    public void deleteClientById(Long id) {
         clientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Nao foi possivel deletar, cliente nao encontrado"));
         clientRepository.deleteById(id);
     }
-
-
 }
+

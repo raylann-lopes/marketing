@@ -41,7 +41,7 @@ public class UserEntity implements UserDetails {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "user")
-    private List<PostEntity> userId;
+    private List<PostEntity> posts;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
