@@ -28,10 +28,10 @@ public class FinanceService {
         return financeStatus;
     }
 
-    public List<FinanceEntity> findByClient(ClientEntity clientId){
-        List<FinanceEntity> financeClient = financeRepository.findByClientId(clientId);
+    public List<FinanceEntity> findByClientId(Long id){
+        List<FinanceEntity> financeClient = financeRepository.findByClientId(id);
         if (financeClient.isEmpty()){
-            throw new ResourceNotFoundException("Conta do cliente nao encontrada: id " + clientId);
+            throw new ResourceNotFoundException("Conta do cliente nao encontrada: id " + id);
         }
         return financeClient;
     }

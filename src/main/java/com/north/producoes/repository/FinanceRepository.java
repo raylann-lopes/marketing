@@ -10,8 +10,5 @@ import java.util.List;
 
 public interface FinanceRepository extends JpaRepository<FinanceEntity, Long> {
     List<FinanceEntity> findByStatus(FinanceStatusEnum status);
-
-    List<FinanceEntity> findByUserId(UserEntity user);
-
-    List<FinanceEntity> findByClientId(ClientEntity clientId);
+    List<FinanceEntity> findByClientId(Long id);
 }
