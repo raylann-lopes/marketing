@@ -1,8 +1,5 @@
 package com.north.producoes.service;
-
-import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.FinanceEntity;
-import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.FinanceRepository;
@@ -41,15 +38,15 @@ public class FinanceService {
     }
 
     public FinanceEntity updateFinance(FinanceEntity finance){
-        if (financeRepository.findById(finance.getId()).isEmpty()){
+        if (financeRepository.existsById(finance.getId())){
             throw new ResourceNotFoundException("Conta nao encontrada: id " + finance.getId());
         }
         return financeRepository.save(finance);
     }
 
     public void deleteFinanceById(Long id){
-        if (financeRepository.existsById(id)){
-            throw new IllegalArgumentException("Conta nao encontrada: id " + id);
+        if (!financeRepository.existsById(id)){
+            throw new ResourceNotFoundException("Conta nao encontrada: id " + id);
         }
         financeRepository.deleteById(id);
     }

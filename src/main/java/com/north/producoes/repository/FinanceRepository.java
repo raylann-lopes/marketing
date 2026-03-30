@@ -1,8 +1,6 @@
 package com.north.producoes.repository;
 
-import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.FinanceEntity;
-import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import org.springframework.data.jpa.repository.JpaRepository;
 

@@ -1,26 +1,25 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.UserApi;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.dto.request.UserRequest;
 import com.north.producoes.entity.dto.response.UserResponse;
-import com.north.producoes.entity.UserEntity;
 import com.north.producoes.service.UserService;
-import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-
 @RestController
-@RequestMapping("/api/users")
 @AllArgsConstructor
-public class UserController {
+public class UserController implements UserApi {
+
     private final UserService userService;
 
-    @GetMapping
-    public ResponseEntity<List<UserResponse>> findAll(){
+    @Override
+    public ResponseEntity<List<UserResponse>> findAll() {
         List<UserResponse> user = userService.findAllUser()
                 .stream()
                 .map(UserResponse::from)
@@ -28,13 +27,13 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/email/{email}")
-    public ResponseEntity<UserResponse> findUserByEmail(@PathVariable String email){
-        return ResponseEntity.ok(UserResponse.from(userService.findUserByEmail(email)));
+    @Override
+    public ResponseEntity<UserResponse> findUserByEmail(String email) {
+        return ResponseEntity.ok(UserResponse.from(userService.findUserByEmail(email).orElseThrow()));
     }
 
-    @PostMapping
-    public ResponseEntity<UserResponse> saveUser(@Valid @RequestBody UserRequest request){
+    @Override
+    public ResponseEntity<UserResponse> saveUser(UserRequest request) {
         UserEntity user = new UserEntity();
         user.setName(request.name());
         user.setEmail(request.email());
@@ -43,10 +42,9 @@ public class UserController {
                 .body(UserResponse.from(userService.saveUser(user)));
     }
 
-    @DeleteMapping("/id/{id}")
-    public ResponseEntity<Void> deleteUserById(@PathVariable Long id){
+    @Override
+    public ResponseEntity<Void> deleteUserById(Long id) {
         userService.deleteUserById(id);
         return ResponseEntity.noContent().build();
     }
-
 }

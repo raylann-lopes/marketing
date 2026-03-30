@@ -1,26 +1,26 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.ClientApi;
+import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.dto.request.ClientRequest;
 import com.north.producoes.entity.dto.response.ClientResponse;
-import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.service.ClientService;
-import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/clients")
 @AllArgsConstructor
-public class ClientController {
+public class ClientController implements ClientApi {
+
     private final ClientService clientService;
 
-    @GetMapping
-    public ResponseEntity<List<ClientResponse>> findAll(){
+    @Override
+    public ResponseEntity<List<ClientResponse>> findAll() {
         List<ClientResponse> clients = clientService.findAllClient()
                 .stream()
                 .map(ClientResponse::from)
@@ -28,18 +28,18 @@ public class ClientController {
         return ResponseEntity.ok(clients);
     }
 
-    @GetMapping("/email/{email}")
-    public ResponseEntity<ClientResponse> findByEmail(@PathVariable String email){
+    @Override
+    public ResponseEntity<ClientResponse> findByEmail(String email) {
         return ResponseEntity.ok(ClientResponse.from(clientService.findByEmail(email)));
     }
 
-    @GetMapping("/number/{number}")
-    public ResponseEntity<ClientResponse> findByNumber(@PathVariable String number){
+    @Override
+    public ResponseEntity<ClientResponse> findByNumber(String number) {
         return ResponseEntity.ok(ClientResponse.from(clientService.findByNumber(number)));
     }
 
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<ClientResponse>> findByStatus(@PathVariable ClientStatusEnum status){
+    @Override
+    public ResponseEntity<List<ClientResponse>> findByStatus(ClientStatusEnum status) {
         List<ClientResponse> clients = clientService.findByStatus(status)
                 .stream()
                 .map(ClientResponse::from)
@@ -47,8 +47,8 @@ public class ClientController {
         return ResponseEntity.ok(clients);
     }
 
-    @PostMapping
-    public ResponseEntity<ClientResponse> saveClient(@Valid @RequestBody ClientRequest request){
+    @Override
+    public ResponseEntity<ClientResponse> saveClient(ClientRequest request) {
         ClientEntity client = new ClientEntity();
         client.setName(request.name());
         client.setEmail(request.email());
@@ -60,8 +60,8 @@ public class ClientController {
                 .body(ClientResponse.from(clientService.saveClient(client)));
     }
 
-    @PutMapping("/update/{id}")
-    public ResponseEntity<ClientResponse> updateClient(@PathVariable Long id, @Valid @RequestBody ClientRequest request){
+    @Override
+    public ResponseEntity<ClientResponse> updateClient(Long id, ClientRequest request) {
         ClientEntity client = new ClientEntity();
         client.setId(id);
         client.setName(request.name());
@@ -73,8 +73,8 @@ public class ClientController {
         return ResponseEntity.ok(ClientResponse.from(clientService.updateClient(client)));
     }
 
-    @DeleteMapping("/id/{id}")
-    public ResponseEntity<Void> deleteById(@PathVariable Long id){
+    @Override
+    public ResponseEntity<Void> deleteById(Long id) {
         clientService.deleteClientById(id);
         return ResponseEntity.noContent().build();
     }

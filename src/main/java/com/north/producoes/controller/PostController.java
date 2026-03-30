@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.PostApi;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
@@ -8,19 +9,19 @@ import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.service.PostService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping("/api/posts")
-public class PostController {
+public class PostController implements PostApi {
+
     private final PostService postService;
 
-    @GetMapping
-    public ResponseEntity<List<PostResponse>> findAll(){
+    @Override
+    public ResponseEntity<List<PostResponse>> findAll() {
         List<PostResponse> post = postService.findAllPost()
                 .stream()
                 .map(PostResponse::from)
@@ -28,18 +29,17 @@ public class PostController {
         return ResponseEntity.ok(post);
     }
 
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<PostResponse>> findByStatus(@PathVariable @RequestParam PostStatusEnum status){
+    @Override
+    public ResponseEntity<List<PostResponse>> findByStatus(PostStatusEnum status) {
         List<PostResponse> postStatus = postService.findByStatus(status)
                 .stream()
                 .map(PostResponse::from)
                 .toList();
         return ResponseEntity.ok(postStatus);
-
     }
 
-    @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<PostResponse>> findByClient(@PathVariable @RequestParam ClientEntity clientId){
+    @Override
+    public ResponseEntity<List<PostResponse>> findByClient(ClientEntity clientId) {
         List<PostResponse> post = postService.findByClient(clientId)
                 .stream()
                 .map(PostResponse::from)
@@ -47,18 +47,17 @@ public class PostController {
         return ResponseEntity.ok(post);
     }
 
-    @GetMapping("/user/{user}")
-    public ResponseEntity<List<PostResponse>> findByUser(@PathVariable @RequestParam UserEntity user){
+    @Override
+    public ResponseEntity<List<PostResponse>> findByUser(UserEntity user) {
         List<PostResponse> postUser = postService.findByUser(user)
                 .stream()
                 .map(PostResponse::from)
                 .toList();
-
         return ResponseEntity.ok(postUser);
     }
 
-    @GetMapping("/scheduled/{scheduledAt}")
-    public ResponseEntity<List<PostResponse>> findByScheduledAt(@PathVariable @RequestParam LocalDateTime scheduledAt, LocalDateTime scheduledAtBefore){
+    @Override
+    public ResponseEntity<List<PostResponse>> findByScheduledAt(LocalDateTime scheduledAt, LocalDateTime scheduledAtBefore) {
         List<PostResponse> postScheduledAt = postService.findByScheduledAt(scheduledAt, scheduledAtBefore)
                 .stream()
                 .map(PostResponse::from)
@@ -66,20 +65,18 @@ public class PostController {
         return ResponseEntity.ok(postScheduledAt);
     }
 
-    @PostMapping("/save")
-    public ResponseEntity<PostResponse> savePost(@RequestBody PostEntity post){
-        PostResponse postResponse = PostResponse.from(postService.savePost(post));
-        return ResponseEntity.ok(postResponse);
+    @Override
+    public ResponseEntity<PostResponse> savePost(PostEntity post) {
+        return ResponseEntity.ok(PostResponse.from(postService.savePost(post)));
     }
 
-    @PutMapping("/update/{id}")
-    public ResponseEntity<PostResponse> updatePost(@RequestBody PostEntity post){
-        PostResponse postResponse = PostResponse.from(postService.updatePost(post));
-        return ResponseEntity.ok(postResponse);
+    @Override
+    public ResponseEntity<PostResponse> updatePost(PostEntity post) {
+        return ResponseEntity.ok(PostResponse.from(postService.updatePost(post)));
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<Void> deletePostById(@PathVariable @RequestBody Long id) {
+    @Override
+    public ResponseEntity<Void> deletePostById(Long id) {
         postService.deletePostById(id);
         return ResponseEntity.noContent().build();
     }
