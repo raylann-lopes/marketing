@@ -1,5 +1,6 @@
 package com.north.producoes.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.north.producoes.entity.enums.UserRoleEnum;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,6 +31,7 @@ public class UserEntity implements UserDetails {
     private String email;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
     @Column(nullable = false)
@@ -41,6 +43,7 @@ public class UserEntity implements UserDetails {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "user")
+    @JsonIgnore
     private List<PostEntity> posts;
 
     @Override

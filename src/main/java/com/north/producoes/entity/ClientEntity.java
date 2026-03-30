@@ -1,5 +1,6 @@
 package com.north.producoes.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -49,5 +50,6 @@ public class ClientEntity {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "client")
+    @JsonIgnore
     private List<PostEntity> posts;
 }
