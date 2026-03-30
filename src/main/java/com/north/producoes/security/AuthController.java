@@ -1,8 +1,8 @@
 package com.north.producoes.security;
 
 import com.north.producoes.controller.api.AuthApi;
-import com.north.producoes.entity.dto.request.LoginRequest;
-import com.north.producoes.entity.dto.response.LoginResponse;
+import com.north.producoes.controller.dto.request.LoginRequest;
+import com.north.producoes.controller.dto.response.LoginResponse;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.security.refreshToken.RefreshRequest;
 import com.north.producoes.security.refreshToken.RefreshTokenEntity;

@@ -1,4 +1,4 @@
-package com.north.producoes.entity.dto.request;
+package com.north.producoes.controller.dto.request;
 
 import com.north.producoes.entity.enums.PostStatusEnum;
 import jakarta.validation.constraints.NotBlank;

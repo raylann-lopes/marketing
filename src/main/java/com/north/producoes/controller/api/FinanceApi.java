@@ -1,7 +1,7 @@
 package com.north.producoes.controller.api;
 
 import com.north.producoes.entity.FinanceEntity;
-import com.north.producoes.entity.dto.response.FinanceResponse;
+import com.north.producoes.controller.dto.response.FinanceResponse;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

@@ -1,7 +1,7 @@
 package com.north.producoes.controller.api;
 
-import com.north.producoes.entity.dto.request.LoginRequest;
-import com.north.producoes.entity.dto.response.LoginResponse;
+import com.north.producoes.controller.dto.request.LoginRequest;
+import com.north.producoes.controller.dto.response.LoginResponse;
 import com.north.producoes.security.refreshToken.RefreshRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

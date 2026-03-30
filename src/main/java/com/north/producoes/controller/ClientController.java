@@ -2,8 +2,8 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.ClientApi;
 import com.north.producoes.entity.ClientEntity;
-import com.north.producoes.entity.dto.request.ClientRequest;
-import com.north.producoes.entity.dto.response.ClientResponse;
+import com.north.producoes.controller.dto.request.ClientRequest;
+import com.north.producoes.controller.dto.response.ClientResponse;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.service.ClientService;
 import lombok.AllArgsConstructor;

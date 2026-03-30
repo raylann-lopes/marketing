@@ -1,7 +1,6 @@
-package com.north.producoes.entity.dto.response;
+package com.north.producoes.controller.dto.response;
 
 import com.north.producoes.entity.PostEntity;
-import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.entity.enums.PostStatusEnum;
 
 import java.time.LocalDateTime;

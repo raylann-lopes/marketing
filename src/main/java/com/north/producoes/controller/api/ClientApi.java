@@ -1,7 +1,7 @@
 package com.north.producoes.controller.api;
 
-import com.north.producoes.entity.dto.request.ClientRequest;
-import com.north.producoes.entity.dto.response.ClientResponse;
+import com.north.producoes.controller.dto.request.ClientRequest;
+import com.north.producoes.controller.dto.response.ClientResponse;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

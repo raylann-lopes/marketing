@@ -3,7 +3,7 @@ package com.north.producoes.controller.api;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
-import com.north.producoes.entity.dto.response.PostResponse;
+import com.north.producoes.controller.dto.response.PostResponse;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

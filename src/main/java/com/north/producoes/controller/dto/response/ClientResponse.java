@@ -1,4 +1,4 @@
-package com.north.producoes.entity.dto.response;
+package com.north.producoes.controller.dto.response;
 
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;

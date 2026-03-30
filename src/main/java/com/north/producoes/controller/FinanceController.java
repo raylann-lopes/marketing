@@ -2,7 +2,7 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.FinanceApi;
 import com.north.producoes.entity.FinanceEntity;
-import com.north.producoes.entity.dto.response.FinanceResponse;
+import com.north.producoes.controller.dto.response.FinanceResponse;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.service.FinanceService;
 import lombok.AllArgsConstructor;
