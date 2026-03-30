@@ -4,6 +4,7 @@ import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.FinanceEntity;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
+import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.FinanceRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,7 @@ public class FinanceService {
     public List<FinanceEntity> findByStatus(FinanceStatusEnum status){
         List<FinanceEntity> financeStatus = financeRepository.findByStatus(status);
         if (financeStatus.isEmpty()){
-            throw new RuntimeException("Conta nao encontrado");
+            throw new ResourceNotFoundException("Conta com status" + status + "nao encontrada!");
         }
         return financeStatus;
     }
@@ -30,17 +31,9 @@ public class FinanceService {
     public List<FinanceEntity> findByClient(ClientEntity clientId){
         List<FinanceEntity> financeClient = financeRepository.findByClientId(clientId);
         if (financeClient.isEmpty()){
-            throw new RuntimeException("Conta nao encontrado");
+            throw new ResourceNotFoundException("Conta do cliente nao encontrada: id " + clientId);
         }
         return financeClient;
-    }
-
-    public List<FinanceEntity> findByUser(UserEntity userId){
-        List<FinanceEntity> financeUser = financeRepository.findByUserId(userId);
-        if (financeUser.isEmpty()){
-            throw new RuntimeException("Conta nao encontrado");
-        }
-        return financeUser;
     }
 
     public FinanceEntity saveFinance(FinanceEntity finance){
@@ -49,14 +42,14 @@ public class FinanceService {
 
     public FinanceEntity updateFinance(FinanceEntity finance){
         if (financeRepository.findById(finance.getId()).isEmpty()){
-            throw new RuntimeException("Conta nao encontrada");
+            throw new ResourceNotFoundException("Conta nao encontrada: id " + finance.getId());
         }
         return financeRepository.save(finance);
     }
 
     public void deleteFinanceById(Long id){
-        if (financeRepository.findById(id).isEmpty()){
-            throw new RuntimeException("Conta nao encontrada");
+        if (financeRepository.existsById(id)){
+            throw new IllegalArgumentException("Conta nao encontrada: id " + id);
         }
         financeRepository.deleteById(id);
     }

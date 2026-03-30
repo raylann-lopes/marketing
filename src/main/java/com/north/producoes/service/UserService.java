@@ -1,6 +1,7 @@
 package com.north.producoes.service;
 
 import com.north.producoes.entity.UserEntity;
+import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @AllArgsConstructor
@@ -25,18 +27,20 @@ public class UserService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(@NonNull String email) throws UsernameNotFoundException {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario nao encontrado: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado: " + email));
     }
 
-    public UserEntity findUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+    public Optional<UserEntity> findUserByEmail(String email) {
+        if (email == null || email.isBlank()){
+            throw new IllegalArgumentException("Email nao pode ser nulo ou vazio");
+        }
+        return userRepository.findByEmail(email);
     }
 
     @Transactional
     public UserEntity saveUser(UserEntity user) {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            throw new RuntimeException("Usuario ja cadastrado");
+            throw new ResourceNotFoundException("Usuario ja cadastrado");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
@@ -44,8 +48,8 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public void deleteUserById(Long id) {
-        if (userRepository.findById(id).isEmpty()) {
-            throw new RuntimeException("Usuario nao encontrado");
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID de Usuario nao encontrado" + id);
         }
         userRepository.deleteById(id);
     }

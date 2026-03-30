@@ -2,6 +2,8 @@ package com.north.producoes.service;
 
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
+import com.north.producoes.exception.ResourceAlreadyExistsException;
+import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ClientRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -20,18 +22,18 @@ public class ClientService {
 
     public ClientEntity findByEmail(String email) {
         return clientRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Cliente nao encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente nao encontrado: " + email));
     }
 
     public ClientEntity findByNumber(String number) {
         return clientRepository.findByNumber(number)
-                .orElseThrow(() -> new RuntimeException("Numero de telefone nao encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Numero de telefone nao encontrado: " + number));
     }
 
     public List<ClientEntity> findByStatus(ClientStatusEnum status) {
         List<ClientEntity> clientStatus = clientRepository.findByStatus(status);
         if (clientRepository.findByStatus(status).isEmpty()) {
-            throw new RuntimeException("Cliente nao encontrado");
+            throw new ResourceNotFoundException("Cliente com status" + status + "nao encontrado!");
         }
         return clientStatus;
     }
@@ -39,7 +41,7 @@ public class ClientService {
     @Transactional
     public ClientEntity saveClient(ClientEntity client){
         if (clientRepository.findByEmail(client.getEmail()).isPresent()) {
-            throw new RuntimeException("Cliente ja cadastrado");
+            throw new ResourceAlreadyExistsException("Cliente com email" + client.getEmail() + "já cadastado");
         }
         return clientRepository.save(client);
     }
@@ -47,15 +49,16 @@ public class ClientService {
     @Transactional
     public ClientEntity updateClient(ClientEntity client) {
         if (clientRepository.findById(client.getId()).isEmpty()) {
-            throw new RuntimeException("Cliente nao encontrado");
+            throw new ResourceNotFoundException("Cliente nao encontrado: id" + client.getId());
         }
         return clientRepository.save(client);
     }
 
     @Transactional
     public void deleteClientById(Long id) {
-        clientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Nao foi possivel deletar, cliente nao encontrado"));
+        if (clientRepository.existsById(id)) {
+            throw new IllegalArgumentException("Cliente nao encontrada: id " + id);
+        }
         clientRepository.deleteById(id);
     }
 }
