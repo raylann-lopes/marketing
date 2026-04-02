@@ -51,4 +51,8 @@ public class PostEntity {
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private UserEntity user;
+
+    @OneToOne(mappedBy = "post")
+    @JsonIgnore
+    private ApproveEntity approve;
 }

@@ -44,13 +44,13 @@ public interface FinanceApi {
     @Operation(summary = "Atualiza um registro financeiro existente")
     @ApiResponse(responseCode = "200", description = "Registro atualizado com sucesso")
     @ApiResponse(responseCode = "404", description = "Registro não encontrado")
-    @PostMapping("/update")
+    @PatchMapping("/update")
     ResponseEntity<FinanceResponse> updateFinance(@RequestBody FinanceEntity finance);
 
     @Operation(summary = "Remove um registro financeiro pelo ID")
     @ApiResponse(responseCode = "204", description = "Registro removido com sucesso")
     @ApiResponse(responseCode = "404", description = "Registro não encontrado")
-    @PostMapping("/delete")
+    @DeleteMapping("/delete")
     ResponseEntity<Void> deleteFinanceById(
             @Parameter(description = "ID do registro financeiro") @RequestParam Long id);
 }
