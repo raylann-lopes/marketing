@@ -4,7 +4,7 @@ import com.north.producoes.controller.api.PostApi;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
-import com.north.producoes.controller.dto.response.PostResponse;
+import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.service.PostService;
 import lombok.AllArgsConstructor;
@@ -21,58 +21,58 @@ public class PostController implements PostApi {
     private final PostService postService;
 
     @Override
-    public ResponseEntity<List<PostResponse>> findAll() {
-        List<PostResponse> post = postService.findAllPost()
+    public ResponseEntity<List<PostResponseDTO>> findAll() {
+        List<PostResponseDTO> post = postService.findAllPost()
                 .stream()
-                .map(PostResponse::from)
+                .map(PostResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(post);
     }
 
     @Override
-    public ResponseEntity<List<PostResponse>> findByStatus(PostStatusEnum status) {
-        List<PostResponse> postStatus = postService.findByStatus(status)
+    public ResponseEntity<List<PostResponseDTO>> findByStatus(PostStatusEnum status) {
+        List<PostResponseDTO> postStatus = postService.findByStatus(status)
                 .stream()
-                .map(PostResponse::from)
+                .map(PostResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(postStatus);
     }
 
     @Override
-    public ResponseEntity<List<PostResponse>> findByClient(ClientEntity clientId) {
-        List<PostResponse> post = postService.findByClient(clientId)
+    public ResponseEntity<List<PostResponseDTO>> findByClient(ClientEntity clientId) {
+        List<PostResponseDTO> post = postService.findByClient(clientId)
                 .stream()
-                .map(PostResponse::from)
+                .map(PostResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(post);
     }
 
     @Override
-    public ResponseEntity<List<PostResponse>> findByUser(UserEntity user) {
-        List<PostResponse> postUser = postService.findByUser(user)
+    public ResponseEntity<List<PostResponseDTO>> findByUser(UserEntity user) {
+        List<PostResponseDTO> postUser = postService.findByUser(user)
                 .stream()
-                .map(PostResponse::from)
+                .map(PostResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(postUser);
     }
 
     @Override
-    public ResponseEntity<List<PostResponse>> findByScheduledAt(LocalDateTime scheduledAt, LocalDateTime scheduledAtBefore) {
-        List<PostResponse> postScheduledAt = postService.findByScheduledAt(scheduledAt, scheduledAtBefore)
+    public ResponseEntity<List<PostResponseDTO>> findByScheduledAt(LocalDateTime scheduledAt, LocalDateTime scheduledAtBefore) {
+        List<PostResponseDTO> postScheduledAt = postService.findByScheduledAt(scheduledAt, scheduledAtBefore)
                 .stream()
-                .map(PostResponse::from)
+                .map(PostResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(postScheduledAt);
     }
 
     @Override
-    public ResponseEntity<PostResponse> savePost(PostEntity post) {
-        return ResponseEntity.ok(PostResponse.from(postService.savePost(post)));
+    public ResponseEntity<PostResponseDTO> savePost(PostEntity post) {
+        return ResponseEntity.ok(PostResponseDTO.from(postService.savePost(post)));
     }
 
     @Override
-    public ResponseEntity<PostResponse> updatePost(PostEntity post) {
-        return ResponseEntity.ok(PostResponse.from(postService.updatePost(post)));
+    public ResponseEntity<PostResponseDTO> updatePost(PostEntity post) {
+        return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(post)));
     }
 
     @Override

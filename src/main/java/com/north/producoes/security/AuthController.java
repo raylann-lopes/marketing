@@ -1,8 +1,8 @@
 package com.north.producoes.security;
 
 import com.north.producoes.controller.api.AuthApi;
-import com.north.producoes.controller.dto.request.LoginRequest;
-import com.north.producoes.controller.dto.response.LoginResponse;
+import com.north.producoes.controller.dto.request.LoginRequestDTO;
+import com.north.producoes.controller.dto.response.LoginResponseDTO;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.security.refreshToken.RefreshRequest;
 import com.north.producoes.security.refreshToken.RefreshTokenEntity;
@@ -24,23 +24,23 @@ public class AuthController implements AuthApi {
     private final RefreshTokenService refreshTokenService;
 
     @Override
-    public ResponseEntity<LoginResponse> login(LoginRequest loginRequest) {
+    public ResponseEntity<LoginResponseDTO> login(LoginRequestDTO loginRequestDTO) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.email(), loginRequest.password()));
+                        loginRequestDTO.email(), loginRequestDTO.password()));
 
-        UserEntity user = (UserEntity) userService.loadUserByUsername(loginRequest.email());
+        UserEntity user = (UserEntity) userService.loadUserByUsername(loginRequestDTO.email());
         String acessToken = jwtService.generateToken(user);
         RefreshTokenEntity refreshToken = refreshTokenService.generate(user);
 
-        return ResponseEntity.ok(new LoginResponse(acessToken, refreshToken.getToken()));
+        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken.getToken()));
     }
 
     @Override
-    public ResponseEntity<LoginResponse> refresh(RefreshRequest request) {
+    public ResponseEntity<LoginResponseDTO> refresh(RefreshRequest request) {
         RefreshTokenEntity refreshToken = refreshTokenService.validate(request.refreshToken());
 
         String newAcessToken = jwtService.generateToken(refreshToken.getUser());
-        return ResponseEntity.ok(new LoginResponse(newAcessToken, request.refreshToken()));
+        return ResponseEntity.ok(new LoginResponseDTO(newAcessToken, request.refreshToken()));
     }
 }

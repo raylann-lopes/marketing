@@ -1,7 +1,7 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.ApproveApi;
-import com.north.producoes.controller.dto.response.ApproveResponse;
+import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import com.north.producoes.repository.ApproveRepository;
@@ -21,69 +21,69 @@ public class ApproveController implements ApproveApi {
     private final ApprovedService approvedService;
 
     @Override
-    public ResponseEntity<List<ApproveResponse>> findAll() {
+    public ResponseEntity<List<ApproveResponseDTO>> findAll() {
         List<ApproveEntity> approvals = approveRepository.findAll();
         if (approvals.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(approvals.
                 stream()
-                .map(ApproveResponse::from)
+                .map(ApproveResponseDTO::from)
                 .toList());
     }
 
     @Override
-    public ResponseEntity<ApproveResponse> findByPostId(Long id) {
+    public ResponseEntity<ApproveResponseDTO> findByPostId(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(ApproveResponse.from(approvals.getFirst()));
+        return ResponseEntity.ok(ApproveResponseDTO.from(approvals.getFirst()));
     }
 
     @Override
-    public ResponseEntity<List<ApproveResponse>> findApproveByStatus(ApproveStatusEnum status) {
+    public ResponseEntity<List<ApproveResponseDTO>> findApproveByStatus(ApproveStatusEnum status) {
         List<ApproveEntity> getApproveStatus = approveRepository.findApproveEntitiesByStatus(status);
         if (getApproveStatus.isEmpty()){
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(getApproveStatus.
                 stream()
-                .map(ApproveResponse::from)
+                .map(ApproveResponseDTO::from)
                 .toList());
     }
     @Override
-    public ResponseEntity<ApproveResponse> approvePost(Long id) {
+    public ResponseEntity<ApproveResponseDTO> approvePost(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         ApproveEntity approve = approvals.getFirst();
         approve.setStatus(ApproveStatusEnum.APPROVE);
-        return ResponseEntity.ok(ApproveResponse.from(approveRepository.save(approve)));
+        return ResponseEntity.ok(ApproveResponseDTO.from(approveRepository.save(approve)));
     }
 
     @Override
-    public ResponseEntity<ApproveResponse> rejectPost(Long id) {
+    public ResponseEntity<ApproveResponseDTO> rejectPost(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         ApproveEntity approve = approvals.getFirst();
         approve.setStatus(ApproveStatusEnum.REJECT);
-        return ResponseEntity.ok(ApproveResponse.from(approveRepository.save(approve)));
+        return ResponseEntity.ok(ApproveResponseDTO.from(approveRepository.save(approve)));
     }
 
     @Override
-    public ResponseEntity<ApproveResponse> saveApprove(ApproveEntity approve) {
+    public ResponseEntity<ApproveResponseDTO> saveApprove(ApproveEntity approve) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApproveResponse.from(approvedService.saveApprove(approve)));
+                .body(ApproveResponseDTO.from(approvedService.saveApprove(approve)));
     }
 
     @Override
-    public ResponseEntity<ApproveResponse> updateApprove(Long id, ApproveEntity approve) {
+    public ResponseEntity<ApproveResponseDTO> updateApprove(Long id, ApproveEntity approve) {
         approve.setId(id);
-        return ResponseEntity.ok(ApproveResponse.from(approvedService.updateApprove(approve)));
+        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateApprove(approve)));
     }
 
     @Override

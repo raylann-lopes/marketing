@@ -2,7 +2,7 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.FinanceApi;
 import com.north.producoes.entity.FinanceEntity;
-import com.north.producoes.controller.dto.response.FinanceResponse;
+import com.north.producoes.controller.dto.response.FinanceResponseDTO;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.service.FinanceService;
 import lombok.AllArgsConstructor;
@@ -18,43 +18,43 @@ public class FinanceController implements FinanceApi {
     private final FinanceService financeService;
 
     @Override
-    public ResponseEntity<List<FinanceResponse>> findAll() {
-        List<FinanceResponse> finance = financeService.findAll()
+    public ResponseEntity<List<FinanceResponseDTO>> findAll() {
+        List<FinanceResponseDTO> finance = financeService.findAll()
                 .stream()
-                .map(FinanceResponse::from)
+                .map(FinanceResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(finance);
     }
 
     @Override
-    public ResponseEntity<List<FinanceResponse>> findByStatus(FinanceStatusEnum status) {
+    public ResponseEntity<List<FinanceResponseDTO>> findByStatus(FinanceStatusEnum status) {
         if (status == null) {
             return ResponseEntity.badRequest().build();
         }
-        List<FinanceResponse> financeStatus = financeService.findByStatus(status)
+        List<FinanceResponseDTO> financeStatus = financeService.findByStatus(status)
                 .stream()
-                .map(FinanceResponse::from)
+                .map(FinanceResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(financeStatus);
     }
 
     @Override
-    public ResponseEntity<List<FinanceResponse>> findByClient(Long id){
-        List<FinanceResponse> financeClient = financeService.findByClientId(id)
+    public ResponseEntity<List<FinanceResponseDTO>> findByClient(Long id){
+        List<FinanceResponseDTO> financeClient = financeService.findByClientId(id)
                 .stream()
-                .map(FinanceResponse::from)
+                .map(FinanceResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(financeClient);
     }
 
     @Override
-    public ResponseEntity<FinanceResponse> saveFinance(FinanceEntity finance) {
-        return ResponseEntity.ok(FinanceResponse.from(financeService.saveFinance(finance)));
+    public ResponseEntity<FinanceResponseDTO> saveFinance(FinanceEntity finance) {
+        return ResponseEntity.ok(FinanceResponseDTO.from(financeService.saveFinance(finance)));
     }
 
     @Override
-    public ResponseEntity<FinanceResponse> updateFinance(FinanceEntity finance) {
-        return ResponseEntity.ok(FinanceResponse.from(financeService.updateFinance(finance)));
+    public ResponseEntity<FinanceResponseDTO> updateFinance(FinanceEntity finance) {
+        return ResponseEntity.ok(FinanceResponseDTO.from(financeService.updateFinance(finance)));
     }
 
     @Override

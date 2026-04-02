@@ -2,8 +2,8 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.ClientApi;
 import com.north.producoes.entity.ClientEntity;
-import com.north.producoes.controller.dto.request.ClientRequest;
-import com.north.producoes.controller.dto.response.ClientResponse;
+import com.north.producoes.controller.dto.request.ClientRequestDTO;
+import com.north.producoes.controller.dto.response.ClientResponseDTO;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.service.ClientService;
 import lombok.AllArgsConstructor;
@@ -20,35 +20,35 @@ public class ClientController implements ClientApi {
     private final ClientService clientService;
 
     @Override
-    public ResponseEntity<List<ClientResponse>> findAll() {
-        List<ClientResponse> clients = clientService.findAllClient()
+    public ResponseEntity<List<ClientResponseDTO>> findAll() {
+        List<ClientResponseDTO> clients = clientService.findAllClient()
                 .stream()
-                .map(ClientResponse::from)
+                .map(ClientResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(clients);
     }
 
     @Override
-    public ResponseEntity<ClientResponse> findByEmail(String email) {
-        return ResponseEntity.ok(ClientResponse.from(clientService.findByEmail(email)));
+    public ResponseEntity<ClientResponseDTO> findByEmail(String email) {
+        return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByEmail(email)));
     }
 
     @Override
-    public ResponseEntity<ClientResponse> findByNumber(String number) {
-        return ResponseEntity.ok(ClientResponse.from(clientService.findByNumber(number)));
+    public ResponseEntity<ClientResponseDTO> findByNumber(String number) {
+        return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByNumber(number)));
     }
 
     @Override
-    public ResponseEntity<List<ClientResponse>> findByStatus(ClientStatusEnum status) {
-        List<ClientResponse> clients = clientService.findByStatus(status)
+    public ResponseEntity<List<ClientResponseDTO>> findByStatus(ClientStatusEnum status) {
+        List<ClientResponseDTO> clients = clientService.findByStatus(status)
                 .stream()
-                .map(ClientResponse::from)
+                .map(ClientResponseDTO::from)
                 .toList();
         return ResponseEntity.ok(clients);
     }
 
     @Override
-    public ResponseEntity<ClientResponse> saveClient(ClientRequest request) {
+    public ResponseEntity<ClientResponseDTO> saveClient(ClientRequestDTO request) {
         ClientEntity client = new ClientEntity();
         client.setName(request.name());
         client.setEmail(request.email());
@@ -57,11 +57,11 @@ public class ClientController implements ClientApi {
         client.setVoiceTone(request.voiceTone());
         client.setNiche(request.niche());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ClientResponse.from(clientService.saveClient(client)));
+                .body(ClientResponseDTO.from(clientService.saveClient(client)));
     }
 
     @Override
-    public ResponseEntity<ClientResponse> updateClient(Long id, ClientRequest request) {
+    public ResponseEntity<ClientResponseDTO> updateClient(Long id, ClientRequestDTO request) {
         ClientEntity client = new ClientEntity();
         client.setId(id);
         client.setName(request.name());
@@ -70,7 +70,7 @@ public class ClientController implements ClientApi {
         client.setDriveLink(request.driveLink());
         client.setVoiceTone(request.voiceTone());
         client.setNiche(request.niche());
-        return ResponseEntity.ok(ClientResponse.from(clientService.updateClient(client)));
+        return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateClient(client)));
     }
 
     @Override

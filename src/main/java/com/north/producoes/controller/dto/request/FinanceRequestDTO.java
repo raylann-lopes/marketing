@@ -1,6 +1,6 @@
 package com.north.producoes.controller.dto.request;
 
-public record FinanceRequest(
+public record FinanceRequestDTO(
         Long client,
         String description,
         Double value,

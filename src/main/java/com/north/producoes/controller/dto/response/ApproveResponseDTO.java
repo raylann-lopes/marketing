@@ -5,9 +5,9 @@ import com.north.producoes.entity.enums.ApproveStatusEnum;
 
 import java.time.LocalDateTime;
 
-public record ApproveResponse(
+public record ApproveResponseDTO(
         Long id,
-        PostResponse post,
+        PostResponseDTO post,
         String artUrl,
         String artName,
         String caption,
@@ -15,10 +15,10 @@ public record ApproveResponse(
         LocalDateTime approvedAt,
         String ApprovedUser
 ) {
-    public static ApproveResponse from(ApproveEntity entity){
-        return new ApproveResponse(
+    public static ApproveResponseDTO from(ApproveEntity entity){
+        return new ApproveResponseDTO(
                 entity.getId(),
-                PostResponse.from(entity.getPost()),
+                PostResponseDTO.from(entity.getPost()),
                 entity.getArtUrl(),
                 entity.getArtName(),
                 entity.getCaption(),

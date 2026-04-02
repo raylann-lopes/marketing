@@ -5,7 +5,7 @@ import com.north.producoes.entity.enums.PostStatusEnum;
 
 import java.time.LocalDateTime;
 
-public record PostResponse(
+public record PostResponseDTO(
         Long id,
         String title,
         String theme,
@@ -13,8 +13,8 @@ public record PostResponse(
         PostStatusEnum status,
         LocalDateTime scheduledAt
 ) {
-    public static PostResponse from(PostEntity entity) {
-        return new PostResponse(
+    public static PostResponseDTO from(PostEntity entity) {
+        return new PostResponseDTO(
                 entity.getId(),
                 entity.getTitle(),
                 entity.getTheme(),

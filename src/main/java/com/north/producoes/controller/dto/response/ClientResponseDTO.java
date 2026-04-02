@@ -5,7 +5,7 @@ import com.north.producoes.entity.enums.ClientStatusEnum;
 
 import java.time.LocalDateTime;
 
-public record ClientResponse(
+public record ClientResponseDTO(
         Long id,
         String name,
         String email,
@@ -16,8 +16,8 @@ public record ClientResponse(
         ClientStatusEnum status,
         LocalDateTime createdAt
 ) {
-    public static ClientResponse from (ClientEntity entity) {
-        return new ClientResponse(
+    public static ClientResponseDTO from (ClientEntity entity) {
+        return new ClientResponseDTO(
                 entity.getId(),
                 entity.getName(),
                 entity.getEmail(),
