@@ -1,9 +1,11 @@
 package com.north.producoes.controller.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+
 public record FinanceRequestDTO(
-        Long client,
+        @NotBlank Long client,
         String description,
-        Double value,
-        String status,
-        String expirationDate
+        @NotBlank Double value,
+        @NotBlank String status,
+        @NotBlank String expirationDate
 ) {}
