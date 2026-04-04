@@ -50,6 +50,5 @@ public class ClientEntity {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "client")
-    @JsonIgnore
     private List<PostEntity> posts;
 }

@@ -23,7 +23,6 @@ public class ApproveEntity {
     private Long id;
 
     @OneToOne
-    @JsonIgnore
     @JoinColumn(name = "post_id", nullable = false)
     private PostEntity post;
 

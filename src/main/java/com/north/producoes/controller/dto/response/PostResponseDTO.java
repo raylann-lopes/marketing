@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public record PostResponseDTO(
         Long id,
         String title,
+        String clientId,
         String theme,
         String objective,
         PostStatusEnum status,
@@ -17,6 +18,7 @@ public record PostResponseDTO(
         return new PostResponseDTO(
                 entity.getId(),
                 entity.getTitle(),
+                entity.getClient().getId().toString(),
                 entity.getTheme(),
                 entity.getObjective(),
                 entity.getStatus(),

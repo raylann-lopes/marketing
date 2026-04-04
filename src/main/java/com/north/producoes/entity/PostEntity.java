@@ -44,12 +44,10 @@ public class PostEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
-    @JsonIgnore
     private ClientEntity client;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnore
     private UserEntity user;
 
     @OneToOne(mappedBy = "post")
