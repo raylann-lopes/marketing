@@ -1,5 +1,7 @@
 package com.north.producoes.service;
 
+import com.north.producoes.controller.dto.request.ChangePasswordRequestDTO;
+import com.north.producoes.controller.dto.request.UserRequestDTO;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.UserRepository;
@@ -52,5 +54,37 @@ public class UserService implements UserDetailsService {
             throw new IllegalArgumentException("ID de Usuario nao encontrado" + id);
         }
         userRepository.deleteById(id);
+    }
+
+    @Transactional
+    public UserEntity updateProfile(Long userId, UserRequestDTO dto) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + userId));
+
+        if (!user.getEmail().equals(dto.email())) {
+            if (userRepository.findByEmail(dto.email()).isPresent()) {
+                throw new IllegalArgumentException("Email ja esta em uso");
+            }
+            user.setEmail(dto.email());
+        }
+
+        user.setName(dto.name());
+        if (dto.role() != null) {
+            user.setRole(dto.role());
+        }
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequestDTO dto) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + userId));
+
+        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Senha atual esta incorreta");
+        }
+
+        user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        userRepository.save(user);
     }
 }
