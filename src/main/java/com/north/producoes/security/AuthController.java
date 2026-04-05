@@ -33,14 +33,15 @@ public class AuthController implements AuthApi {
         String acessToken = jwtService.generateToken(user);
         RefreshTokenEntity refreshToken = refreshTokenService.generate(user);
 
-        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken.getToken()));
+        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken.getToken(), user.getRole().name(), user.getId()));
     }
 
     @Override
     public ResponseEntity<LoginResponseDTO> refresh(RefreshRequest request) {
         RefreshTokenEntity refreshToken = refreshTokenService.validate(request.refreshToken());
 
-        String newAcessToken = jwtService.generateToken(refreshToken.getUser());
-        return ResponseEntity.ok(new LoginResponseDTO(newAcessToken, request.refreshToken()));
+        UserEntity user = refreshToken.getUser();
+        String newAcessToken = jwtService.generateToken(user);
+        return ResponseEntity.ok(new LoginResponseDTO(newAcessToken, request.refreshToken(), user.getRole().name(), user.getId()));
     }
 }
