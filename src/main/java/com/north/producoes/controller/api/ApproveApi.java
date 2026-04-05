@@ -1,11 +1,12 @@
 package com.north.producoes.controller.api;
 
+import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
-import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,7 +42,7 @@ public interface ApproveApi {
     @ApiResponse(responseCode = "200", description = "Post aprovado com sucesso")
     @ApiResponse(responseCode = "404", description = "Post não encontrado")
     @ApiResponse(responseCode = "409", description = "Violação de integridade de dados")
-    @PostMapping("/{id}")
+    @PostMapping("/approve/{id}")
     ResponseEntity<ApproveResponseDTO> approvePost(@PathVariable Long id);
 
     @Operation(summary = "Rejeita um post")
@@ -56,14 +57,14 @@ public interface ApproveApi {
     @ApiResponse(responseCode = "404", description = "Post não encontrado")
     @ApiResponse(responseCode = "409", description = "Violação de integridade de dados")
     @PostMapping("/save")
-    ResponseEntity<ApproveResponseDTO> saveApprove(@RequestBody ApproveEntity approve);
+    ResponseEntity<ApproveResponseDTO> saveApprove(@Valid @RequestBody ApproveRequestDTO approve);
 
     @Operation(summary = "Atualiza um registro de aprovação existente")
     @ApiResponse(responseCode = "200", description = "Registro de aprovação atualizado com sucesso")
     @ApiResponse(responseCode = "404", description = "Registro de aprovação não encontrado")
     @ApiResponse(responseCode = "409", description = "Violação de integridade de dados")
     @PutMapping("/update/{id}")
-    ResponseEntity<ApproveResponseDTO> updateApprove(@PathVariable Long id, @RequestBody ApproveEntity approve);
+    ResponseEntity<ApproveResponseDTO> updateApprove(@PathVariable Long id, @Valid @RequestBody ApproveRequestDTO approve);
 
     @Operation(summary = "Remove uma aprovação pelo ID")
     @ApiResponse(responseCode = "204", description = "Aprovação removida com sucesso")

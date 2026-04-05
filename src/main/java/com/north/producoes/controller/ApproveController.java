@@ -1,6 +1,7 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.ApproveApi;
+import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -52,6 +53,7 @@ public class ApproveController implements ApproveApi {
                 .map(ApproveResponseDTO::from)
                 .toList());
     }
+
     @Override
     public ResponseEntity<ApproveResponseDTO> approvePost(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
@@ -75,15 +77,14 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
-    public ResponseEntity<ApproveResponseDTO> saveApprove(ApproveEntity approve) {
+    public ResponseEntity<ApproveResponseDTO> saveApprove(ApproveRequestDTO approve) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApproveResponseDTO.from(approvedService.saveApprove(approve)));
     }
 
     @Override
-    public ResponseEntity<ApproveResponseDTO> updateApprove(Long id, ApproveEntity approve) {
-        approve.setId(id);
-        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateApprove(approve)));
+    public ResponseEntity<ApproveResponseDTO> updateApprove(Long id, ApproveRequestDTO approve) {
+        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateApprove(id, approve)));
     }
 
     @Override

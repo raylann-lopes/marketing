@@ -1,9 +1,7 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.PostApi;
-import com.north.producoes.entity.ClientEntity;
-import com.north.producoes.entity.PostEntity;
-import com.north.producoes.entity.UserEntity;
+import com.north.producoes.controller.dto.request.PostRequestDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.service.PostService;
@@ -39,21 +37,13 @@ public class PostController implements PostApi {
     }
 
     @Override
-    public ResponseEntity<List<PostResponseDTO>> findByClient(ClientEntity clientId) {
-        List<PostResponseDTO> post = postService.findByClient(clientId)
-                .stream()
-                .map(PostResponseDTO::from)
-                .toList();
-        return ResponseEntity.ok(post);
+    public ResponseEntity<PostResponseDTO> findByClient(Long id) {
+        return ResponseEntity.ok(PostResponseDTO.from(postService.findByClient(id).getFirst()));
     }
 
     @Override
-    public ResponseEntity<List<PostResponseDTO>> findByUser(UserEntity user) {
-        List<PostResponseDTO> postUser = postService.findByUser(user)
-                .stream()
-                .map(PostResponseDTO::from)
-                .toList();
-        return ResponseEntity.ok(postUser);
+    public ResponseEntity<PostResponseDTO> findByUser(Long id) {
+        return ResponseEntity.ok(PostResponseDTO.from(postService.findByUser(id)));
     }
 
     @Override
@@ -66,18 +56,18 @@ public class PostController implements PostApi {
     }
 
     @Override
-    public ResponseEntity<PostResponseDTO> savePost(PostEntity post) {
+    public ResponseEntity<PostResponseDTO> savePost(PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.savePost(post)));
     }
 
     @Override
-    public ResponseEntity<PostResponseDTO> updatePost(PostEntity post) {
-        return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(post)));
+    public ResponseEntity<PostResponseDTO> updatePost(Long id, PostRequestDTO post) {
+        return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(id, post)));
     }
 
     @Override
-    public ResponseEntity<Void> deletePostById(Long id) {
+    public ResponseEntity<?> deletePostById(Long id) {
         postService.deletePostById(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().body("Registro deletado com sucesso!");
     }
 }
