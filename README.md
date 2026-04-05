@@ -1,63 +1,81 @@
-# North Produções — Sistema de Gestão de Conteúdo
+# North Produções
 
-Sistema web para agências de marketing gerenciarem clientes, produção de conteúdo, aprovação de artes e publicação no Instagram com automações integradas via n8n.
-
----
-
-## Sobre o projeto
-
-A North Produções operava com ferramentas desconectadas — Trello, Google Agenda, WhatsApp e planilhas separadas. Este sistema centraliza todo o fluxo em uma única plataforma: do briefing à publicação no Instagram, com geração automática de legendas via IA e aprovação de artes por link público sem necessidade de login.
+Sistema web para agências de marketing gerenciarem clientes, produção de conteúdo, aprovação de artes e publicação no Instagram com automações via n8n.
 
 ---
 
 ## Tecnologias
 
 **Backend**
-- Java 21
-- Spring Boot 4.0.4
-- Spring Security + JWT
-- Spring Data JPA
-- PostgreSQL
 
-**Frontend**
-- React
-- Tailwind CSS
-- shadcn/ui
+| Stack | Versão |
+|---|---|
+| Java | 21 |
+| Spring Boot | 4.0.4 (WebMVC) |
+| Spring Security + JWT (jjwt 0.12.6) | — |
+| Spring Data JPA + Flyway | — |
+| AWS S3 SDK (presigned URLs) | 2.25.0 |
+| PostgreSQL | latest |
+| SpringDoc OpenAPI (Swagger) | 3.0.2 |
+| Lombok | — |
+
+**Frontend** (`frontend_north/`)
+
+| Stack | Versão |
+|---|---|
+| Vue 3 + TypeScript | 3.5 |
+| Vite | 6 |
+| Tailwind CSS + shadcn-vue | — |
+| Vue Router | 5 |
+| Pinia | 3 |
+| Zod (validação) | 4 |
+| oxlint + eslint + prettier | — |
+| Vitest + Cypress | — |
 
 **Automações**
-- n8n (instância separada)
-- Anthropic Claude API (geração de legendas)
-- Meta Graph API (publicação Instagram)
-- Google Calendar API
-- Z-API (notificações WhatsApp)
+
+- **n8n** — orquestra geração de legendas (Claude API) e publicação (Meta Graph API)
+- **Meta Graph API** — publicação direta no Instagram
+- **Z-API** — notificações via WhatsApp
 
 ---
 
 ## Arquitetura
 
-Layered Architecture com quatro camadas:
+Layered Architecture com interfaces REST, DTOs e separação de responsabilidades:
 
 ```
 com.north.producoes/
-├── controller/        # Recebe requisições HTTP
-├── service/           # Regras de negócio
-├── repository/        # Acesso ao banco via JPA
-├── model/             # Entidades e enums
-├── dto/               # Request e Response objects
-├── security/          # JWT Filter e Security Config
-└── webhook/           # Recebimento de eventos do n8n
+├── config/               # S3Config (AWS SDK)
+├── controller/           # Implementações REST
+│   ├── api/              # Interfaces OpenAPI documentadas
+│   └── dto/
+│       ├── request/      # DTOs de entrada
+│       └── response/     # DTOs de saída
+├── entity/               # Entidades JPA
+│   └── enums/            # Enums (UserRoleEnum, PostStatusEnum...)
+├── exception/            # GlobalExceptionHandler + exceções customizadas
+├── repository/           # Spring Data JPA interfaces
+├── security/             # JwtFilter, InternalApiKeyFilter, SecurityConfig, Auth
+└── service/              # Regras de negócio
 ```
+
+O frontend usa **Vite** com proxy dev para `http://localhost:8080`.
 
 ---
 
 ## Funcionalidades
 
-- **Gestão de clientes** — cadastro com nicho, tom de voz e dados de contato
+- **Autenticação JWT** com refresh token — login, registro (admin), perfil (`/me`) e troca de senha
+- **Controle de acesso por role** — `ADMIN` e `USER` com `@PreAuthorize` em endpoints sensíveis
+- **Gestão de clientes** — CRUD completo com nome e dados de contato
 - **Board de produção** — kanban com colunas: Demanda → Em Produção → Finalizado → Aguardando Aprovação → Agendado → Publicado
-- **Aprovação de artes** — link público enviado ao cliente, sem necessidade de criar conta
-- **Geração de legendas** — automática via Claude API ao finalizar a arte
-- **Calendário editorial** — visão mensal de todos os posts por cliente
-- **Publicação automática** — agendamento via mLabs/Buffer após aprovação
+- **Upload de artes via S3** — presigned PUT URL gerada pelo backend; upload direto do browser ao bucket
+- **Aprovação de artes** — registro com status, vinculado a cada post
+- **Calendário editorial** — visão mensal de posts por cliente
+- **Financeiro** — controle de transações associadas a clientes
+- **Configurações de conta** — perfil, senha e integração Instagram Account ID por cliente (admin)
+- **API interna para n8n** — protegida por `X-Internal-Api-Key`, retorna URL presigned de mídia + Instagram Account ID para publicação
 
 ---
 
@@ -65,104 +83,118 @@ com.north.producoes/
 
 ```
 1. Post criado no board (status: DEMANDA)
-2. Designer finaliza a arte (status: FINALIZADO)
-3. n8n gera legenda via Claude API e cola no card
-4. Status muda para AGUARDANDO_APROVACAO
-5. Cliente recebe link e aprova com um clique
-6. n8n envia para agendamento no mLabs/Buffer
-7. Instagram publica no horário certo
-8. n8n notifica o backend → status: PUBLICADO
+2. Designer faz upload da arte → direto ao S3 via presigned URL
+3. Registro de aprovação criado com a chave S3 (artS3Key)
+4. n8n busca mídia via /api/internal/media-url/{postId}
+5. n8n publica no Instagram usando Instagram Account ID configurado
+6. n8n notifica o backend → status: PUBLICADO
+7. Cliente aprovado pela equipe interna com um clique (aprovar/reprovar)
 ```
 
 ---
 
 ## Endpoints principais
 
-### Auth
-```
-POST /api/auth/login
-POST /api/auth/refresh
-```
-
-### Clientes
-```
-GET    /api/clientes
-POST   /api/clientes
-GET    /api/clientes/{id}
-PUT    /api/clientes/{id}
-```
-
-### Posts
-```
-GET    /api/posts?clienteId=&status=
-POST   /api/posts
-PATCH  /api/posts/{id}/status
-GET    /api/posts/calendario
-```
-
-### Aprovação
-```
-GET    /api/aprovacoes/{token}        # público, sem auth
-POST   /api/aprovacoes/{token}/aprovar
-POST   /api/aprovacoes/{token}/reprovar
-```
-
-### Webhooks (n8n → sistema)
-```
-POST   /api/webhooks/n8n/caption-gerada
-POST   /api/webhooks/n8n/publicado
-```
+| Prefixo | Descrição |
+|---|---|
+| `POST /api/auth/login` | Autenticação JWT |
+| `POST /api/auth/refresh` | Refresh token |
+| `GET/POST /api/users` | CRUD de usuários (admin) |
+| `GET/PUT /api/users/me` | Perfil do usuário logado |
+| `PUT /api/users/me/password` | Troca de senha |
+| `GET/POST /api/clientes` | CRUD de clientes |
+| `GET/POST /api/posts` | CRUD de posts |
+| `PATCH /api/posts/{id}/status` | Atualiza status do post |
+| `GET /api/posts/calendario` | Visão calendário |
+| `GET/POST /api/aprovacoes` | CRUD de aprovações |
+| `POST /api/aprovacoes/{id}/aprovar` | Aprova post |
+| `POST /api/aprovacoes/{id}/reprovar` | Reprova post |
+| `POST /api/media/upload-url` | Gera URL presigned para upload S3 |
+| `GET /api/media/art-url` | Gera URL de preview da arte |
+| `GET /api/internal/media-url/{postId}` | Endpoint n8n (API key) |
+| `POST /api/admin/account-config` | Configura Instagram Account ID (admin) |
+| `GET /v3/api-docs` | OpenAPI JSON |
+| `GET /swagger-ui.html` | Swagger UI |
 
 ---
 
 ## Como rodar localmente
 
-**Pré-requisitos:** Java 21, Docker
+**Pré-requisitos:** Java 21, Maven (ou `mvnw`), Node 22+, Docker
 
 ```bash
 # Clone o repositório
 git clone https://github.com/seu-usuario/north-producoes.git
 cd north-producoes
 
-# Suba o banco com Docker
+# Suba o banco
 docker compose up -d
 
-# Rode a aplicação
+# Rode o backend
 ./mvnw spring-boot:run
+
+# Em outro terminal, rode o frontend
+cd frontend_north
+npm install
+npm run dev
 ```
 
-A API estará disponível em `http://localhost:8080`.
+- Backend: `http://localhost:8080`
+- Frontend: `http://localhost:5173`
 
 ---
 
 ## Variáveis de ambiente
 
+Crie um arquivo `.env` na raiz do projeto:
+
 ```env
-DB_URL=jdbc:postgresql://localhost:5432/northproducoes
-DB_USERNAME=postgres
-DB_PASSWORD=sua_senha
+# Banco
+DB_URL=jdbc:postgresql://localhost:5432/postgres
+DB_USER=postgres
+DB_PASSWORD=postgres
 
-JWT_SECRET=seu_secret
-JWT_EXPIRATION=86400000
+# JWT
+JWT_KEY=base64_secret_aqui
 
-N8N_WEBHOOK_SECRET=seu_secret
-ANTHROPIC_API_KEY=sua_chave
+# AWS S3
+AWS_ACCESS_KEY_ID=sua_key
+AWS_SECRET_ACCESS_KEY=seu_secret
+AWS_S3_BUCKET=north-producoes-prod
+AWS_S3_REGION=sa-east-1
+
+# n8n
+N8N_INTERNAL_KEY=sua_chave_interna
 ```
+
+Valores entre `${}` no `application.properties` usam esses defaults ou fallbacks configurados.
 
 ---
 
-## Roadmap
+## S3: Upload direto do browser
 
-- [x] Arquitetura e modelagem de entidades
-- [ ] Projeto Spring Boot — estrutura de pacotes
-- [ ] Entidades JPA e migrations
-- [ ] Autenticação JWT
-- [ ] CRUD de clientes e posts
-- [ ] Módulo de aprovação com link público
-- [ ] Integração com n8n via webhooks
-- [ ] Frontend React — board kanban
-- [ ] Frontend React — calendário editorial
-- [ ] Automações n8n completas
+O fluxo de upload de artes funciona assim:
+
+1. Frontend chama `POST /api/media/upload-url?clientId=&postId=&filename=&contentType=`
+2. Backend gera **presigned PUT URL** com expiração de 15 min
+3. Frontend faz `PUT` do arquivo **direto ao S3** usando a URL retornada
+4. O backend nunca toca o binário — apenas orquestra a URL
+
+CORS do bucket S3 deve permitir `PUT` e `OPTIONS` da origem do frontend.
+
+---
+
+## Scripts do frontend
+
+| Comando | Ação |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm run type-check` | Validação TypeScript |
+| `npm run lint` | oxlint + eslint |
+| `npm run format` | Prettier |
+| `npm run test:unit` | Vitest |
+| `npm run test:e2e` | Cypress |
 
 ---
 
