@@ -1,0 +1,47 @@
+import { apiFetch } from '@/lib/api'
+
+export type Client = {
+  id?: string | number
+  name: string
+  email: string
+  number?: string
+  driveLink?: string
+  voiceTone?: string
+  niche?: string
+  status: 'ACTIVE' | 'INACTIVE' | string
+  createdAt?: string
+}
+
+export const clientService = {
+  async getAll(): Promise<Client[]> {
+    return apiFetch<Client[]>('/api/clients')
+  },
+
+  async getByEmail(email: string): Promise<Client> {
+    return apiFetch<Client>(`/api/clients/email/${email}`)
+  },
+
+  async getByStatus(status: string): Promise<Client[]> {
+    return apiFetch<Client[]>(`/api/clients/status/${status}`)
+  },
+
+  async create(data: Client): Promise<Client> {
+    return apiFetch<Client>('/api/clients', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+
+  async update(id: string | number, data: Partial<Client>): Promise<Client> {
+    return apiFetch<Client>(`/api/clients/update/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  },
+
+  async delete(id: string | number): Promise<void> {
+    return apiFetch<void>(`/api/clients/id/${id}`, {
+      method: 'DELETE'
+    })
+  }
+}
