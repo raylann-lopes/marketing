@@ -41,7 +41,7 @@ public class ApprovedService {
 
         ApproveEntity approve = new ApproveEntity();
         approve.setPost(post);
-        approve.setArtUrl(dto.artUrl());
+        approve.setArtS3Key(dto.artS3Key());
         approve.setArtName(dto.artName());
         approve.setCaption(dto.caption());
         approve.setApprovedUser("");
@@ -57,11 +57,19 @@ public class ApprovedService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + dto.postId()));
 
         existing.setPost(post);
-        existing.setArtUrl(dto.artUrl());
+        existing.setArtS3Key(dto.artS3Key());
         existing.setArtName(dto.artName());
         existing.setCaption(dto.caption());
 
         return approveRepository.save(existing);
+    }
+
+    public String getS3KeyByPostId(Long postId) {
+        List<ApproveEntity> approvals = approveRepository.findByPostId(postId);
+        if (approvals.isEmpty()) {
+            throw new ResourceNotFoundException("Nenhuma aprovação encontrada para o post ID: " + postId);
+        }
+        return approvals.getFirst().getArtS3Key();
     }
 
     public void deleteApproveById(Long id){

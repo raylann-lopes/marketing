@@ -8,18 +8,18 @@ import java.time.LocalDateTime;
 public record ApproveResponseDTO(
         Long id,
         PostResponseDTO post,
-        String artUrl,
+        String artS3Key,
         String artName,
         String caption,
         ApproveStatusEnum status,
         LocalDateTime approvedAt,
-        String ApprovedUser
+        String approvedUser
 ) {
-    public static ApproveResponseDTO from(ApproveEntity entity){
+    public static ApproveResponseDTO from(ApproveEntity entity) {
         return new ApproveResponseDTO(
                 entity.getId(),
                 PostResponseDTO.from(entity.getPost()),
-                entity.getArtUrl(),
+                entity.getArtS3Key(),
                 entity.getArtName(),
                 entity.getCaption(),
                 entity.getStatus(),

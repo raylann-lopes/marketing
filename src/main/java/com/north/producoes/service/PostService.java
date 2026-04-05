@@ -92,7 +92,6 @@ public class PostService {
         UserEntity user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com id: " + dto.userId()));
 
-        postExisting.setTitle(dto.title());
         postExisting.setTheme(dto.theme());
         postExisting.setObjective(dto.objective());
         postExisting.setStatus(dto.status());

@@ -26,8 +26,9 @@ public class ApproveEntity {
     @JoinColumn(name = "post_id", nullable = false)
     private PostEntity post;
 
-    @Column(name = "art_url", nullable = false)
-    private String artUrl;
+    // Chave do objeto no S3 — não a URL completa (URLs são geradas sob demanda)
+    @Column(name = "art_s3_key", nullable = false)
+    private String artS3Key;
 
     @Column(name = "art_name", nullable = false)
     private String artName;

@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record ApproveRequestDTO(
         @NotNull Long postId,
-        @NotBlank String artUrl,
+        @NotBlank String artS3Key,
         @NotBlank String artName,
         @NotBlank String caption
 ) {}
