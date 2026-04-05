@@ -9,6 +9,7 @@ import com.north.producoes.service.ClientService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -48,6 +49,7 @@ public class ClientController implements ClientApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ClientResponseDTO> saveClient(ClientRequestDTO request) {
         ClientEntity client = new ClientEntity();
         client.setName(request.name());
@@ -61,6 +63,7 @@ public class ClientController implements ClientApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ClientResponseDTO> updateClient(Long id, ClientRequestDTO request) {
         ClientEntity client = new ClientEntity();
         client.setId(id);
@@ -74,6 +77,7 @@ public class ClientController implements ClientApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteById(Long id) {
         clientService.deleteClientById(id);
         return ResponseEntity.noContent().build();

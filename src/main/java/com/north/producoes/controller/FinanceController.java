@@ -7,12 +7,14 @@ import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.service.FinanceService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
 @AllArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class FinanceController implements FinanceApi {
 
     private final FinanceService financeService;

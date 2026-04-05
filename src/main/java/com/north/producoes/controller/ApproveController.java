@@ -10,6 +10,7 @@ import com.north.producoes.service.ApprovedService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -55,6 +56,7 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApproveResponseDTO> approvePost(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
@@ -66,6 +68,7 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApproveResponseDTO> rejectPost(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
@@ -88,6 +91,7 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteApproveById(Long id) {
         approvedService.deleteApproveById(id);
         return ResponseEntity.noContent().build();
