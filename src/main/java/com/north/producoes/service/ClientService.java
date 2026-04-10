@@ -32,8 +32,8 @@ public class ClientService {
 
     public List<ClientEntity> findByStatus(ClientStatusEnum status) {
         List<ClientEntity> clientStatus = clientRepository.findByStatus(status);
-        if (clientRepository.findByStatus(status).isEmpty()) {
-            throw new ResourceNotFoundException("Cliente com status" + status + "nao encontrado!");
+        if (clientStatus.isEmpty()) {
+            throw new ResourceNotFoundException("Cliente com status " + status + " nao encontrado!");
         }
         return clientStatus;
     }
@@ -56,8 +56,8 @@ public class ClientService {
 
     @Transactional
     public void deleteClientById(Long id) {
-        if (clientRepository.existsById(id)) {
-            throw new IllegalArgumentException("Cliente nao encontrada: id " + id);
+        if (!clientRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Cliente nao encontrado: id " + id);
         }
         clientRepository.deleteById(id);
     }
