@@ -46,5 +46,12 @@ export const postService = {
     return apiFetch<void>(`/api/posts/delete/${id}`, {
       method: 'DELETE'
     })
+  },
+
+  async generateCaption(id: string | number, artS3Key?: string): Promise<any> {
+    return apiFetch<any>(`/api/posts/${id}/generate-caption`, {
+      method: 'POST',
+      body: JSON.stringify({ artS3Key })
+    })
   }
 }

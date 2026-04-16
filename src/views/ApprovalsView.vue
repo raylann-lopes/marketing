@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { CheckCircle, XCircle, Eye, X, Clock, ImageOff } from 'lucide-vue-next'
+import { CheckCircle, XCircle, Eye, X, Clock, ImageOff, Sparkles } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import { approvalService, type PostApproval } from '@/services/approvalService'
+import { postService } from '@/services/postService'
 import { apiFetch } from '@/lib/api'
 
 const search = ref('')
@@ -19,6 +20,7 @@ const isAdmin = role === 'ADMIN'
 const selectedApproval = ref<PostApproval | null>(null)
 const artPreviewUrl = ref('')
 const loadingPreview = ref(false)
+const loadingCaption = ref(false)
 const isDetailOpen = ref(false)
 
 // Filter
@@ -92,6 +94,30 @@ async function handleReject(postId: string | number) {
     isDetailOpen.value = false
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : 'Erro ao rejeitar')
+  }
+}
+
+async function handleGenerateCaption() {
+  if (!selectedApproval.value?.post?.id) return
+  
+  loadingCaption.value = true
+  try {
+    const updatedApproval = await postService.generateCaption(
+      selectedApproval.value.post.id,
+      selectedApproval.value.artS3Key
+    )
+    if (selectedApproval.value) {
+      selectedApproval.value.caption = updatedApproval.caption
+    }
+    // Update in the main list too
+    const index = approvals.value.findIndex(a => a.id === selectedApproval.value?.id)
+    if (index !== -1) {
+      approvals.value[index].caption = updatedApproval.caption
+    }
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'Erro ao gerar legenda')
+  } finally {
+    loadingCaption.value = false
   }
 }
 
@@ -244,8 +270,20 @@ onMounted(fetchApprovals)
           <!-- Detalhes -->
           <div class="p-6 space-y-4 flex flex-col">
             <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Legenda</p>
-              <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">{{ selectedApproval.caption }}</p>
+              <div class="flex items-center justify-between mb-1">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Legenda</p>
+                <button 
+                  v-if="isAdmin && selectedApproval.status === 'PENDING'"
+                  @click="handleGenerateCaption"
+                  :disabled="loadingCaption"
+                  class="flex items-center gap-1.5 text-[10px] font-bold text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                >
+                  <Sparkles v-if="!loadingCaption" class="w-3 h-3" />
+                  <div v-else class="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                  {{ loadingCaption ? 'Gerando...' : 'GERAR COM IA' }}
+                </button>
+              </div>
+              <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">{{ selectedApproval.caption || 'Sem legenda gerada.' }}</p>
             </div>
 
             <div>

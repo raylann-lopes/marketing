@@ -9,7 +9,7 @@ import { postService, type Post } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
 import { approvalService } from '@/services/approvalService'
 import { mediaService } from '@/services/mediaService'
-import { getCurrentUserId } from '@/lib/api'
+import { getCurrentUserId, apiFetch } from '@/lib/api'
 import draggable from 'vuedraggable'
 import { z } from 'zod'
 
@@ -36,6 +36,7 @@ const postToEdit = ref<Post | null>(null)
 
 // AI Approval Modal State
 const isApprovalModalOpen = ref(false)
+const existingApprovalId = ref<string | number | null>(null)
 const selectedPostForApproval = ref<Post | null>(null)
 const approvalData = ref({
   caption: '',
@@ -53,8 +54,9 @@ function getClientName(clientId: string | number) {
   return client ? client.name : `ID: ${clientId}`
 }
 
-function openApprovalModal(post: Post) {
+async function openApprovalModal(post: Post) {
   selectedPostForApproval.value = post
+  existingApprovalId.value = null
   approvalData.value = {
     caption: '',
     artS3Key: '',
@@ -65,6 +67,39 @@ function openApprovalModal(post: Post) {
     isSending: false
   }
   isApprovalModalOpen.value = true
+
+  if (post.id) {
+    try {
+      const existing = await approvalService.getByPostId(post.id)
+      if (existing) {
+        existingApprovalId.value = existing.id || null
+        approvalData.value.caption = existing.caption || ''
+        approvalData.value.artS3Key = existing.artS3Key || ''
+        approvalData.value.artName = existing.artName || ''
+        
+        try {
+          // A API retorna um MediaUrlResponseDTO que contém o campo mediaUrl
+          const res = await apiFetch<{ mediaUrl: string }>(`/api/media/art-url?postId=${post.id}`)
+          if (res && res.mediaUrl) {
+            approvalData.value.artPreviewUrl = res.mediaUrl
+          }
+        } catch (err) {
+          console.warn('Erro ao carregar preview da arte existente:', err)
+        }
+      }
+    } catch (err) {
+      console.log('Nenhuma aprovação prévia encontrada para este post.')
+    }
+  }
+}
+
+function isVideo(url: string, filename?: string) {
+  const check = (str: string) => {
+    if (!str) return false
+    const clean = str.split('?')[0].toLowerCase()
+    return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov')
+  }
+  return check(url) || (filename ? check(filename) : false)
 }
 
 async function handleFileSelect(event: Event) {
@@ -97,15 +132,21 @@ async function handleFileSelect(event: Event) {
 }
 
 async function generateAICaption() {
-  if (!selectedPostForApproval.value) return
+  if (!selectedPostForApproval.value?.id) return
   approvalData.value.isGenerating = true
   
-  // Simulating AI generation based on post context
-  setTimeout(() => {
-    const post = selectedPostForApproval.value!
-    approvalData.value.caption = `🚀 NOVIDADE NO AR!\n\n${post.title}\n\nTema: ${post.theme}\nObjetivo: ${post.objective}\n\nO que achou desse conteúdo? Me conta aqui nos comentários! 👇 #Criatividade #AgenciaNorth`
+  try {
+    // Passamos a chave S3 que está em memória (seja carregada ou acabada de subir)
+    const res = await postService.generateCaption(
+      selectedPostForApproval.value.id, 
+      approvalData.value.artS3Key
+    )
+    approvalData.value.caption = res.caption
+  } catch (e: unknown) {
+    alert('Erro ao gerar legenda: ' + (e instanceof Error ? e.message : 'Tente novamente.'))
+  } finally {
     approvalData.value.isGenerating = false
-  }, 1500)
+  }
 }
 
 async function sendToClient() {
@@ -117,12 +158,19 @@ async function sendToClient() {
 
   approvalData.value.isSending = true
   try {
-    await approvalService.create({
+    const payload = {
       postId: selectedPostForApproval.value.id!,
       artS3Key: approvalData.value.artS3Key,
       artName: approvalData.value.artName,
       caption: approvalData.value.caption
-    })
+    }
+
+    if (existingApprovalId.value) {
+      await approvalService.update(existingApprovalId.value, payload)
+    } else {
+      await approvalService.create(payload)
+    }
+    
     isApprovalModalOpen.value = false
     await fetchInitialData()
   } catch (e: unknown) {
@@ -214,8 +262,8 @@ async function handleBoardChange(evt: { added?: { element: Post } }, columnId: s
         objective: post.objective,
         status: columnId,
         scheduledAt: post.scheduledAt,
-        client: { id: Number(clientId) },
-        user: { id: getUserOrFallback() }
+        clientId: Number(clientId),
+        userId: getUserOrFallback()
       }
       await postService.update(post.id!, payload as unknown as Post)
       post.status = columnId
@@ -275,8 +323,8 @@ async function handleSavePost() {
       objective: newPost.value.objective,
       status: newPost.value.status,
       scheduledAt: newPost.value.scheduledAt.length === 16 ? newPost.value.scheduledAt + ":00" : newPost.value.scheduledAt,
-      client: { id: Number(newPost.value.clientId) },
-      user: { id: getUserOrFallback() }
+      clientId: Number(newPost.value.clientId),
+      userId: getUserOrFallback()
     }
 
     if (postToEdit.value) {
@@ -381,6 +429,7 @@ const formatDate = (dateString: string) => {
             v-model="col.cards"
             group="posts"
             item-key="id"
+            :disabled="!!search"
             @change="(evt: { added?: { element: Post } }) => handleBoardChange(evt, col.id)"
             class="flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar min-h-0"
             ghost-class="opacity-50"
@@ -455,7 +504,7 @@ const formatDate = (dateString: string) => {
               <Sparkles class="w-5 h-5" />
             </div>
             <div>
-              <h2 class="text-xl font-bold text-gray-900">Preparar Aprovação</h2>
+              <h2 class="text-xl font-bold text-gray-900">{{ existingApprovalId ? 'Editar Aprovação' : 'Preparar Aprovação' }}</h2>
               <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Demanda: {{ selectedPostForApproval?.title }}</p>
             </div>
           </div>
@@ -471,7 +520,20 @@ const formatDate = (dateString: string) => {
               class="relative aspect-square rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-3 group hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer overflow-hidden"
               @click="fileInputRef?.click()"
             >
-              <img v-if="approvalData.artPreviewUrl" :src="approvalData.artPreviewUrl" class="absolute inset-0 w-full h-full object-cover animate-in fade-in duration-500" />
+              <template v-if="approvalData.artPreviewUrl">
+                <video 
+                  v-if="isVideo(approvalData.artPreviewUrl, approvalData.artName)"
+                  :src="approvalData.artPreviewUrl" 
+                  class="absolute inset-0 w-full h-full object-cover animate-in fade-in duration-500"
+                  autoplay muted loop
+                ></video>
+                <img 
+                  v-else
+                  :src="approvalData.artPreviewUrl" 
+                  class="absolute inset-0 w-full h-full object-cover animate-in fade-in duration-500" 
+                />
+              </template>
+              
               <div v-else-if="approvalData.isUploading" class="flex flex-col items-center gap-2 text-primary">
                 <div class="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
                 <span class="text-xs font-bold">Enviando...</span>
@@ -484,7 +546,7 @@ const formatDate = (dateString: string) => {
                 <span class="text-[10px] text-gray-300">JPG, PNG, MP4</span>
               </div>
               <div v-if="approvalData.artPreviewUrl" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <Button variant="outline" class="bg-white border-none text-xs">Trocar Arquivo</Button>
+                <Button variant="outline" class="bg-white border-none text-xs">Trocar {{ isVideo(approvalData.artPreviewUrl, approvalData.artName) ? 'Vídeo' : 'Arquivo' }}</Button>
               </div>
             </div>
             <p v-if="approvalData.artName" class="text-[10px] text-gray-400 truncate text-center">{{ approvalData.artName }}</p>
@@ -536,7 +598,7 @@ const formatDate = (dateString: string) => {
             </template>
             <template v-else>
               <Check class="w-5 h-5" />
-              ENVIAR PARA O CLIENTE
+              {{ existingApprovalId ? 'ATUALIZAR APROVAÇÃO' : 'ENVIAR PARA O CLIENTE' }}
             </template>
           </Button>
         </div>
