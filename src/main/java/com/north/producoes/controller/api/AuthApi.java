@@ -1,6 +1,7 @@
 package com.north.producoes.controller.api;
 
 import com.north.producoes.controller.dto.request.LoginRequestDTO;
+import com.north.producoes.controller.dto.request.RegisterRequestDTO;
 import com.north.producoes.controller.dto.response.LoginResponseDTO;
 import com.north.producoes.security.refreshToken.RefreshRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +22,12 @@ public interface AuthApi {
     @ApiResponse(responseCode = "401", description = "Credenciais inválidas")
     @PostMapping("/login")
     ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginRequestDTO loginRequestDTO);
+
+    @Operation(summary = "Realiza o registro de um novo usuário")
+    @ApiResponse(responseCode = "200", description = "Usuário registrado com sucesso")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos ou usuário já existe")
+    @PostMapping("/register")
+    ResponseEntity<LoginResponseDTO> register(@RequestBody @Valid RegisterRequestDTO registerRequestDTO);
 
     @Operation(summary = "Renova o access token usando o refresh token")
     @ApiResponse(responseCode = "200", description = "Token renovado com sucesso")

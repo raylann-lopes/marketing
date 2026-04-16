@@ -2,6 +2,7 @@ package com.north.producoes.security;
 
 import com.north.producoes.controller.api.AuthApi;
 import com.north.producoes.controller.dto.request.LoginRequestDTO;
+import com.north.producoes.controller.dto.request.RegisterRequestDTO;
 import com.north.producoes.controller.dto.response.LoginResponseDTO;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.security.refreshToken.RefreshRequest;
@@ -30,6 +31,15 @@ public class AuthController implements AuthApi {
                         loginRequestDTO.email(), loginRequestDTO.password()));
 
         UserEntity user = (UserEntity) userService.loadUserByUsername(loginRequestDTO.email());
+        String acessToken = jwtService.generateToken(user);
+        RefreshTokenEntity refreshToken = refreshTokenService.generate(user);
+
+        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken.getToken(), user.getRole().name(), user.getId()));
+    }
+
+    @Override
+    public ResponseEntity<LoginResponseDTO> register(RegisterRequestDTO registerRequestDTO) {
+        UserEntity user = userService.register(registerRequestDTO);
         String acessToken = jwtService.generateToken(user);
         RefreshTokenEntity refreshToken = refreshTokenService.generate(user);
 

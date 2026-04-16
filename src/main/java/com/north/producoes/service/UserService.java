@@ -1,8 +1,11 @@
 package com.north.producoes.service;
 
 import com.north.producoes.controller.dto.request.ChangePasswordRequestDTO;
+import com.north.producoes.controller.dto.request.RegisterRequestDTO;
 import com.north.producoes.controller.dto.request.UserRequestDTO;
 import com.north.producoes.entity.UserEntity;
+import com.north.producoes.entity.enums.UserRoleEnum;
+import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -42,10 +45,20 @@ public class UserService implements UserDetailsService {
     @Transactional
     public UserEntity saveUser(UserEntity user) {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            throw new ResourceNotFoundException("Usuario ja cadastrado");
+            throw new ResourceAlreadyExistsException("Usuario ja cadastrado");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public UserEntity register(RegisterRequestDTO dto) {
+        UserEntity user = new UserEntity();
+        user.setName(dto.name());
+        user.setEmail(dto.email());
+        user.setPassword(dto.password());
+        user.setRole(UserRoleEnum.USER);
+        return saveUser(user);
     }
 
     @Transactional
