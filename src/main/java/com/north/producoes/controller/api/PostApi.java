@@ -1,6 +1,8 @@
 package com.north.producoes.controller.api;
 
+import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
+import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,4 +76,12 @@ public interface PostApi {
     @DeleteMapping("/delete/{id}")
     ResponseEntity<?> deletePostById(
             @Parameter(description = "ID do post") @PathVariable Long id);
+
+    @Operation(summary = "Gera legenda automaticamente usando IA")
+    @ApiResponse(responseCode = "200", description = "Legenda gerada com sucesso")
+    @ApiResponse(responseCode = "404", description = "Post não encontrado")
+    @PostMapping("/{id}/generate-caption")
+    ResponseEntity<ApproveResponseDTO> generateCaption(
+            @Parameter(description = "ID do post") @PathVariable Long id,
+            @RequestBody(required = false) CaptionRequestDTO request);
 }

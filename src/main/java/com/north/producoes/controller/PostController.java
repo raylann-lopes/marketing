@@ -1,7 +1,9 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.PostApi;
+import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
+import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.service.PostService;
@@ -69,5 +71,11 @@ public class PostController implements PostApi {
     public ResponseEntity<?> deletePostById(Long id) {
         postService.deletePostById(id);
         return ResponseEntity.ok().body("Registro deletado com sucesso!");
+    }
+
+    @Override
+    public ResponseEntity<ApproveResponseDTO> generateCaption(Long id, CaptionRequestDTO request) {
+        String artS3Key = (request != null) ? request.artS3Key() : null;
+        return ResponseEntity.ok(ApproveResponseDTO.from(postService.generateCaption(id, artS3Key)));
     }
 }

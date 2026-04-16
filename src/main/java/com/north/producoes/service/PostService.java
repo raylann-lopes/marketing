@@ -1,17 +1,21 @@
 package com.north.producoes.service;
 
 import com.north.producoes.controller.dto.request.PostRequestDTO;
+import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
+import com.north.producoes.entity.enums.ApproveStatusEnum;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
+import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.PostRepository;
 import com.north.producoes.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +27,9 @@ public class PostService {
     private final PostRepository postRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final OpenAiService openAiService;
+    private final ApproveRepository approveRepository;
+    private final S3Service s3Service;
 
     public List<PostEntity> findAllPost(){
         return postRepository.findAll();
@@ -92,6 +99,7 @@ public class PostService {
         UserEntity user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com id: " + dto.userId()));
 
+        postExisting.setTitle(dto.title());
         postExisting.setTheme(dto.theme());
         postExisting.setObjective(dto.objective());
         postExisting.setStatus(dto.status());
@@ -99,7 +107,7 @@ public class PostService {
         postExisting.setClient(client);
         postExisting.setUser(user);
 
-        return postExisting;
+        return postRepository.save(postExisting);
     }
 
     @Transactional
@@ -108,5 +116,65 @@ public class PostService {
             throw new ResourceNotFoundException("Post nao encontrado com id: " + id);
         }
         postRepository.deleteById(id);
+    }
+
+    @Transactional
+    public ApproveEntity generateCaption(Long id, String manualArtS3Key){
+        PostEntity post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + id));
+
+        String cleanS3Key = sanitizeS3Key(manualArtS3Key);
+        ApproveEntity approve = approveRepository.findByPostId(id).stream().findFirst().orElse(null);
+        String finalS3Key = resolveArtS3Key(cleanS3Key, approve);
+        String imageUrl = resolveImageUrl(finalS3Key);
+
+        String caption = openAiService.generateCaption(post, imageUrl);
+
+        if (approve != null) {
+            approve.setCaption(caption);
+            return approveRepository.save(approve);
+        }
+
+        ApproveEntity tempApprove = new ApproveEntity();
+        tempApprove.setPost(post);
+        tempApprove.setCaption(caption);
+        tempApprove.setArtName("Legenda Gerada");
+        tempApprove.setStatus(ApproveStatusEnum.PENDING);
+        tempApprove.setArtS3Key(finalS3Key);
+        return tempApprove;
+    }
+
+    private String sanitizeS3Key(String artS3Key) {
+        if (!StringUtils.hasText(artS3Key)) {
+            return null;
+        }
+
+        String cleaned = artS3Key.trim()
+                .replace("\"", "")
+                .replace("{", "")
+                .replace("}", "");
+
+        if (cleaned.startsWith("artS3Key:")) {
+            cleaned = cleaned.substring("artS3Key:".length()).trim();
+        }
+
+        return StringUtils.hasText(cleaned) ? cleaned : null;
+    }
+
+    private String resolveArtS3Key(String manualArtS3Key, ApproveEntity approve) {
+        if (StringUtils.hasText(manualArtS3Key)) {
+            return manualArtS3Key;
+        }
+        if (approve != null && StringUtils.hasText(approve.getArtS3Key())) {
+            return approve.getArtS3Key();
+        }
+        return null;
+    }
+
+    private String resolveImageUrl(String s3Key) {
+        if (!StringUtils.hasText(s3Key)) {
+            return null;
+        }
+        return s3Service.generateDownloadUrl(s3Key);
     }
 }

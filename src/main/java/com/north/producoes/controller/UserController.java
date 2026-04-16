@@ -45,7 +45,6 @@ public class UserController implements UserApi {
         user.setName(request.name());
         user.setEmail(request.email());
         user.setPassword(request.password());
-        user.setRole(request.role());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(UserResponseDTO.from(userService.saveUser(user)));
     }

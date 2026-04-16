@@ -46,8 +46,7 @@ public class MediaController {
     }
 
     /**
-     * Gera URL de leitura presigned para o frontend exibir preview da arte.
-     * Autenticado por JWT — qualquer usuário logado pode visualizar.
+     * Gera URL de leitura presigned para o frontend exi     * Autenticado por JWT — qualquer usuário logado pode visualizar.bir preview da arte.
      * Expira em 15 minutos (apenas para visualização, não para download permanente).
      */
     @Operation(summary = "Gera URL de preview da arte de um post (uso no frontend)")

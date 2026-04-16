@@ -55,7 +55,7 @@ public class FinanceController implements FinanceApi {
     }
 
     @Override
-    public ResponseEntity<FinanceResponseDTO> updateFinance(FinanceEntity finance) {
+    public ResponseEntity<FinanceResponseDTO> updateFinance(Long id, FinanceEntity finance) {
         return ResponseEntity.ok(FinanceResponseDTO.from(financeService.updateFinance(finance)));
     }
 

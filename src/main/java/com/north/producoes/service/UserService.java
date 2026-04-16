@@ -82,9 +82,6 @@ public class UserService implements UserDetailsService {
         }
 
         user.setName(dto.name());
-        if (dto.role() != null) {
-            user.setRole(dto.role());
-        }
         return userRepository.save(user);
     }
 

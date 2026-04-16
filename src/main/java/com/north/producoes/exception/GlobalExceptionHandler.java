@@ -75,4 +75,14 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(AiIntegrationException.class)
+    public ResponseEntity<Map<String, Object>> handleAiIntegration(AiIntegrationException e) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                "status", 502,
+                "error", "Bad Gateway",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
 }
