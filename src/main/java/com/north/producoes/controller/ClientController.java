@@ -1,11 +1,11 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.ClientApi;
-import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.controller.dto.request.ClientRequestDTO;
 import com.north.producoes.controller.dto.response.ClientResponseDTO;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.service.ClientService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -50,30 +50,15 @@ public class ClientController implements ClientApi {
 
     @Override
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ClientResponseDTO> saveClient(ClientRequestDTO request) {
-        ClientEntity client = new ClientEntity();
-        client.setName(request.name());
-        client.setEmail(request.email());
-        client.setNumber(request.number());
-        client.setDriveLink(request.driveLink());
-        client.setVoiceTone(request.voiceTone());
-        client.setNiche(request.niche());
+    public ResponseEntity<ClientResponseDTO> saveClient(@Valid ClientRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ClientResponseDTO.from(clientService.saveClient(client)));
+                .body(ClientResponseDTO.from(clientService.saveClient(request)));
     }
 
     @Override
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ClientResponseDTO> updateClient(Long id, ClientRequestDTO request) {
-        ClientEntity client = new ClientEntity();
-        client.setId(id);
-        client.setName(request.name());
-        client.setEmail(request.email());
-        client.setNumber(request.number());
-        client.setDriveLink(request.driveLink());
-        client.setVoiceTone(request.voiceTone());
-        client.setNiche(request.niche());
-        return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateClient(client)));
+    public ResponseEntity<ClientResponseDTO> updateClient(Long id, @Valid ClientRequestDTO request) {
+        return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateClient(id, request)));
     }
 
     @Override

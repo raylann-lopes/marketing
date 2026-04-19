@@ -1,5 +1,6 @@
 package com.north.producoes.service;
 
+import com.north.producoes.controller.dto.request.ClientRequestDTO;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.exception.ResourceAlreadyExistsException;
@@ -135,25 +136,41 @@ class ClientServiceTest {
         @Test
         @DisplayName("deve salvar e retornar o cliente quando e-mail não existe")
         void shouldSaveClientWhenEmailIsNew() {
-            ClientEntity client = new ClientEntity();
-            client.setEmail("new@example.com");
-            when(clientRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
-            when(clientRepository.save(client)).thenReturn(client);
+            ClientRequestDTO request = new ClientRequestDTO(
+                    "New Client",
+                    "new@example.com",
+                    "11999999999",
+                    "https://drive.google.com/abc",
+                    "Formal",
+                    "Saude"
+            );
 
-            ClientEntity result = clientService.saveClient(client);
+            when(clientRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
+            when(clientRepository.findByNumber("11999999999")).thenReturn(Optional.empty());
+            when(clientRepository.save(any(ClientEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            ClientEntity result = clientService.saveClient(request);
 
             assertThat(result.getEmail()).isEqualTo("new@example.com");
-            verify(clientRepository).save(client);
+            assertThat(result.getNumber()).isEqualTo("11999999999");
+            verify(clientRepository).save(any(ClientEntity.class));
         }
 
         @Test
         @DisplayName("deve lançar ResourceAlreadyExistsException quando e-mail já cadastrado")
         void shouldThrowWhenEmailAlreadyExists() {
-            ClientEntity client = new ClientEntity();
-            client.setEmail("existing@example.com");
-            when(clientRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(client));
+            ClientRequestDTO request = new ClientRequestDTO(
+                    "Existing Client",
+                    "existing@example.com",
+                    "11999999999",
+                    "https://drive.google.com/abc",
+                    "Formal",
+                    "Saude"
+            );
 
-            assertThatThrownBy(() -> clientService.saveClient(client))
+            when(clientRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(new ClientEntity()));
+
+            assertThatThrownBy(() -> clientService.saveClient(request))
                     .isInstanceOf(ResourceAlreadyExistsException.class);
 
             verify(clientRepository, never()).save(any());
@@ -167,27 +184,98 @@ class ClientServiceTest {
         @Test
         @DisplayName("deve atualizar e retornar o cliente quando existe")
         void shouldUpdateClientWhenExists() {
-            ClientEntity client = new ClientEntity();
-            client.setId(1L);
-            when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
-            when(clientRepository.save(client)).thenReturn(client);
+            ClientEntity existingClient = new ClientEntity();
+            existingClient.setId(1L);
+            existingClient.setStatus(ClientStatusEnum.INACTIVE);
 
-            ClientEntity result = clientService.updateClient(client);
+            ClientRequestDTO request = new ClientRequestDTO(
+                    "Client Name",
+                    "client@example.com",
+                    "11999999999",
+                    "https://drive.google.com/abc",
+                    "Formal",
+                    "Saude"
+            );
+
+            when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
+            when(clientRepository.save(existingClient)).thenReturn(existingClient);
+
+            ClientEntity result = clientService.updateClient(1L, request);
 
             assertThat(result.getId()).isEqualTo(1L);
-            verify(clientRepository).save(client);
+            assertThat(result.getName()).isEqualTo("Client Name");
+            assertThat(result.getEmail()).isEqualTo("client@example.com");
+            assertThat(result.getStatus()).isEqualTo(ClientStatusEnum.INACTIVE);
+            verify(clientRepository).save(existingClient);
         }
 
         @Test
         @DisplayName("deve lançar ResourceNotFoundException quando cliente não existe")
         void shouldThrowWhenClientNotFound() {
-            ClientEntity client = new ClientEntity();
-            client.setId(99L);
+            ClientRequestDTO request = new ClientRequestDTO(
+                    "Client Name",
+                    "client@example.com",
+                    "11999999999",
+                    "https://drive.google.com/abc",
+                    "Formal",
+                    "Saude"
+            );
+
             when(clientRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> clientService.updateClient(client))
+            assertThatThrownBy(() -> clientService.updateClient(99L, request))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("99");
+
+            verify(clientRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("deve lançar ResourceAlreadyExistsException quando e-mail já pertence a outro cliente")
+        void shouldThrowWhenEmailAlreadyUsedByAnotherClient() {
+            ClientEntity existingClient = new ClientEntity();
+            existingClient.setId(1L);
+
+            ClientRequestDTO request = new ClientRequestDTO(
+                    "Client Name",
+                    "duplicated@example.com",
+                    "11999999999",
+                    "https://drive.google.com/abc",
+                    "Formal",
+                    "Saude"
+            );
+
+            when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
+            when(clientRepository.existsByEmailAndIdNot("duplicated@example.com", 1L)).thenReturn(true);
+
+            assertThatThrownBy(() -> clientService.updateClient(1L, request))
+                    .isInstanceOf(ResourceAlreadyExistsException.class)
+                    .hasMessageContaining("duplicated@example.com");
+
+            verify(clientRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("deve lançar ResourceAlreadyExistsException quando número já pertence a outro cliente")
+        void shouldThrowWhenNumberAlreadyUsedByAnotherClient() {
+            ClientEntity existingClient = new ClientEntity();
+            existingClient.setId(1L);
+
+            ClientRequestDTO request = new ClientRequestDTO(
+                    "Client Name",
+                    "client@example.com",
+                    "11888888888",
+                    "https://drive.google.com/abc",
+                    "Formal",
+                    "Saude"
+            );
+
+            when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
+            when(clientRepository.existsByNumberAndIdNot("11888888888", 1L)).thenReturn(true);
+
+            assertThatThrownBy(() -> clientService.updateClient(1L, request))
+                    .isInstanceOf(ResourceAlreadyExistsException.class)
+                    .hasMessageContaining("11888888888");
 
             verify(clientRepository, never()).save(any());
         }
