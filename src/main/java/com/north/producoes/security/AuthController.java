@@ -5,10 +5,10 @@ import com.north.producoes.controller.dto.request.LoginRequestDTO;
 import com.north.producoes.controller.dto.request.RegisterRequestDTO;
 import com.north.producoes.controller.dto.response.LoginResponseDTO;
 import com.north.producoes.entity.UserEntity;
-import com.north.producoes.security.refreshToken.RefreshRequest;
-import com.north.producoes.security.refreshToken.RefreshTokenEntity;
+import com.north.producoes.security.refreshToken.RefreshRequestDTO;
 import com.north.producoes.security.refreshToken.RefreshTokenService;
 import com.north.producoes.service.UserService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,33 +25,33 @@ public class AuthController implements AuthApi {
     private final RefreshTokenService refreshTokenService;
 
     @Override
-    public ResponseEntity<LoginResponseDTO> login(LoginRequestDTO loginRequestDTO) {
+    public ResponseEntity<LoginResponseDTO> login(@Valid LoginRequestDTO loginRequestDTO) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequestDTO.email(), loginRequestDTO.password()));
 
         UserEntity user = (UserEntity) userService.loadUserByUsername(loginRequestDTO.email());
         String acessToken = jwtService.generateToken(user);
-        RefreshTokenEntity refreshToken = refreshTokenService.generate(user);
+        String refreshToken = refreshTokenService.generate(user);
 
-        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken.getToken(), user.getRole().name(), user.getId()));
+        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken, user.getRole().name(), user.getId()));
     }
 
     @Override
-    public ResponseEntity<LoginResponseDTO> register(RegisterRequestDTO registerRequestDTO) {
+    public ResponseEntity<LoginResponseDTO> register(@Valid RegisterRequestDTO registerRequestDTO) {
         UserEntity user = userService.register(registerRequestDTO);
         String acessToken = jwtService.generateToken(user);
-        RefreshTokenEntity refreshToken = refreshTokenService.generate(user);
+        String refreshToken = refreshTokenService.generate(user);
 
-        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken.getToken(), user.getRole().name(), user.getId()));
+        return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken, user.getRole().name(), user.getId()));
     }
 
     @Override
-    public ResponseEntity<LoginResponseDTO> refresh(RefreshRequest request) {
-        RefreshTokenEntity refreshToken = refreshTokenService.validate(request.refreshToken());
+    public ResponseEntity<LoginResponseDTO> refresh(@Valid RefreshRequestDTO request) {
+        RefreshTokenService.RotatedRefreshToken rotated = refreshTokenService.rotate(request.refreshToken());
 
-        UserEntity user = refreshToken.getUser();
+        UserEntity user = rotated.user();
         String newAcessToken = jwtService.generateToken(user);
-        return ResponseEntity.ok(new LoginResponseDTO(newAcessToken, request.refreshToken(), user.getRole().name(), user.getId()));
+        return ResponseEntity.ok(new LoginResponseDTO(newAcessToken, rotated.refreshToken(), user.getRole().name(), user.getId()));
     }
 }

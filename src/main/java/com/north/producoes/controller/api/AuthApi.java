@@ -3,7 +3,7 @@ package com.north.producoes.controller.api;
 import com.north.producoes.controller.dto.request.LoginRequestDTO;
 import com.north.producoes.controller.dto.request.RegisterRequestDTO;
 import com.north.producoes.controller.dto.response.LoginResponseDTO;
-import com.north.producoes.security.refreshToken.RefreshRequest;
+import com.north.producoes.security.refreshToken.RefreshRequestDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,5 +33,5 @@ public interface AuthApi {
     @ApiResponse(responseCode = "200", description = "Token renovado com sucesso")
     @ApiResponse(responseCode = "401", description = "Refresh token inválido ou expirado")
     @PostMapping("/refresh")
-    ResponseEntity<LoginResponseDTO> refresh(@RequestBody RefreshRequest request);
+    ResponseEntity<LoginResponseDTO> refresh(@RequestBody @Valid RefreshRequestDTO request);
 }
