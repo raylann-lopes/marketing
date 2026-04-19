@@ -4,6 +4,7 @@ import com.north.producoes.controller.api.AccountConfigApi;
 import com.north.producoes.controller.dto.request.AccountConfigRequestDTO;
 import com.north.producoes.controller.dto.response.AccountConfigResponseDTO;
 import com.north.producoes.service.AccountConfigService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class AccountConfigController implements AccountConfigApi {
 
     @Override
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AccountConfigResponseDTO> configure(AccountConfigRequestDTO request, Principal principal) {
+    public ResponseEntity<AccountConfigResponseDTO> configure(@Valid AccountConfigRequestDTO request, Principal principal) {
         AccountConfigResponseDTO response = AccountConfigResponseDTO.from(
                 accountConfigService.configure(request, principal.getName())
         );

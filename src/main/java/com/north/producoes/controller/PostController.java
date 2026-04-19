@@ -7,6 +7,7 @@ import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.service.PostService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,13 +40,21 @@ public class PostController implements PostApi {
     }
 
     @Override
-    public ResponseEntity<PostResponseDTO> findByClient(Long id) {
-        return ResponseEntity.ok(PostResponseDTO.from(postService.findByClient(id).getFirst()));
+    public ResponseEntity<List<PostResponseDTO>> findByClient(Long id) {
+        List<PostResponseDTO> postClient = postService.findByClient(id)
+                .stream()
+                .map(PostResponseDTO::from)
+                .toList();
+        return ResponseEntity.ok(postClient);
     }
 
     @Override
-    public ResponseEntity<PostResponseDTO> findByUser(Long id) {
-        return ResponseEntity.ok(PostResponseDTO.from(postService.findByUser(id)));
+    public ResponseEntity<List<PostResponseDTO>> findByUser(Long id) {
+        List<PostResponseDTO> postUser = postService.findByUser(id)
+                .stream()
+                .map(PostResponseDTO::from)
+                .toList();
+        return ResponseEntity.ok(postUser);
     }
 
     @Override
@@ -58,23 +67,23 @@ public class PostController implements PostApi {
     }
 
     @Override
-    public ResponseEntity<PostResponseDTO> savePost(PostRequestDTO post) {
+    public ResponseEntity<PostResponseDTO> savePost(@Valid PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.savePost(post)));
     }
 
     @Override
-    public ResponseEntity<PostResponseDTO> updatePost(Long id, PostRequestDTO post) {
+    public ResponseEntity<PostResponseDTO> updatePost(Long id, @Valid PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(id, post)));
     }
 
     @Override
-    public ResponseEntity<?> deletePostById(Long id) {
+    public ResponseEntity<Void> deletePostById(Long id) {
         postService.deletePostById(id);
-        return ResponseEntity.ok().body("Registro deletado com sucesso!");
+        return ResponseEntity.ok().build();
     }
 
     @Override
-    public ResponseEntity<ApproveResponseDTO> generateCaption(Long id, CaptionRequestDTO request) {
+    public ResponseEntity<ApproveResponseDTO> generateCaption(Long id, @Valid CaptionRequestDTO request) {
         String artS3Key = (request != null) ? request.artS3Key() : null;
         return ResponseEntity.ok(ApproveResponseDTO.from(postService.generateCaption(id, artS3Key)));
     }

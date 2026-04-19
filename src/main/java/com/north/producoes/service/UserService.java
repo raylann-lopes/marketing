@@ -11,6 +11,7 @@ import com.north.producoes.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -52,11 +53,11 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public UserEntity register(RegisterRequestDTO dto) {
+    public UserEntity register(RegisterRequestDTO registerRequestDTO) {
         UserEntity user = new UserEntity();
-        user.setName(dto.name());
-        user.setEmail(dto.email());
-        user.setPassword(dto.password());
+        user.setName(registerRequestDTO.name());
+        user.setEmail(registerRequestDTO.email());
+        user.setPassword(registerRequestDTO.password());
         user.setRole(UserRoleEnum.USER);
         return saveUser(user);
     }
@@ -70,18 +71,18 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public UserEntity updateProfile(Long userId, UserRequestDTO dto) {
+    public UserEntity updateProfile(Long userId, UserRequestDTO userRequestDTO) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + userId));
 
-        if (!user.getEmail().equals(dto.email())) {
-            if (userRepository.findByEmail(dto.email()).isPresent()) {
+        if (!user.getEmail().equals(userRequestDTO.email())) {
+            if (userRepository.findByEmail(userRequestDTO.email()).isPresent()) {
                 throw new IllegalArgumentException("Email ja esta em uso");
             }
-            user.setEmail(dto.email());
+            user.setEmail(userRequestDTO.email());
         }
 
-        user.setName(dto.name());
+        user.setName(userRequestDTO.name());
         return userRepository.save(user);
     }
 

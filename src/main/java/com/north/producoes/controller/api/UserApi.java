@@ -47,7 +47,7 @@ public interface UserApi {
     @Operation(summary = "Dados do usuário autenticado")
     @ApiResponse(responseCode = "200", description = "Usuário autenticado")
     @GetMapping("/me")
-    ResponseEntity<UserResponseDTO> me(
+    ResponseEntity<UserResponseDTO> findMe(
             @Parameter(hidden = true) @AuthenticationPrincipal UserEntity user);
 
     @Operation(summary = "Atualizar perfil do usuário autenticado")
@@ -61,6 +61,6 @@ public interface UserApi {
     @ApiResponse(responseCode = "204", description = "Senha alterada com sucesso")
     @PutMapping("/me/password")
     ResponseEntity<Void> changePassword(
-            @RequestBody ChangePasswordRequestDTO request,
+            @Valid @RequestBody ChangePasswordRequestDTO request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserEntity user);
 }

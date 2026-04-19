@@ -7,6 +7,7 @@ import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.service.ApprovedService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -80,13 +81,13 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
-    public ResponseEntity<ApproveResponseDTO> saveApprove(ApproveRequestDTO approve) {
+    public ResponseEntity<ApproveResponseDTO> saveApprove(@Valid ApproveRequestDTO approve) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApproveResponseDTO.from(approvedService.saveApprove(approve)));
     }
 
     @Override
-    public ResponseEntity<ApproveResponseDTO> updateApprove(Long id, ApproveRequestDTO approve) {
+    public ResponseEntity<ApproveResponseDTO> updateApprove(Long id, @Valid ApproveRequestDTO approve) {
         return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateApprove(id, approve)));
     }
 

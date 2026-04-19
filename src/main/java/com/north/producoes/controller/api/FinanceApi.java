@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,13 +40,13 @@ public interface FinanceApi {
     @ApiResponse(responseCode = "200", description = "Registro criado com sucesso")
     @ApiResponse(responseCode = "409", description = "Violação de integridade de dados")
     @PostMapping("/create")
-    ResponseEntity<FinanceResponseDTO> saveFinance(@RequestBody FinanceEntity finance);
+    ResponseEntity<FinanceResponseDTO> saveFinance(@Valid @RequestBody FinanceEntity finance);
 
     @Operation(summary = "Atualiza um registro financeiro existente")
     @ApiResponse(responseCode = "200", description = "Registro atualizado com sucesso")
     @ApiResponse(responseCode = "404", description = "Registro não encontrado")
     @PatchMapping("/update/{id}")
-    ResponseEntity<FinanceResponseDTO> updateFinance(@PathVariable Long id, @RequestBody FinanceEntity finance);
+    ResponseEntity<FinanceResponseDTO> updateFinance(@PathVariable Long id, @Valid @RequestBody FinanceEntity finance);
 
     @Operation(summary = "Remove um registro financeiro pelo ID")
     @ApiResponse(responseCode = "204", description = "Registro removido com sucesso")

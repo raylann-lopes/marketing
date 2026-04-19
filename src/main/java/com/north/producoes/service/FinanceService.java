@@ -37,10 +37,11 @@ public class FinanceService {
         return financeRepository.save(finance);
     }
 
-    public FinanceEntity updateFinance(FinanceEntity finance){
-        if (financeRepository.existsById(finance.getId())){
+    public FinanceEntity updateFinance(Long id, FinanceEntity finance){
+        if (!financeRepository.existsById(finance.getId())){
             throw new ResourceNotFoundException("Conta nao encontrada: id " + finance.getId());
         }
+        finance.setId(id);
         return financeRepository.save(finance);
     }
 

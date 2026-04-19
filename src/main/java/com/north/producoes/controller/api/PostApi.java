@@ -37,14 +37,14 @@ public interface PostApi {
     @ApiResponse(responseCode = "200", description = "Posts encontrados")
     @ApiResponse(responseCode = "404", description = "Nenhum post encontrado para o cliente informado")
     @GetMapping("/client/{id}")
-    ResponseEntity<PostResponseDTO> findByClient(
+    ResponseEntity<List<PostResponseDTO>> findByClient(
             @Parameter(description = "ID do cliente") @PathVariable Long id);
 
     @Operation(summary = "Busca posts por usuário")
     @ApiResponse(responseCode = "200", description = "Posts encontrados")
     @ApiResponse(responseCode = "404", description = "Nenhum post encontrado para o usuário informado")
     @GetMapping("/user/{id}")
-    ResponseEntity<PostResponseDTO> findByUser(
+    ResponseEntity<List<PostResponseDTO>> findByUser(
             @Parameter(description = "ID do usuário") @PathVariable Long id);
 
     @Operation(summary = "Busca posts por período de agendamento")
@@ -74,7 +74,7 @@ public interface PostApi {
     @ApiResponse(responseCode = "204", description = "Post removido com sucesso")
     @ApiResponse(responseCode = "404", description = "Post não encontrado")
     @DeleteMapping("/delete/{id}")
-    ResponseEntity<?> deletePostById(
+    ResponseEntity<Void> deletePostById(
             @Parameter(description = "ID do post") @PathVariable Long id);
 
     @Operation(summary = "Gera legenda automaticamente usando IA")
@@ -83,5 +83,5 @@ public interface PostApi {
     @PostMapping("/{id}/generate-caption")
     ResponseEntity<ApproveResponseDTO> generateCaption(
             @Parameter(description = "ID do post") @PathVariable Long id,
-            @RequestBody(required = false) CaptionRequestDTO request);
+            @Valid @RequestBody(required = false) CaptionRequestDTO request);
 }

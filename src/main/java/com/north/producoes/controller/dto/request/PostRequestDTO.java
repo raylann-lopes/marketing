@@ -3,16 +3,30 @@ package com.north.producoes.controller.dto.request;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
 public record PostRequestDTO(
-        @NotBlank String title,
-        @NotBlank String theme,
-        @NotBlank String objective,
-        @NotNull PostStatusEnum status,
-        @NotNull LocalDateTime scheduledAt,
-        @NotNull Long clientId,
-        @NotNull Long userId
+        @NotBlank(message = "Titulo é obrigatório")
+        @Size(max = 255, message = "Titulo deve ter no máximo 255 caracteres")
+        String title,
+        @NotBlank(message = "Tema é obrigatório")
+        @Size(max = 255, message = "Tema deve ter no máximo 255 caracteres")
+        String theme,
+        @NotBlank(message = "Objetivo é obrigatório")
+        @Size(max = 255, message = "Objetivo deve ter no máximo 255 caracteres")
+        String objective,
+        @NotNull(message = "Status é obrigatório")
+        PostStatusEnum status,
+        @NotNull(message = "Data de agendamento é obrigatória")
+        LocalDateTime scheduledAt,
+        @NotNull(message = "Cliente é obrigatório")
+        @Positive(message = "ClientId deve ser maior que zero")
+        Long clientId,
+        @NotNull(message = "Usuário é obrigatório")
+        @Positive(message = "UserId deve ser maior que zero")
+        Long userId
 ) {
 }

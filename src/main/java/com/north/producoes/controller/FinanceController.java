@@ -1,10 +1,11 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.FinanceApi;
-import com.north.producoes.entity.FinanceEntity;
 import com.north.producoes.controller.dto.response.FinanceResponseDTO;
+import com.north.producoes.entity.FinanceEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.service.FinanceService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,13 +51,13 @@ public class FinanceController implements FinanceApi {
     }
 
     @Override
-    public ResponseEntity<FinanceResponseDTO> saveFinance(FinanceEntity finance) {
+    public ResponseEntity<FinanceResponseDTO> saveFinance(@Valid FinanceEntity finance) {
         return ResponseEntity.ok(FinanceResponseDTO.from(financeService.saveFinance(finance)));
     }
 
     @Override
-    public ResponseEntity<FinanceResponseDTO> updateFinance(Long id, FinanceEntity finance) {
-        return ResponseEntity.ok(FinanceResponseDTO.from(financeService.updateFinance(finance)));
+    public ResponseEntity<FinanceResponseDTO> updateFinance(Long id, @Valid FinanceEntity finance) {
+        return ResponseEntity.ok(FinanceResponseDTO.from(financeService.updateFinance(id, finance)));
     }
 
     @Override

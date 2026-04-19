@@ -51,12 +51,12 @@ public class PostService {
         return postClient;
     }
 
-    public PostEntity findByUser(Long userId){
+    public List<PostEntity> findByUser(Long userId){
         List<PostEntity> postUser = postRepository.findByUserId(userId);
         if(postUser.isEmpty()){
             throw new ResourceNotFoundException("Nenhum post encontrado para o usuario informado");
         }
-        return postUser.getFirst();
+        return postUser.stream().toList();
     }
 
     public List<PostEntity> findByScheduledAt(LocalDateTime scheduledAtAfter, LocalDateTime scheduledAtBefore){

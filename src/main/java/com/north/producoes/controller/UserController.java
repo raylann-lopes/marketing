@@ -40,7 +40,7 @@ public class UserController implements UserApi {
 
     @Override
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponseDTO> saveUser(UserRequestDTO request) {
+    public ResponseEntity<UserResponseDTO> saveUser(@Valid UserRequestDTO request) {
         UserEntity user = new UserEntity();
         user.setName(request.name());
         user.setEmail(request.email());
@@ -57,7 +57,7 @@ public class UserController implements UserApi {
     }
 
     @Override
-    public ResponseEntity<UserResponseDTO> me(@AuthenticationPrincipal UserEntity user) {
+    public ResponseEntity<UserResponseDTO> findMe(@AuthenticationPrincipal UserEntity user) {
         if (user == null) {
             throw new IllegalStateException("Usuário não autenticado");
         }
@@ -74,7 +74,7 @@ public class UserController implements UserApi {
     }
 
     @Override
-    public ResponseEntity<Void> changePassword(ChangePasswordRequestDTO request, @AuthenticationPrincipal UserEntity user) {
+    public ResponseEntity<Void> changePassword(@Valid ChangePasswordRequestDTO request, @AuthenticationPrincipal UserEntity user) {
         if (user == null) {
             throw new IllegalStateException("Usuário não autenticado");
         }
