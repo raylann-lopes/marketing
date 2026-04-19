@@ -1,203 +1,199 @@
-# North Produções
+# North Producoes Backend
 
-Sistema web para agências de marketing gerenciarem clientes, produção de conteúdo, aprovação de artes e publicação no Instagram com automações via n8n.
+Backend da plataforma North Producoes, voltada para organizacao operacional de uma agencia de marketing e producao de conteudo. A aplicacao centraliza autenticacao, gestao de usuarios, clientes, posts, aprovacoes, financeiro, configuracoes de conta e integracoes externas para automacao de publicacao.
 
----
+O projeto foi estruturado para sustentar um fluxo de trabalho real de operacao: a demanda do post nasce no sistema, a arte pode ser enviada para o S3 por URL assinada, a legenda pode ser gerada com IA, a aprovacao fica registrada no backend e os dados finais podem ser consumidos por automacoes internas via n8n.
 
-## Tecnologias
+## Finalidade do projeto
 
-**Backend**
+O sistema existe para reduzir friccao operacional entre atendimento, criacao, aprovacao e publicacao. Em vez de espalhar informacoes entre planilhas, mensagens e ferramentas desconectadas, a aplicacao concentra o ciclo de vida do conteudo em um unico backend com regras de negocio, rastreabilidade e integracoes.
 
-| Stack | Versão |
-|---|---|
-| Java | 21 |
-| Spring Boot | 4.0.4 (WebMVC) |
-| Spring Security + JWT (jjwt 0.12.6) | — |
-| Spring Data JPA + Flyway | — |
-| AWS S3 SDK (presigned URLs) | 2.25.0 |
-| PostgreSQL | latest |
-| SpringDoc OpenAPI (Swagger) | 3.0.2 |
-| Lombok | — |
+Casos de uso cobertos pelo backend:
 
-**Frontend** (`frontend_north/`)
+- autenticacao e controle de acesso por perfil
+- cadastro e manutencao de clientes
+- organizacao de posts por status e agenda
+- controle de artes e aprovacoes
+- geracao assistida de legendas com IA
+- suporte a publicacao por automacoes externas
+- configuracao de contas vinculadas por cliente
+- controle financeiro associado a clientes e operacao
 
-| Stack | Versão |
-|---|---|
-| Vue 3 + TypeScript | 3.5 |
-| Vite | 6 |
-| Tailwind CSS + shadcn-vue | — |
-| Vue Router | 5 |
-| Pinia | 3 |
-| Zod (validação) | 4 |
-| oxlint + eslint + prettier | — |
-| Vitest + Cypress | — |
+## Principais capacidades
 
-**Automações**
-
-- **n8n** — orquestra geração de legendas (Claude API) e publicação (Meta Graph API)
-- **Meta Graph API** — publicação direta no Instagram
-- **Z-API** — notificações via WhatsApp
-
----
+- Autenticacao com JWT e refresh token para operacao autenticada da plataforma.
+- Organizacao de posts com vinculo a cliente e usuario responsavel.
+- Registro de aprovacao por post, com arte, legenda e status.
+- Upload e leitura de arte via AWS S3 com URLs presignadas.
+- Integracao com Spring AI + OpenAI para geracao de legendas.
+- Endpoint interno para n8n consumir dados de publicacao.
+- Configuracao de Instagram Account ID por cliente para integracoes externas.
+- Documentacao interativa via Swagger/OpenAPI.
 
 ## Arquitetura
 
-Layered Architecture com interfaces REST, DTOs e separação de responsabilidades:
+O projeto segue uma arquitetura em camadas, com separacao clara entre contrato HTTP, orquestracao, regra de negocio, persistencia e integracoes.
 
-```
-com.north.producoes/
-├── config/               # S3Config (AWS SDK)
-├── controller/           # Implementações REST
-│   ├── api/              # Interfaces OpenAPI documentadas
-│   └── dto/
-│       ├── request/      # DTOs de entrada
-│       └── response/     # DTOs de saída
-├── entity/               # Entidades JPA
-│   └── enums/            # Enums (UserRoleEnum, PostStatusEnum...)
-├── exception/            # GlobalExceptionHandler + exceções customizadas
-├── repository/           # Spring Data JPA interfaces
-├── security/             # JwtFilter, InternalApiKeyFilter, SecurityConfig, Auth
-└── service/              # Regras de negócio
+```text
+src/main/java/com/north/producoes
+├── config/        Configuracoes de infraestrutura e integracoes
+├── controller/    Controllers REST
+│   ├── api/       Interfaces que definem contrato e documentacao OpenAPI
+│   └── dto/       Objetos de request e response
+├── entity/        Entidades JPA e enums de dominio
+├── exception/     Tratamento global de erros e excecoes de dominio
+├── repository/    Repositorios Spring Data JPA
+├── security/      JWT, filtros, configuracao de seguranca e refresh token
+└── service/       Regras de negocio e integracoes aplicacionais
 ```
 
-O frontend usa **Vite** com proxy dev para `http://localhost:8080`.
+Uma decisao importante do projeto e separar as interfaces REST na pasta `controller/api`. Esse padrao ajuda a concentrar rotas, contratos e anotacoes do Swagger em um unico lugar, deixando os controllers mais enxutos e facilitando a evolucao paralela do frontend.
 
----
+## Stack tecnica
 
-## Funcionalidades
+### Plataforma principal
 
-- **Autenticação JWT** com refresh token — login, registro (admin), perfil (`/me`) e troca de senha
-- **Controle de acesso por role** — `ADMIN` e `USER` com `@PreAuthorize` em endpoints sensíveis
-- **Gestão de clientes** — CRUD completo com nome e dados de contato
-- **Board de produção** — kanban com colunas: Demanda → Em Produção → Finalizado → Aguardando Aprovação → Agendado → Publicado
-- **Upload de artes via S3** — presigned PUT URL gerada pelo backend; upload direto do browser ao bucket
-- **Aprovação de artes** — registro com status, vinculado a cada post
-- **Calendário editorial** — visão mensal de posts por cliente
-- **Financeiro** — controle de transações associadas a clientes
-- **Configurações de conta** — perfil, senha e integração Instagram Account ID por cliente (admin)
-- **API interna para n8n** — protegida por `X-Internal-Api-Key`, retorna URL presigned de mídia + Instagram Account ID para publicação
+- Java 21
+- Spring Boot 4.0.4
+- Spring Web MVC
+- Spring Security
+- Spring Data JPA
+- Flyway
+- PostgreSQL
 
----
+### Integracoes e suporte
 
-## Fluxo principal
+- Spring AI 2.0.0-M4
+- OpenAI
+- AWS SDK v2 para S3 e presigner
+- SpringDoc OpenAPI / Swagger UI
+- JJWT 0.12.6
+- Lombok
 
+### Testes e apoio ao desenvolvimento
+
+- H2 para testes
+- Spring Boot test starters
+
+## Modulos funcionais
+
+### Autenticacao e seguranca
+
+O backend usa JWT para autenticacao das requisicoes e refresh token para renovacao de sessao. Ha tambem um filtro interno para rotas consumidas por automacoes, protegido por chave dedicada via cabecalho `X-Internal-Api-Key`.
+
+### Gestao de usuarios
+
+Responsavel por administracao de usuarios, consulta do usuario autenticado, atualizacao de perfil e alteracao de senha.
+
+### Gestao de clientes
+
+Concentra os dados operacionais do cliente, como contato, nicho, tom de voz e configuracoes associadas ao atendimento e producao.
+
+### Posts e aprovacoes
+
+O post representa a demanda operacional. A aprovacao representa o estado final de arte e legenda vinculados ao post, permitindo rastrear status e preparar publicacao.
+
+### Midia e S3
+
+O sistema gera URLs presignadas para upload direto ao bucket e URLs temporarias para leitura de arte. Isso reduz carga no backend e evita trafego desnecessario de binarios pela aplicacao.
+
+### IA para legenda
+
+O backend integra com Spring AI e OpenAI para gerar legendas com base em contexto do post, imagem e identidade de marca do cliente.
+
+### Integracao com n8n
+
+Ha rotas internas para fornecer ao n8n os dados necessarios ao fluxo de publicacao, incluindo URL da midia, legenda e conta de destino configurada.
+
+### Financeiro
+
+Modulo de controle financeiro vinculado a clientes e usuarios, pensado para apoiar o acompanhamento operacional da agencia.
+
+## Fluxo operacional resumido
+
+```text
+1. Um post e criado e associado a um cliente e a um usuario responsavel
+2. A arte pode ser enviada ao S3 por meio de URL presignada
+3. A legenda pode ser gerada com IA com base na imagem e no contexto do cliente
+4. A aprovacao do material e registrada no backend
+5. O n8n pode consumir os dados internos de midia e publicacao
+6. A operacao acompanha o status do conteudo dentro da plataforma
 ```
-1. Post criado no board (status: DEMANDA)
-2. Designer faz upload da arte → direto ao S3 via presigned URL
-3. Registro de aprovação criado com a chave S3 (artS3Key)
-4. n8n busca mídia via /api/internal/media-url/{postId}
-5. n8n publica no Instagram usando Instagram Account ID configurado
-6. n8n notifica o backend → status: PUBLICADO
-7. Cliente aprovado pela equipe interna com um clique (aprovar/reprovar)
+
+## Banco de dados e migracoes
+
+O esquema da aplicacao e controlado por Flyway. As migracoes ficam em:
+
+```text
+src/main/resources/db/migration
 ```
 
----
+Esse modelo evita drift de estrutura entre ambientes e torna a evolucao do banco versionada junto com o codigo.
 
-## Endpoints principais
+## Executando o projeto localmente
 
-| Prefixo | Descrição |
-|---|---|
-| `POST /api/auth/login` | Autenticação JWT |
-| `POST /api/auth/refresh` | Refresh token |
-| `GET/POST /api/users` | CRUD de usuários (admin) |
-| `GET/PUT /api/users/me` | Perfil do usuário logado |
-| `PUT /api/users/me/password` | Troca de senha |
-| `GET/POST /api/clientes` | CRUD de clientes |
-| `GET/POST /api/posts` | CRUD de posts |
-| `PATCH /api/posts/{id}/status` | Atualiza status do post |
-| `GET /api/posts/calendario` | Visão calendário |
-| `GET/POST /api/aprovacoes` | CRUD de aprovações |
-| `POST /api/aprovacoes/{id}/aprovar` | Aprova post |
-| `POST /api/aprovacoes/{id}/reprovar` | Reprova post |
-| `POST /api/media/upload-url` | Gera URL presigned para upload S3 |
-| `GET /api/media/art-url` | Gera URL de preview da arte |
-| `GET /api/internal/media-url/{postId}` | Endpoint n8n (API key) |
-| `POST /api/admin/account-config` | Configura Instagram Account ID (admin) |
-| `GET /v3/api-docs` | OpenAPI JSON |
-| `GET /swagger-ui.html` | Swagger UI |
+### Pre-requisitos
 
----
+- Java 21
+- Maven ou `./mvnw`
+- PostgreSQL
 
-## Como rodar localmente
-
-**Pré-requisitos:** Java 21, Maven (ou `mvnw`), Node 22+, Docker
+### Subindo a aplicacao
 
 ```bash
-# Clone o repositório
-git clone https://github.com/seu-usuario/north-producoes.git
-cd north-producoes
-
-# Suba o banco
-docker compose up -d
-
-# Rode o backend
 ./mvnw spring-boot:run
-
-# Em outro terminal, rode o frontend
-cd frontend_north
-npm install
-npm run dev
 ```
 
-- Backend: `http://localhost:8080`
-- Frontend: `http://localhost:5173`
+Por padrao, a aplicacao sobe na porta `8080`.
 
----
+Se o ambiente estiver configurado para uso de Docker Compose pelo Spring Boot, o suporte de runtime ja esta presente no projeto.
 
-## Variáveis de ambiente
+## Variaveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto:
+As configuracoes principais do projeto sao resolvidas a partir de variaveis de ambiente.
 
 ```env
-# Banco
-DB_URL=jdbc:postgresql://localhost:5432/postgres
+DB_URL=jdbc:postgresql://localhost:5432/producoes
 DB_USER=postgres
 DB_PASSWORD=postgres
 
-# JWT
-JWT_KEY=base64_secret_aqui
+JWT_KEY=base64_secret
 
-# AWS S3
-AWS_ACCESS_KEY_ID=sua_key
-AWS_SECRET_ACCESS_KEY=seu_secret
-AWS_S3_BUCKET=north-producoes-prod
+AWS_S3_BUCKET=nome-do-bucket
 AWS_S3_REGION=sa-east-1
+AWS_ACCESS_KEY_ID=sua-access-key
+AWS_SECRET_ACCESS_KEY=sua-secret-key
 
-# n8n
-N8N_INTERNAL_KEY=sua_chave_interna
+N8N_INTERNAL_KEY=chave-interna-forte
+
+OPENAI_API_KEY=sua-chave-openai
+OPENAI_MODEL=gpt-4o
 ```
 
-Valores entre `${}` no `application.properties` usam esses defaults ou fallbacks configurados.
+## Documentacao da API
 
----
+Os endpoints da API sao documentados via Swagger/OpenAPI. A referencia interativa fica disponivel em ambiente local por meio do Swagger UI, e o contrato OpenAPI pode ser consumido diretamente pelo frontend ou por ferramentas de integracao.
 
-## S3: Upload direto do browser
+O README nao replica a lista de endpoints para evitar duplicacao de documentacao e drift de contrato.
 
-O fluxo de upload de artes funciona assim:
+## Seguranca e observacoes de implementacao
 
-1. Frontend chama `POST /api/media/upload-url?clientId=&postId=&filename=&contentType=`
-2. Backend gera **presigned PUT URL** com expiração de 15 min
-3. Frontend faz `PUT` do arquivo **direto ao S3** usando a URL retornada
-4. O backend nunca toca o binário — apenas orquestra a URL
+- As rotas autenticadas usam JWT.
+- As rotas internas de automacao usam chave dedicada.
+- O backend utiliza DTOs de request e response para isolar contrato HTTP das entidades JPA.
+- URLs de S3 sao temporarias e geradas sob demanda.
+- O projeto foi organizado para evoluir em conjunto com frontend, Swagger e automacoes externas sem concentrar toda a logica nos controllers.
 
-CORS do bucket S3 deve permitir `PUT` e `OPTIONS` da origem do frontend.
+## Estrutura para evolucao
 
----
+O projeto ja possui base adequada para crescer com:
 
-## Scripts do frontend
+- fortalecimento progressivo das regras de autorizacao
+- ampliacao de validacoes por DTO
+- novos fluxos de aprovacao e publicacao
+- integracoes adicionais com ferramentas de operacao
+- evolucao dos modulos de IA, financeiro e auditoria
 
-| Comando | Ação |
-|---|---|
-| `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Build de produção |
-| `npm run type-check` | Validação TypeScript |
-| `npm run lint` | oxlint + eslint |
-| `npm run format` | Prettier |
-| `npm run test:unit` | Vitest |
-| `npm run test:e2e` | Cypress |
+## Licenca
 
----
-
-## Licença
-
-MIT
+Uso interno / privado, salvo definicao diferente pelo mantenedor do projeto.
