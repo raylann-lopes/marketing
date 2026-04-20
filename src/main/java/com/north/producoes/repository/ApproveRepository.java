@@ -13,4 +13,6 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
     List<ApproveEntity> findApproveEntitiesByStatus(ApproveStatusEnum status);
 
     List<ApproveEntity> findByPostId(Long id);
+
+    void deleteByPostId(Long postId);
 }

@@ -115,6 +115,9 @@ public class PostService {
         if(!postRepository.existsById(id)){
             throw new ResourceNotFoundException("Post nao encontrado com id: " + id);
         }
+        // Remove a aprovação vinculada antes do post para evitar inconsistência
+        // de relacionamento no flush do Hibernate.
+        approveRepository.deleteByPostId(id);
         postRepository.deleteById(id);
     }
 
