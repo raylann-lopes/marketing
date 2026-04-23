@@ -46,4 +46,13 @@ public class ApproveEntity {
 
     @Column(name = "approved_user", nullable = false)
     private String ApprovedUser;
+
+    @Column(name = "whatsapp_stanza_id", unique = true)
+    private String whatsappStanzaId;
+
+    @Column(name = "whatsapp_sent_at")
+    private String whatsappSentAt;
+
+    @Column(name = "whatsapp_response_text")
+    private String whatsappResponseText;
 }

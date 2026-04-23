@@ -57,7 +57,7 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ApproveResponseDTO> approvePost(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
@@ -69,7 +69,7 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ApproveResponseDTO> rejectPost(Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
@@ -92,7 +92,7 @@ public class ApproveController implements ApproveApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deleteApproveById(Long id) {
         approvedService.deleteApproveById(id);
         return ResponseEntity.noContent().build();

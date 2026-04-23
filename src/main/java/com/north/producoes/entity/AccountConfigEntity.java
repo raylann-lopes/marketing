@@ -27,6 +27,12 @@ public class AccountConfigEntity {
     @Column(name = "instagram_account_id", nullable = false, length = 64)
     private String instagramAccountId;
 
+    @Column(name = "ig_user_id", length = 64)
+    private String igUserId;
+
+    @Column(name = "access_token", length = 2048)
+    private String accessToken;
+
     // Email do admin que realizou a configuração — auditoria
     @Column(name = "configured_by", nullable = false)
     private String configuredBy;

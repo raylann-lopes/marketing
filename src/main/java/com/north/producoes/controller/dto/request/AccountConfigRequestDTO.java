@@ -1,6 +1,5 @@
 package com.north.producoes.controller.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -10,9 +9,12 @@ public record AccountConfigRequestDTO(
         @NotNull(message = "Cliente é obrigatório")
         @Positive(message = "ClientId deve ser maior que zero")
         Long clientId,
-        // ID numérico da conta Business no Facebook/Instagram Graph API
-        @NotBlank(message = "Instagram Account ID é obrigatório")
-        @Pattern(regexp = "\\d+", message = "instagramAccountId deve conter apenas dígitos")
+        @jakarta.validation.constraints.NotBlank(message = "igUserId é obrigatório")
+        @Pattern(regexp = "\\d+", message = "igUserId deve conter apenas dígitos")
+        @Size(max = 64, message = "igUserId deve ter no máximo 64 caracteres")
+        String igUserId,
         @Size(max = 64, message = "instagramAccountId deve ter no máximo 64 caracteres")
-        String instagramAccountId
+        String instagramAccountId,
+        @Size(max = 2048, message = "accessToken deve ter no máximo 2048 caracteres")
+        String accessToken
 ) {}

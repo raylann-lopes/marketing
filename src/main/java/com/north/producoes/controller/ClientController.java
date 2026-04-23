@@ -49,20 +49,20 @@ public class ClientController implements ClientApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> saveClient(@Valid ClientRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ClientResponseDTO.from(clientService.saveClient(request)));
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> updateClient(Long id, @Valid ClientRequestDTO request) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateClient(id, request)));
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deleteById(Long id) {
         clientService.deleteClientById(id);
         return ResponseEntity.noContent().build();

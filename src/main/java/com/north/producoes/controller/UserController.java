@@ -23,7 +23,7 @@ public class UserController implements UserApi {
     private final UserService userService;
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<UserResponseDTO>> findAll() {
         List<UserResponseDTO> user = userService.findAllUser()
                 .stream()
@@ -33,13 +33,13 @@ public class UserController implements UserApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<UserResponseDTO> findUserByEmail(String email) {
         return ResponseEntity.ok(UserResponseDTO.from(userService.findUserByEmail(email).orElseThrow()));
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<UserResponseDTO> saveUser(@Valid UserRequestDTO request) {
         UserEntity user = new UserEntity();
         user.setName(request.name());
@@ -50,7 +50,7 @@ public class UserController implements UserApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deleteUserById(Long id) {
         userService.deleteUserById(id);
         return ResponseEntity.noContent().build();

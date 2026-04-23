@@ -20,7 +20,7 @@ public class AccountConfigController implements AccountConfigApi {
     private final AccountConfigService accountConfigService;
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<AccountConfigResponseDTO> configure(@Valid AccountConfigRequestDTO request, Principal principal) {
         AccountConfigResponseDTO response = AccountConfigResponseDTO.from(
                 accountConfigService.configure(request, principal.getName())
@@ -29,7 +29,7 @@ public class AccountConfigController implements AccountConfigApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<AccountConfigResponseDTO> findByClientId(Long clientId) {
         return ResponseEntity.ok(AccountConfigResponseDTO.from(
                 accountConfigService.findByClientId(clientId)

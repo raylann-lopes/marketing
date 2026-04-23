@@ -21,7 +21,7 @@ public class AccountConfigService {
     private final ClientRepository clientRepository;
 
     /**
-     * Configura o Instagram Account ID para um cliente.
+     * Configura credenciais de publicação para um cliente.
      * Lança exceção se já existir configuração — mudanças exigem ação no banco.
      */
     @Transactional
@@ -39,7 +39,9 @@ public class AccountConfigService {
 
         AccountConfigEntity config = new AccountConfigEntity();
         config.setClient(client);
-        config.setInstagramAccountId(dto.instagramAccountId());
+        config.setInstagramAccountId(resolveInstagramAccountId(dto));
+        config.setIgUserId(dto.igUserId());
+        config.setAccessToken(normalize(dto.accessToken()));
         config.setConfiguredBy(adminEmail);
         config.setConfiguredAt(LocalDateTime.now());
 
@@ -55,5 +57,31 @@ public class AccountConfigService {
     /** Usado internamente pelo MediaController para montar o payload do n8n. */
     public String getInstagramAccountId(Long clientId) {
         return findByClientId(clientId).getInstagramAccountId();
+    }
+
+    public String getIgUserId(Long clientId) {
+        return findByClientId(clientId).getIgUserId();
+    }
+
+    public String getAccessToken(Long clientId) {
+        return findByClientId(clientId).getAccessToken();
+    }
+
+    private String resolveInstagramAccountId(AccountConfigRequestDTO dto) {
+        String instagramAccountId = normalize(dto.instagramAccountId());
+        if (instagramAccountId != null) {
+            return instagramAccountId;
+        }
+
+        return dto.igUserId();
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

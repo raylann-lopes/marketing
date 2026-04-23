@@ -1,6 +1,8 @@
 package com.north.producoes.service;
 
 import com.north.producoes.controller.dto.request.ApproveRequestDTO;
+import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
+import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 @Service
 @AllArgsConstructor
@@ -49,6 +52,12 @@ public class ApprovedService {
         return approveRepository.save(approve);
     }
 
+    public ApproveEntity findByStanzaId(String stanzaId ) {
+        return approveRepository.findByWhatsappStanzaId(stanzaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com WhatsApp Stanza ID: " + stanzaId));
+    }
+
+
     public ApproveEntity updateApprove(Long id, ApproveRequestDTO dto){
         ApproveEntity existing = approveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
@@ -77,5 +86,37 @@ public class ApprovedService {
             throw new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id);
         }
         approveRepository.deleteById(id);
+    }
+
+
+    public ApproveEntity updateWhatsappMetadata(Long id, ApproveWhatsAppUpdateRequestDTO dto) {
+        ApproveEntity existing = approveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
+
+        existing.setWhatsappStanzaId(dto.whatsappStanzaId());
+        existing.setWhatsappSentAt(dto.whatsappSentAt());
+        existing.setWhatsappResponseText(dto.whatsappResponseText());
+
+        return approveRepository.save(existing);
+    }
+
+    public ApproveEntity updateApprovalStatus(Long id, ApproveStatusUpdateRequestDTO dto) {
+        ApproveEntity existing = approveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
+
+        if (dto.status() == ApproveStatusEnum.PENDING) {
+            throw new IllegalArgumentException("Endpoint interno aceita apenas status APPROVE ou REJECT");
+        }
+
+        existing.setStatus(dto.status());
+        if (dto.status() == ApproveStatusEnum.APPROVE) {
+            existing.setApprovedAt(LocalDateTime.now());
+            existing.setApprovedUser("n8n-callback");
+        } else {
+            existing.setApprovedAt(null);
+            existing.setApprovedUser("");
+        }
+
+        return approveRepository.save(existing);
     }
 }

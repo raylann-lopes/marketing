@@ -14,12 +14,12 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 
 // Apenas ADMIN acessa — reforçado via @PreAuthorize no controller
-@Tag(name = "Configuração de Contas", description = "Gerenciamento de IDs de contas externas por cliente (somente ADMIN)")
+@Tag(name = "Configuração de Contas", description = "Gerenciamento de credenciais externas por cliente (somente ADMIN)")
 @RequestMapping("/api/admin/account-config")
 @SecurityRequirement(name = "bearerAuth")
 public interface AccountConfigApi {
 
-    @Operation(summary = "Configura o Instagram Account ID para um cliente")
+    @Operation(summary = "Configura credenciais da conta Instagram/Graph para um cliente")
     @ApiResponse(responseCode = "201", description = "Configuração criada com sucesso")
     @ApiResponse(responseCode = "409", description = "Configuração já existe para este cliente")
     @ApiResponse(responseCode = "404", description = "Cliente não encontrado")

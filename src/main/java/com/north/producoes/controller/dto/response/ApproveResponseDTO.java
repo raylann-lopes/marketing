@@ -13,7 +13,10 @@ public record ApproveResponseDTO(
         String caption,
         ApproveStatusEnum status,
         LocalDateTime approvedAt,
-        String approvedUser
+        String approvedUser,
+        String whatsappStanzaId,
+        String whatsappSentAt,
+        String whatsappResponseText
 ) {
     public static ApproveResponseDTO from(ApproveEntity entity) {
         return new ApproveResponseDTO(
@@ -24,7 +27,10 @@ public record ApproveResponseDTO(
                 entity.getCaption(),
                 entity.getStatus(),
                 entity.getApprovedAt(),
-                entity.getApprovedUser()
+                entity.getApprovedUser(),
+                entity.getWhatsappStanzaId(),
+                entity.getWhatsappSentAt(),
+                entity.getWhatsappResponseText()
         );
     }
 }

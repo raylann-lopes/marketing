@@ -1,19 +1,29 @@
 package com.north.producoes.service;
 
+import com.north.producoes.controller.dto.request.MediaUploadCompleteRequestDTO;
+import com.north.producoes.controller.dto.response.MediaUploadCompleteResponseDTO;
 import com.north.producoes.controller.dto.response.MediaUrlResponseDTO;
 import com.north.producoes.controller.dto.response.PresignedUploadResponseDTO;
+import com.north.producoes.entity.AccountConfigEntity;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
+import com.north.producoes.entity.enums.ApproveStatusEnum;
+import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.entity.enums.UserRoleEnum;
+import com.north.producoes.exception.AiIntegrationException;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.PostRepository;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @AllArgsConstructor
@@ -23,6 +33,7 @@ public class MediaService {
     private final AccountConfigService accountConfigService;
     private final ApproveRepository approveRepository;
     private final PostRepository postRepository;
+    private final N8nWebhookService n8nWebhookService;
 
     public PresignedUploadResponseDTO generateUploadUrl(Long postId, String filename, String contentType, UserEntity user) {
         PostEntity post = getAuthorizedPost(postId, user);
@@ -40,7 +51,7 @@ public class MediaService {
         }
         ApproveEntity approve = approvals.getFirst();
         String previewUrl = s3Service.generateDownloadUrl(approve.getArtS3Key());
-        return new MediaUrlResponseDTO(postId, previewUrl, approve.getCaption(), null);
+        return new MediaUrlResponseDTO(postId, previewUrl, approve.getCaption(), null, null, null);
     }
 
     public MediaUrlResponseDTO getMediaUrlForN8n(Long postId) {
@@ -49,19 +60,109 @@ public class MediaService {
             throw new ResourceNotFoundException("Nenhuma aprovação encontrada para o post ID: " + postId);
         }
         ApproveEntity approve = approvals.getFirst();
+        if (approve.getStatus() != ApproveStatusEnum.APPROVE) {
+            throw new ResourceNotFoundException("Post ainda não aprovado para publicação: " + postId);
+        }
 
         PostEntity post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado: " + postId));
 
         String mediaUrl = s3Service.generateDownloadUrl(approve.getArtS3Key());
-        String instagramAccountId = accountConfigService.getInstagramAccountId(post.getClient().getId());
+        AccountConfigEntity config = accountConfigService.findByClientId(post.getClient().getId());
+        if (isBlank(config.getIgUserId()) || isBlank(config.getAccessToken())) {
+            throw new ResourceNotFoundException(
+                    "Configuração incompleta para o cliente ID " + post.getClient().getId()
+                            + ": igUserId/accessToken obrigatórios");
+        }
 
         return new MediaUrlResponseDTO(
                 postId,
                 mediaUrl,
                 approve.getCaption(),
-                instagramAccountId
+                config.getInstagramAccountId(),
+                config.getIgUserId(),
+                config.getAccessToken()
         );
+    }
+
+    @Transactional
+    public MediaUploadCompleteResponseDTO markUploadComplete(MediaUploadCompleteRequestDTO request, UserEntity user) {
+        PostEntity post = getAuthorizedPost(request.postId(), user);
+
+        ApproveEntity approve = approveRepository.findByPostId(post.getId())
+                .stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    ApproveEntity entity = new ApproveEntity();
+                    entity.setPost(post);
+                    entity.setCaption("");
+                    entity.setApprovedUser("");
+                    return entity;
+                });
+
+        approve.setArtS3Key(request.s3Key());
+        approve.setArtName(request.artName());
+        approve.setStatus(ApproveStatusEnum.PENDING);
+        approve.setApprovedAt(null);
+        approve.setApprovedUser("");
+        approve = approveRepository.save(approve);
+
+        post.setStatus(PostStatusEnum.WAITING_APPROVAL);
+        postRepository.save(post);
+
+        AccountConfigEntity config = accountConfigService.findByClientId(post.getClient().getId());
+        String mediaUrl = s3Service.generateDownloadUrl(approve.getArtS3Key());
+
+        Map<String, Object> clientPayload = new LinkedHashMap<>();
+        String clientNumber = post.getClient().getNumber();
+        clientPayload.put("id", post.getClient().getId());
+        clientPayload.put("name", post.getClient().getName());
+        clientPayload.put("number", clientNumber);
+        clientPayload.put("whatsappNumber", toWhatsappNumber(clientNumber));
+        clientPayload.put("niche", post.getClient().getNiche());
+        clientPayload.put("voiceTone", post.getClient().getVoiceTone());
+        clientPayload.put("status", post.getClient().getStatus().name());
+
+        Map<String, Object> postPayload = new LinkedHashMap<>();
+        postPayload.put("id", post.getId());
+        postPayload.put("title", post.getTitle());
+        postPayload.put("theme", post.getTheme());
+        postPayload.put("objective", post.getObjective());
+        postPayload.put("status", post.getStatus().name());
+        postPayload.put("scheduledAt", post.getScheduledAt().toString());
+
+        Map<String, Object> approvalPayload = new LinkedHashMap<>();
+        approvalPayload.put("id", approve.getId());
+        approvalPayload.put("status", approve.getStatus().name());
+        approvalPayload.put("artS3Key", approve.getArtS3Key());
+        approvalPayload.put("artName", approve.getArtName());
+        approvalPayload.put("caption", approve.getCaption());
+        approvalPayload.put("mediaUrl", mediaUrl);
+
+        Map<String, Object> actorPayload = new LinkedHashMap<>();
+        actorPayload.put("id", user.getId());
+        actorPayload.put("name", user.getName());
+        actorPayload.put("role", user.getRole().name());
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("event", "ART_UPLOAD_COMPLETED");
+        payload.put("uploadedAt", LocalDateTime.now().toString());
+        payload.put("instagramAccountId", config.getInstagramAccountId());
+        payload.put("client", clientPayload);
+        payload.put("post", postPayload);
+        payload.put("approval", approvalPayload);
+        payload.put("actor", actorPayload);
+
+        boolean dispatched = n8nWebhookService.dispatchArtUploadCompleted(payload);
+        if (!dispatched) {
+            throw new AiIntegrationException("Falha ao autenticar/disparar webhook do n8n");
+        }
+
+        return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), dispatched);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private PostEntity getAuthorizedPost(Long postId, UserEntity user) {
@@ -82,5 +183,16 @@ public class MediaService {
         }
 
         return post;
+    }
+
+    private String toWhatsappNumber(String number) {
+        if (number == null || number.isBlank()) {
+            return null;
+        }
+        String digits = number.replaceAll("\\D", "");
+        if (digits.startsWith("55")) {
+            return digits;
+        }
+        return "55" + digits;
     }
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDateTime;
 
@@ -27,6 +28,10 @@ public record PostRequestDTO(
         Long clientId,
         @NotNull(message = "Usuário é obrigatório")
         @Positive(message = "UserId deve ser maior que zero")
-        Long userId
+        Long userId,
+        String whatsapp_stanza_id,
+
+        LocalDateTime whatsapp_sent_at,
+        String whatsapp_response_text
 ) {
 }

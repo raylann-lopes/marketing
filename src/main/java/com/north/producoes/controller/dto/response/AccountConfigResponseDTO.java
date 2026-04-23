@@ -8,6 +8,8 @@ public record AccountConfigResponseDTO(
         Long id,
         Long clientId,
         String instagramAccountId,
+        String igUserId,
+        String accessTokenMasked,
         String configuredBy,
         LocalDateTime configuredAt
 ) {
@@ -16,8 +18,20 @@ public record AccountConfigResponseDTO(
                 entity.getId(),
                 entity.getClient().getId(),
                 entity.getInstagramAccountId(),
+                entity.getIgUserId(),
+                maskToken(entity.getAccessToken()),
                 entity.getConfiguredBy(),
                 entity.getConfiguredAt()
         );
+    }
+
+    private static String maskToken(String token) {
+        if (token == null || token.isBlank()) {
+            return "";
+        }
+        if (token.length() <= 8) {
+            return "********";
+        }
+        return token.substring(0, 4) + "..." + token.substring(token.length() - 4);
     }
 }
