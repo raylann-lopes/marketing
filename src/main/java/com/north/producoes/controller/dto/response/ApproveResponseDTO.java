@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 public record ApproveResponseDTO(
         Long id,
+        Long approvalId,
         PostResponseDTO post,
         String artS3Key,
         String artName,
@@ -20,6 +21,7 @@ public record ApproveResponseDTO(
 ) {
     public static ApproveResponseDTO from(ApproveEntity entity) {
         return new ApproveResponseDTO(
+                entity.getId(),
                 entity.getId(),
                 PostResponseDTO.from(entity.getPost()),
                 entity.getArtS3Key(),

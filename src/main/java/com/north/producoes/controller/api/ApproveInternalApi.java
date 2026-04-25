@@ -16,21 +16,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 public interface ApproveInternalApi {
     @Operation(summary = "Atualiza os metadados de WhatsApp de uma aprovação (uso interno)")
-    @ApiResponse(responseCode = "204", description = "Metadados de WhatsApp atualizados com sucesso")
+    @ApiResponse(responseCode = "200", description = "Metadados de WhatsApp atualizados com sucesso")
     @ApiResponse(responseCode = "404", description = "Aprovação não encontrada")
     @ApiResponse(responseCode = "409", description = "Violação de integridade de dados")
     @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     @PatchMapping("/{id}/whatsapp")
-    ResponseEntity<Void> updateWhatsappMetadata(@PathVariable Long id,
-                                                @Valid @RequestBody ApproveWhatsAppUpdateRequestDTO request);
+    ResponseEntity<ApproveResponseDTO> updateWhatsappMetadata(@PathVariable Long id,
+                                                              @Valid @RequestBody ApproveWhatsAppUpdateRequestDTO request);
 
     @Operation(summary = "Atualiza status da aprovação (APPROVE/REJECT) para callback interno")
-    @ApiResponse(responseCode = "204", description = "Status atualizado com sucesso")
+    @ApiResponse(responseCode = "200", description = "Status atualizado com sucesso")
     @ApiResponse(responseCode = "404", description = "Aprovação não encontrada")
     @ApiResponse(responseCode = "422", description = "Status inválido para este endpoint")
     @PatchMapping("/{id}/status")
-    ResponseEntity<Void> updateApprovalStatus(@PathVariable Long id,
-                                              @Valid @RequestBody ApproveStatusUpdateRequestDTO request);
+    ResponseEntity<ApproveResponseDTO> updateApprovalStatus(@PathVariable Long id,
+                                                            @Valid @RequestBody ApproveStatusUpdateRequestDTO request);
 
     @Operation(summary = "Busca aprovação por WhatsApp stanza ID (uso interno)")
     @ApiResponse(responseCode = "200", description = "Aprovação encontrada com sucesso")
