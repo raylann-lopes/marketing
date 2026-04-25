@@ -22,19 +22,17 @@ public class InternalApproveController implements ApproveInternalApi {
     private final ApprovedService approvedService;
 
     @Override
-    public ResponseEntity<Void> updateWhatsappMetadata(
+    public ResponseEntity<ApproveResponseDTO> updateWhatsappMetadata(
             @PathVariable Long id,
             @Valid @RequestBody ApproveWhatsAppUpdateRequestDTO request) {
-        approvedService.updateWhatsappMetadata(id, request);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateWhatsappMetadata(id, request)));
     }
 
     @Override
-    public ResponseEntity<Void> updateApprovalStatus(
+    public ResponseEntity<ApproveResponseDTO> updateApprovalStatus(
             @PathVariable Long id,
             @Valid @RequestBody ApproveStatusUpdateRequestDTO request) {
-        approvedService.updateApprovalStatus(id, request);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateApprovalStatus(id, request)));
     }
 
     @Override

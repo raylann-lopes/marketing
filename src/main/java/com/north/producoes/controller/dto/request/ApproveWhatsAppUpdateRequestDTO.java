@@ -1,6 +1,5 @@
 package com.north.producoes.controller.dto.request;
 
-import com.north.producoes.entity.enums.ApproveStatusEnum;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.TimeZoneStorage;
 

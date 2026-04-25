@@ -25,7 +25,7 @@ public class MediaController implements MediaApi {
     /**
      * Gera URL presigned para upload direto do frontend ao S3.
      * O clientId eh sempre derivado pelo servidor a partir do postId.
-     * Rota autenticada — qualquer usuário logado pode fazer upload.
+     * O upload já aponta para o prefixo público configurado no bucket.
      */
 
     @Override
@@ -47,9 +47,8 @@ public class MediaController implements MediaApi {
     }
 
     /**
-     * Gera URL de leitura presigned para o frontend
-     * Autenticado por JWT — qualquer usuário logado pode visualizar.bir preview da arte.
-     * Expira em 15 minutos (apenas para visualização, não para download permanente).
+     * Gera URL de leitura para o frontend.
+     * Todas as artes devem existir no prefixo público configurado.
      */
     @Override
     public ResponseEntity<MediaUrlResponseDTO> getArtPreviewUrl(@RequestParam Long postId,
@@ -59,7 +58,7 @@ public class MediaController implements MediaApi {
 
     /**
      * Endpoint interno consumido pelo n8n.
-     * Retorna URL presigned de leitura + caption + credenciais do Graph para disparar via Meta API.
+     * Retorna URL pública da mídia e credenciais do Graph.
      * Protegido por InternalApiKeyFilter (header X-Internal-Api-Key).
      */
     @Override

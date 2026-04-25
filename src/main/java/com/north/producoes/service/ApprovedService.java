@@ -11,6 +11,7 @@ import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.PostRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,7 @@ public class ApprovedService {
 
     private final ApproveRepository approveRepository;
     private final PostRepository postRepository;
+    private final S3Service s3Service;
 
     public Optional<ApproveEntity> findById(Long id) {
         if (!approveRepository.existsById(id)) {
@@ -44,7 +46,7 @@ public class ApprovedService {
 
         ApproveEntity approve = new ApproveEntity();
         approve.setPost(post);
-        approve.setArtS3Key(dto.artS3Key());
+        approve.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
         approve.setArtName(dto.artName());
         approve.setCaption(dto.caption());
         approve.setApprovedUser("");
@@ -66,7 +68,7 @@ public class ApprovedService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + dto.postId()));
 
         existing.setPost(post);
-        existing.setArtS3Key(dto.artS3Key());
+        existing.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
         existing.setArtName(dto.artName());
         existing.setCaption(dto.caption());
 
@@ -118,5 +120,18 @@ public class ApprovedService {
         }
 
         return approveRepository.save(existing);
+    }
+
+    private String normalizePublicS3Key(String s3Key) {
+        if (!StringUtils.hasText(s3Key)) {
+            throw new IllegalArgumentException("artS3Key e obrigatoria");
+        }
+
+        String normalized = s3Key.trim();
+        if (!s3Service.isPublicKey(normalized)) {
+            throw new IllegalArgumentException(
+                    "artS3Key deve usar o prefixo publico " + s3Service.getPublicPrefix() + "/");
+        }
+        return normalized;
     }
 }

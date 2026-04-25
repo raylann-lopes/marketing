@@ -17,12 +17,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 public interface MediaApi {
-    @Operation(summary = "Gera URL presigned para upload de arte ao S3")
+    @Operation(summary = "Gera URL presigned para upload de arte ao S3 no prefixo público configurado")
     @ApiResponse(responseCode = "200", description = "URL de upload gerada com sucesso")
     @ApiResponse(responseCode = "404", description = "Post não encontrado")
     @ApiResponse(responseCode = "403", description = "Sem permissão para acessar este post")
     @ApiResponse(responseCode = "401", description = "Usuário não autenticado")
-    @ApiResponse(responseCode = "500", description = "Erro interno no servidor")
     @PostMapping("/api/media/upload-url")
     ResponseEntity<PresignedUploadResponseDTO> generateUploadUrl(
             @RequestParam Long postId,
@@ -40,7 +39,7 @@ public interface MediaApi {
             @Valid @RequestBody MediaUploadCompleteRequestDTO request,
             @AuthenticationPrincipal UserEntity user);
 
-    @Operation(summary = "Gera URL de preview da arte de um post (uso no frontend)")
+    @Operation(summary = "Gera URL publica de preview da arte de um post")
     @ApiResponse(responseCode = "200", description = "URL de preview gerada com sucesso")
     @ApiResponse(responseCode = "404", description = "Post não encontrado")
     @ApiResponse(responseCode = "403", description = "Sem permissão para acessar este post")
@@ -49,8 +48,8 @@ public interface MediaApi {
     @GetMapping("/api/media/art-url")
     ResponseEntity<MediaUrlResponseDTO> getArtPreviewUrl(@RequestParam Long postId, @AuthenticationPrincipal UserEntity user);
 
-    @Operation(summary = "Retorna URL de mídia e credenciais do Graph para o n8n (uso interno)")
-    @ApiResponse(responseCode = "200", description = "URL de mídia e credenciais retornadas com sucesso")
+    @Operation(summary = "Retorna URL publica de mídia e credenciais do Graph para o n8n")
+    @ApiResponse(responseCode = "200", description = "URL pública de mídia e credenciais retornadas com sucesso")
     @ApiResponse(responseCode = "403", description = "Sem permissão para acessar este post")
     @ApiResponse(responseCode = "401", description = "Usuário não autenticado")
     @ApiResponse(responseCode = "404", description = "Post não encontrado")

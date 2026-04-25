@@ -1,8 +1,9 @@
 package com.north.producoes.controller.dto.response;
 
 public record MediaUrlResponseDTO(
+        Long approvalId,
         Long postId,
-        String mediaUrl,    // URL presigned GET para o n8n repassar à Meta API (expira em 1h)
+        String mediaUrl,    // URL publica estavel da arte
         String caption,
         String instagramAccountId,
         String igUserId,
