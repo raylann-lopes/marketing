@@ -26,9 +26,6 @@ public class ApproveController implements ApproveApi {
     @Override
     public ResponseEntity<List<ApproveResponseDTO>> findAll() {
         List<ApproveEntity> approvals = approveRepository.findAll();
-        if (approvals.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
         return ResponseEntity.ok(approvals.
                 stream()
                 .map(ApproveResponseDTO::from)
@@ -47,9 +44,6 @@ public class ApproveController implements ApproveApi {
     @Override
     public ResponseEntity<List<ApproveResponseDTO>> findApproveByStatus(ApproveStatusEnum status) {
         List<ApproveEntity> getApproveStatus = approveRepository.findApproveEntitiesByStatus(status);
-        if (getApproveStatus.isEmpty()){
-            return ResponseEntity.notFound().build();
-        }
         return ResponseEntity.ok(getApproveStatus.
                 stream()
                 .map(ApproveResponseDTO::from)
