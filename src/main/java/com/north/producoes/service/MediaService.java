@@ -19,6 +19,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -38,7 +39,7 @@ public class MediaService {
     public PresignedUploadResponseDTO generateUploadUrl(Long postId, String filename, String contentType, UserEntity user) {
         PostEntity post = getAuthorizedPost(postId, user);
         Long clientId = post.getClient().getId();
-        String s3Key = S3Service.buildS3Key(clientId, postId, filename);
+        String s3Key = s3Service.buildPublicUploadKey(clientId, postId, filename);
         String uploadUrl = s3Service.generateUploadUrl(s3Key, contentType);
         return new PresignedUploadResponseDTO(uploadUrl, s3Key);
     }
@@ -50,8 +51,8 @@ public class MediaService {
             throw new ResourceNotFoundException("Nenhuma arte encontrada para o post ID: " + postId);
         }
         ApproveEntity approve = approvals.getFirst();
-        String previewUrl = s3Service.generateDownloadUrl(approve.getArtS3Key());
-        return new MediaUrlResponseDTO(postId, previewUrl, approve.getCaption(), null, null, null);
+        String previewUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
+        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption(), null, null, null);
     }
 
     public MediaUrlResponseDTO getMediaUrlForN8n(Long postId) {
@@ -67,7 +68,7 @@ public class MediaService {
         PostEntity post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado: " + postId));
 
-        String mediaUrl = s3Service.generateDownloadUrl(approve.getArtS3Key());
+        String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
         AccountConfigEntity config = accountConfigService.findByClientId(post.getClient().getId());
         if (isBlank(config.getIgUserId()) || isBlank(config.getAccessToken())) {
             throw new ResourceNotFoundException(
@@ -76,6 +77,7 @@ public class MediaService {
         }
 
         return new MediaUrlResponseDTO(
+                approve.getId(),
                 postId,
                 mediaUrl,
                 approve.getCaption(),
@@ -100,7 +102,8 @@ public class MediaService {
                     return entity;
                 });
 
-        approve.setArtS3Key(request.s3Key());
+        String normalizedS3Key = normalizeUploadS3Key(request.s3Key());
+        approve.setArtS3Key(normalizedS3Key);
         approve.setArtName(request.artName());
         approve.setStatus(ApproveStatusEnum.PENDING);
         approve.setApprovedAt(null);
@@ -111,7 +114,7 @@ public class MediaService {
         postRepository.save(post);
 
         AccountConfigEntity config = accountConfigService.findByClientId(post.getClient().getId());
-        String mediaUrl = s3Service.generateDownloadUrl(approve.getArtS3Key());
+        String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
 
         Map<String, Object> clientPayload = new LinkedHashMap<>();
         String clientNumber = post.getClient().getNumber();
@@ -163,6 +166,20 @@ public class MediaService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String normalizeUploadS3Key(String s3Key) {
+        if (!StringUtils.hasText(s3Key)) {
+            throw new IllegalArgumentException("s3Key e obrigatoria");
+        }
+
+        String normalized = s3Key.trim();
+        if (!s3Service.isPublicKey(normalized)) {
+            throw new IllegalArgumentException(
+                    "s3Key invalida para upload finalizado. Gere uma nova upload-url e utilize o prefixo "
+                            + s3Service.getPublicPrefix() + "/");
+        }
+        return normalized;
     }
 
     private PostEntity getAuthorizedPost(Long postId, UserEntity user) {

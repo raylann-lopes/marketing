@@ -178,6 +178,6 @@ public class PostService {
         if (!StringUtils.hasText(s3Key)) {
             return null;
         }
-        return s3Service.generateDownloadUrl(s3Key);
+        return s3Service.resolveReadUrl(s3Key);
     }
 }
