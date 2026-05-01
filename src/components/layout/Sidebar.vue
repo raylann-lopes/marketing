@@ -4,15 +4,22 @@ import {
   LayoutDashboard,
   Kanban,
   CalendarDays,
+  CheckCircle2,
   Users,
+  Lightbulb,
+  Bot,
+  FileText,
   CreditCard,
   PlusCircle,
   Settings,
   LogOut,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
+import { setCurrentUserId } from '@/lib/api'
 
 const router = useRouter()
+const role = localStorage.getItem('role') || sessionStorage.getItem('role')
+const isAdmin = role === 'ADMIN'
 
 type NavItem = {
   label: string
@@ -23,14 +30,27 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Board de Produção', to: '/board', icon: Kanban },
+  { label: 'Aprovações', to: '/approvals', icon: CheckCircle2 },
   { label: 'Calendário Editorial', to: '/calendar', icon: CalendarDays },
   { label: 'Clientes', to: '/clients', icon: Users },
-  { label: 'Financeiro', to: '/finance', icon: CreditCard },
+  { label: 'Ideias de Conteúdo', to: '/ideas', icon: Lightbulb },
+  { label: 'Hub de Automação', to: '/automation-hub', icon: Bot },
+  { label: 'Relatórios do Cliente', to: '/client-reports', icon: FileText },
 ]
 
 function logout() {
   localStorage.removeItem('token')
+  localStorage.removeItem('role')
+  localStorage.removeItem('userId')
+  sessionStorage.removeItem('token')
+  sessionStorage.removeItem('role')
+  sessionStorage.removeItem('userId')
+  setCurrentUserId(null)
   router.push('/login')
+}
+
+if (isAdmin) {
+  navItems.push({ label: 'Financeiro', to: '/finance', icon: CreditCard })
 }
 </script>
 
@@ -44,18 +64,13 @@ function logout() {
 
     <!-- Nav -->
     <nav class="flex-1 px-3 space-y-1">
-      <RouterLink
-        v-for="item in navItems"
-        :key="item.to"
-        :to="item.to"
-        v-slot="{ isActive }"
-      >
+      <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" v-slot="{ isActive }">
         <div
           :class="[
             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer',
             isActive
               ? 'bg-primary text-white shadow-sm'
-              : 'text-gray-600 hover:bg-indigo-100/50 hover:text-primary'
+              : 'text-gray-600 hover:bg-indigo-100/50 hover:text-primary',
           ]"
         >
           <component :is="item.icon" class="w-4 h-4 shrink-0" />
@@ -65,25 +80,23 @@ function logout() {
     </nav>
 
     <!-- Bottom -->
-    <div class="p-3 space-y-1">
+    <div class="border-t border-indigo-100/70 p-3 space-y-2">
       <button
-        class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-sm active:scale-[0.98]"
-        @click="router.push('/dashboard')"
+        type="button"
+        class="my-2.5 w-full flex items-center justify-center gap-2 rounded-lg border border-primary/20 bg-white px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 active:scale-[0.98]"
+        @click="router.push({ path: '/board', query: { new: '1' } })"
       >
         <PlusCircle class="w-4 h-4" />
         Novo Projeto
       </button>
 
-      <RouterLink
-        to="/settings"
-        v-slot="{ isActive }"
-      >
+      <RouterLink to="/settings" v-slot="{ isActive }">
         <div
           :class="[
             'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer',
             isActive
               ? 'bg-primary text-white shadow-sm'
-              : 'text-gray-600 hover:bg-indigo-100/50 hover:text-primary'
+              : 'text-gray-600 hover:bg-indigo-100/50 hover:text-primary',
           ]"
         >
           <Settings class="w-4 h-4" />
@@ -92,6 +105,7 @@ function logout() {
       </RouterLink>
 
       <button
+        type="button"
         class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
         @click="logout"
       >

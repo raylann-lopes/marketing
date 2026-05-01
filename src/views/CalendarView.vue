@@ -7,10 +7,13 @@ import Button from '@/components/ui/Button.vue'
 import { postService, type Post } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
+import { useFeedback } from '@/lib/feedback'
 import { z } from 'zod'
 
 const route = useRoute()
 const today = new Date()
+const feedback = useFeedback()
 
 // Inicializa com a data passada via query param (ex: ?date=2026-04-07) ou hoje
 const initialDate = (() => {
@@ -112,8 +115,9 @@ async function handleCreatePost() {
     await postService.create(payload as unknown as Post)
     await fetchInitialData()
     isModalOpen.value = false
+    feedback.success('Post criado e agendado com sucesso.')
   } catch (e: unknown) {
-    alert('Erro ao criar post: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
+    feedback.error(`Erro ao criar post: ${getErrorMessage(e)}`)
   } finally {
     isSubmitting.value = false
   }
@@ -242,7 +246,7 @@ const selectedDayPosts = computed<SelectedDayPost[]>(() => {
         </div>
 
         <!-- Days grid -->
-        <div class="grid grid-cols-7 gap-px bg-gray-100 border border-gray-100 rounded-lg overflow-hidden flex-1">
+        <div class="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden flex-1">
           <div
             v-for="(day, i) in calendarDays"
             :key="i"

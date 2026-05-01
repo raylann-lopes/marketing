@@ -9,7 +9,32 @@ const routes: RouteRecordRaw[] = [
   { path: '/board', component: () => import('@/views/BoardView.vue') },
   { path: '/calendar', component: () => import('@/views/CalendarView.vue') },
   { path: '/clients', component: () => import('@/views/ClientsView.vue') },
-  { path: '/finance', component: () => import('@/views/FinanceView.vue') },
+  { path: '/clients/:id/workspace', component: () => import('@/views/ClientWorkspaceView.vue') },
+  {
+    path: '/ideas',
+    component: () => import('@/views/UnderConstructionView.vue'),
+    meta: {
+      title: 'Ideias de Conteúdo',
+      description: 'Área reservada para banco de ideias e referências por cliente.',
+    },
+  },
+  {
+    path: '/automation-hub',
+    component: () => import('@/views/UnderConstructionView.vue'),
+    meta: {
+      title: 'Hub de Automação',
+      description: 'Área reservada para automações de publicação, aprovação e atendimento.',
+    },
+  },
+  {
+    path: '/client-reports',
+    component: () => import('@/views/UnderConstructionView.vue'),
+    meta: {
+      title: 'Relatórios do Cliente',
+      description: 'Área reservada para relatórios e comparativos de resultados.',
+    },
+  },
+  { path: '/finance', component: () => import('@/views/FinanceView.vue'), meta: { requiresAdmin: true } },
   { path: '/approvals', component: () => import('@/views/ApprovalsView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ]
