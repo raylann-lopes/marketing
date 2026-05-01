@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { CheckCircle, Shield, X, User, Instagram } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
@@ -34,9 +34,15 @@ const password = ref({
 // Instagram Account Config
 const clients = ref<Client[]>([])
 const selectedClientId = ref('')
+const igUserId = ref('')
 const instagramAccountId = ref('')
+const accessToken = ref('')
 const savingAccount = ref(false)
 const clientConfigs = ref<Map<number, AccountConfig>>(new Map())
+const selectedClientConfig = computed(() => {
+  if (!selectedClientId.value) return null
+  return clientConfigs.value.get(Number(selectedClientId.value)) ?? null
+})
 
 async function fetchClients() {
   try {
@@ -66,21 +72,33 @@ async function handleSaveAccount() {
     error.value = 'Selecione um cliente.'
     return
   }
-  if (!instagramAccountId.value.trim()) {
-    error.value = 'Informe o Instagram Account ID.'
+  if (!igUserId.value.trim()) {
+    error.value = 'Informe o IG User ID.'
+    return
+  }
+  if (!/^\d+$/.test(igUserId.value.trim())) {
+    error.value = 'O IG User ID deve conter apenas dígitos.'
+    return
+  }
+  if (selectedClientConfig.value) {
+    error.value = 'Este cliente já possui configuração cadastrada. O backend atual não permite edição por esta tela.'
     return
   }
 
   savingAccount.value = true
   try {
-    const config = await accountConfigService.configure(
-      Number(selectedClientId.value),
-      instagramAccountId.value.trim()
-    )
+    const config = await accountConfigService.configure({
+      clientId: Number(selectedClientId.value),
+      igUserId: igUserId.value.trim(),
+      instagramAccountId: instagramAccountId.value.trim() || undefined,
+      accessToken: accessToken.value.trim() || undefined,
+    })
     clientConfigs.value.set(config.clientId, config)
-    accountSuccess.value = `Instagram Account ID vinculado ao cliente ${config.configuredBy} em ${new Date(config.configuredAt).toLocaleDateString('pt-BR')}`
+    accountSuccess.value = `Conta vinculada por ${config.configuredBy} em ${new Date(config.configuredAt).toLocaleDateString('pt-BR')}`
     selectedClientId.value = ''
+    igUserId.value = ''
     instagramAccountId.value = ''
+    accessToken.value = ''
     setTimeout(() => { accountSuccess.value = '' }, 5000)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Erro ao configurar conta do Instagram'
@@ -166,6 +184,23 @@ onMounted(async () => {
     await fetchClients()
     await fetchAccountConfigs()
   }
+})
+
+watch(selectedClientId, (clientId) => {
+  accountSuccess.value = ''
+  error.value = ''
+
+  if (!clientId) {
+    igUserId.value = ''
+    instagramAccountId.value = ''
+    accessToken.value = ''
+    return
+  }
+
+  const existingConfig = clientConfigs.value.get(Number(clientId))
+  igUserId.value = existingConfig?.igUserId ?? ''
+  instagramAccountId.value = existingConfig?.instagramAccountId ?? ''
+  accessToken.value = ''
 })
 
 const roleLabel: Record<string, string> = {
@@ -288,7 +323,7 @@ const roleLabel: Record<string, string> = {
           <Instagram class="w-5 h-5 text-pink-500" />
           Integração Instagram
         </h2>
-        <p class="text-sm text-gray-500 mb-6">Vincule o Instagram Account ID de cada cliente para que o n8n possa publicar.</p>
+        <p class="text-sm text-gray-500 mb-6">Vincule o IG User ID e, se necessário, o Instagram Account ID e access token do cliente.</p>
 
         <div class="space-y-4">
           <div class="space-y-1.5">
@@ -303,12 +338,32 @@ const roleLabel: Record<string, string> = {
           </div>
 
           <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Instagram Account ID</label>
-            <Input v-model="instagramAccountId" placeholder="Ex: 17841405793043832" />
+            <label class="text-xs font-semibold text-gray-500 uppercase">IG User ID</label>
+            <Input v-model="igUserId" placeholder="Ex: 17841400000000000" />
           </div>
 
-          <Button :disabled="savingAccount" @click="handleSaveAccount">
-            {{ savingAccount ? 'Salvando...' : 'Vincular Instagram Account ID' }}
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-gray-500 uppercase">Instagram Account ID</label>
+            <Input v-model="instagramAccountId" placeholder="Opcional" />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-gray-500 uppercase">Access Token</label>
+            <textarea
+              v-model="accessToken"
+              rows="4"
+              placeholder="Opcional"
+              class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            />
+          </div>
+
+          <div v-if="selectedClientConfig" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Este cliente já possui configuração cadastrada. IG User ID:
+            <code class="font-mono">{{ selectedClientConfig.igUserId }}</code>.
+          </div>
+
+          <Button :disabled="savingAccount || !!selectedClientConfig" @click="handleSaveAccount">
+            {{ savingAccount ? 'Salvando...' : 'Vincular Conta do Instagram' }}
           </Button>
 
           <!-- Configured clients list -->
@@ -330,7 +385,7 @@ const roleLabel: Record<string, string> = {
                   </div>
                 </div>
                 <code class="text-[10px] font-mono bg-white px-2 py-1 rounded border border-gray-200 shrink-0">
-                  {{ clientConfigs.get(Number(client.id))?.instagramAccountId }}
+                  {{ clientConfigs.get(Number(client.id))?.instagramAccountId || clientConfigs.get(Number(client.id))?.igUserId }}
                 </code>
               </div>
             </div>

@@ -131,6 +131,7 @@ const statusLabel: Record<string, string> = {
   IN_PRODUCTION: 'Em Produção',
   WAITING_APPROVAL: 'Aguard. Aprovação',
   FINISHED: 'Finalizado',
+  SCHEDULE: 'Agendado',
   PUBLISHED: 'Publicado',
 }
 
@@ -140,6 +141,7 @@ const statusVariant = computed(() => (status: string) => {
     IN_PRODUCTION: 'default',
     WAITING_APPROVAL: 'warning',
     FINISHED: 'success',
+    SCHEDULE: 'outline',
     PUBLISHED: 'purple',
   }
   return (map[status] || 'outline') as 'secondary' | 'default' | 'warning' | 'success' | 'purple' | 'outline'

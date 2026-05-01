@@ -5,9 +5,11 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
-import { financeService, type FinanceRecord } from '@/services/financeService'
+import { financeService, type FinancePayload, type FinanceRecord } from '@/services/financeService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
+import { useFeedback } from '@/lib/feedback'
 import { z } from 'zod'
 
 const loading = ref(false)
@@ -18,6 +20,7 @@ const incomeTotal = ref(0)
 const expenseTotal = ref(0)
 const netProfit = ref(0)
 const search = ref('')
+const feedback = useFeedback()
 
 // Pagination state
 const currentPage = ref(1)
@@ -66,6 +69,14 @@ function getClientName(clientId: string | number | undefined) {
   if (!clientId) return '—'
   const client = clients.value.find(c => String(c.id) === String(clientId))
   return client ? client.name : `ID: ${clientId}`
+}
+
+function getClientId(record: FinanceRecord): number {
+  const raw = (record as { client: { id?: string | number } | string | number }).client
+  if (typeof raw === 'object' && raw !== null && raw.id != null) {
+    return Number(raw.id)
+  }
+  return Number(raw)
 }
 
 const isModalOpen = ref(false)
@@ -142,7 +153,7 @@ async function fetchTransactions() {
     expenseTotal.value = Math.abs(list.filter((t: FinanceRecord) => t.value < 0).reduce((acc: number, t: FinanceRecord) => acc + t.value, 0))
     netProfit.value = incomeTotal.value - expenseTotal.value
   } catch (e: unknown) {
-    error.value = 'Erro ao carregar dados: ' + (e instanceof Error ? e.message : 'Erro desconhecido')
+    error.value = `Erro ao carregar dados: ${getErrorMessage(e)}`
   } finally {
     loading.value = false
   }
@@ -171,11 +182,12 @@ async function handleCreateTransaction() {
       expirationDate: newTransaction.value.expirationDate + "T00:00:00",
       paymentDate: newTransaction.value.expirationDate + "T00:00:00"
     }
-    await financeService.create(payload as unknown as FinanceRecord)
+    await financeService.create(payload as FinancePayload)
     await fetchTransactions()
     isModalOpen.value = false
+    feedback.success('Transação registrada com sucesso.')
   } catch (e: unknown) {
-    alert('Erro ao salvar: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
+    feedback.error(`Erro ao salvar: ${getErrorMessage(e)}`)
   } finally {
     isSubmitting.value = false
   }
@@ -205,41 +217,55 @@ async function handleEditTransaction() {
       expirationDate: editTransaction.value.expirationDate + "T00:00:00",
       paymentDate: editTransaction.value.expirationDate + "T00:00:00"
     }
-    await financeService.update(payload as unknown as FinanceRecord)
+    await financeService.update(transactionToEdit.value!.id!, payload as FinancePayload)
     await fetchTransactions()
     isEditModalOpen.value = false
+    feedback.success('Transação atualizada com sucesso.')
   } catch (e: unknown) {
-    alert('Erro ao atualizar: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
+    feedback.error(`Erro ao atualizar: ${getErrorMessage(e)}`)
   } finally {
     isSubmitting.value = false
   }
 }
 
 async function handleMarkAsPaid(transaction: FinanceRecord) {
-  if (confirm('Marcar esta conta como PAGA?')) {
-    try {
-      const payload = {
-        ...transaction,
-        status: 'PAID',
-        client: { id: transaction.client },
-        user: { id: getCurrentUserId() }
-      }
-      await financeService.update(payload as unknown as FinanceRecord)
-      await fetchTransactions()
-    } catch (e: unknown) {
-      alert('Erro ao atualizar: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
+  const confirmed = await feedback.confirm({
+    title: 'Confirmar pagamento',
+    message: 'Deseja marcar esta conta como paga?',
+    confirmText: 'Marcar como paga',
+  })
+  if (!confirmed) return
+
+  try {
+    const payload = {
+      ...transaction,
+      status: 'PAY',
+      client: { id: getClientId(transaction) },
+      user: { id: getCurrentUserId() }
     }
+    await financeService.update(transaction.id!, payload as FinancePayload)
+    await fetchTransactions()
+    feedback.success('Conta marcada como paga.')
+  } catch (e: unknown) {
+    feedback.error(`Erro ao atualizar: ${getErrorMessage(e)}`)
   }
 }
 
 async function handleDelete(id: string | number) {
-  if (confirm('Tem certeza que deseja excluir este registro?')) {
-    try {
-      await financeService.delete(id)
-      await fetchTransactions()
-    } catch (e: unknown) {
-      alert('Erro ao excluir: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
-    }
+  const confirmed = await feedback.confirm({
+    title: 'Excluir registro',
+    message: 'Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.',
+    confirmText: 'Excluir',
+    tone: 'danger',
+  })
+  if (!confirmed) return
+
+  try {
+    await financeService.delete(id)
+    await fetchTransactions()
+    feedback.success('Registro excluído com sucesso.')
+  } catch (e: unknown) {
+    feedback.error(`Erro ao excluir: ${getErrorMessage(e)}`)
   }
 }
 
@@ -318,8 +344,8 @@ function formatDate(dateStr: string) {
             </td>
             <td class="px-5 py-4 text-sm text-gray-500">{{ formatDate(t.expirationDate) }}</td>
             <td class="px-5 py-4">
-              <Badge :variant="t.status === 'PAID' ? 'success' : (t.status === 'OVERDUE' ? 'destructive' : 'warning')">
-                {{ t.status }}
+              <Badge :variant="t.status === 'PAY' ? 'success' : 'warning'">
+                {{ t.status === 'PAY' ? 'PAGO' : 'PENDENTE' }}
               </Badge>
             </td>
             <td :class="['px-5 py-4 text-sm font-semibold text-right', t.value >= 0 ? 'text-green-600' : 'text-red-500']">
@@ -328,7 +354,7 @@ function formatDate(dateStr: string) {
             <td class="px-5 py-4">
               <div class="flex items-center justify-center gap-2">
                 <button 
-                  v-if="t.status !== 'PAID'"
+                  v-if="t.status !== 'PAY'"
                   class="p-1.5 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
                   title="Receber"
                   @click="handleMarkAsPaid(t)"
@@ -422,8 +448,8 @@ function formatDate(dateStr: string) {
           <div class="space-y-1.5">
             <label class="text-xs font-semibold text-gray-500 uppercase">Status Inicial</label>
             <div class="flex gap-2">
-              <button 
-                v-for="s in ['PENDING', 'PAID']" 
+              <button
+                v-for="s in ['PENDING', 'PAY']"
                 :key="s"
                 type="button"
                 @click="newTransaction.status = s"
@@ -486,13 +512,13 @@ function formatDate(dateStr: string) {
             <label class="text-xs font-semibold text-gray-500 uppercase">Status</label>
             <div class="flex gap-2">
               <button
-                v-for="s in ['PENDING', 'PAID', 'OVERDUE']"
+                v-for="s in ['PENDING', 'PAY']"
                 :key="s"
                 type="button"
                 @click="editTransaction.status = s"
                 :class="['flex-1 py-2 rounded-lg text-xs font-bold border transition-all', editTransaction.status === s ? 'bg-primary text-white border-primary' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100']"
               >
-                {{ s === 'PENDING' ? 'PENDENTE' : s === 'PAID' ? 'PAGO' : 'VENCIDO' }}
+                {{ s === 'PENDING' ? 'PENDENTE' : 'PAGO' }}
               </button>
             </div>
           </div>

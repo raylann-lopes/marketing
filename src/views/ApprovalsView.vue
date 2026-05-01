@@ -8,13 +8,17 @@ import Avatar from '@/components/ui/Avatar.vue'
 import { approvalService, type PostApproval } from '@/services/approvalService'
 import { postService } from '@/services/postService'
 import { apiFetch } from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
+import { useFeedback } from '@/lib/feedback'
 
 const search = ref('')
 const approvals = ref<PostApproval[]>([])
+const previewUrls = ref<Record<string, string>>({})
 const loading = ref(true)
 const error = ref('')
 const role = localStorage.getItem('role') || sessionStorage.getItem('role')
 const isAdmin = role === 'ADMIN'
+const feedback = useFeedback()
 
 // Detail modal
 const selectedApproval = ref<PostApproval | null>(null)
@@ -32,7 +36,8 @@ const filtered = computed(() => {
   if (search.value) {
     const q = search.value.toLowerCase()
     list = list.filter(a =>
-      a.artName?.toLowerCase().includes(q) ||
+      getDemandTitle(a).toLowerCase().includes(q) ||
+      a.post?.theme?.toLowerCase().includes(q) ||
       a.caption?.toLowerCase().includes(q)
     )
   }
@@ -52,17 +57,62 @@ async function fetchApprovals() {
   try {
     const data = await approvalService.getAll()
     approvals.value = Array.isArray(data) ? data : []
+    await fetchPreviewUrls(approvals.value)
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar aprovações'
+    error.value = getErrorMessage(e, 'Erro ao carregar aprovações')
   } finally {
     loading.value = false
   }
 }
 
+function getApprovalKey(approval: PostApproval) {
+  return String(approval.id ?? approval.post?.id ?? approval.artS3Key)
+}
+
+function getDemandTitle(approval: PostApproval) {
+  return approval.post?.title || `Demanda #${approval.post?.id ?? approval.id ?? '-'}`
+}
+
+function getPreviewUrl(approval: PostApproval) {
+  return previewUrls.value[getApprovalKey(approval)] || ''
+}
+
+function isVideo(url: string, filename?: string) {
+  const check = (value: string) => {
+    if (!value) return false
+    const clean = (value.split('?')[0] ?? '').toLowerCase()
+    return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov')
+  }
+  return check(url) || (filename ? check(filename) : false)
+}
+
+async function fetchPreviewUrls(list: PostApproval[]) {
+  const pairs = await Promise.all(
+    list.map(async (approval) => {
+      if (!approval.post?.id) return [getApprovalKey(approval), ''] as const
+      try {
+        const res = await apiFetch<{ mediaUrl: string }>(`/api/media/art-url?postId=${approval.post.id}`)
+        return [getApprovalKey(approval), res.mediaUrl || ''] as const
+      } catch {
+        return [getApprovalKey(approval), ''] as const
+      }
+    }),
+  )
+
+  previewUrls.value = Object.fromEntries(pairs)
+}
+
 async function openDetail(approval: PostApproval) {
   selectedApproval.value = approval
   artPreviewUrl.value = ''
+  loadingPreview.value = false
   isDetailOpen.value = true
+
+  const cachedUrl = getPreviewUrl(approval)
+  if (cachedUrl) {
+    artPreviewUrl.value = cachedUrl
+    return
+  }
 
   if (approval.post?.id) {
     loadingPreview.value = true
@@ -82,8 +132,9 @@ async function handleApprove(postId: string | number) {
     await approvalService.approve(postId)
     await fetchApprovals()
     isDetailOpen.value = false
+    feedback.success('Arte aprovada com sucesso.')
   } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Erro ao aprovar')
+    feedback.error(getErrorMessage(e, 'Erro ao aprovar'))
   }
 }
 
@@ -92,8 +143,9 @@ async function handleReject(postId: string | number) {
     await approvalService.reject(postId)
     await fetchApprovals()
     isDetailOpen.value = false
+    feedback.info('Arte marcada como rejeitada.')
   } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Erro ao rejeitar')
+    feedback.error(getErrorMessage(e, 'Erro ao rejeitar'))
   }
 }
 
@@ -111,11 +163,12 @@ async function handleGenerateCaption() {
     }
     // Update in the main list too
     const index = approvals.value.findIndex(a => a.id === selectedApproval.value?.id)
-    if (index !== -1) {
+    if (index !== -1 && approvals.value[index]) {
       approvals.value[index].caption = updatedApproval.caption
     }
+    feedback.success('Legenda gerada com sucesso.')
   } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Erro ao gerar legenda')
+    feedback.error(getErrorMessage(e, 'Erro ao gerar legenda'))
   } finally {
     loadingCaption.value = false
   }
@@ -132,7 +185,7 @@ onMounted(fetchApprovals)
 </script>
 
 <template>
-  <AppLayout v-model:search="search" topbar-placeholder="Buscar aprovações por nome ou legenda...">
+  <AppLayout v-model:search="search" topbar-placeholder="Buscar aprovações por demanda ou legenda...">
 
     <div class="mb-6 flex items-center justify-between">
       <div>
@@ -179,16 +232,41 @@ onMounted(fetchApprovals)
     </div>
 
     <!-- Grid -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-else class="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
       <div
         v-for="approval in filtered"
         :key="approval.id"
-        class="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden group cursor-pointer"
+        :class="[
+          'group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md',
+          approval.status === 'APPROVE' ? 'w-full justify-self-start md:max-w-[280px]' : 'w-full',
+        ]"
         @click="openDetail(approval)"
       >
-        <!-- Art thumbnail placeholder -->
-        <div class="h-40 bg-gray-50 flex items-center justify-center border-b border-gray-100 relative overflow-hidden">
-          <ImageOff class="w-8 h-8 text-gray-200" />
+        <!-- Art thumbnail -->
+        <div
+          :class="[
+            'relative flex items-center justify-center overflow-hidden border-b border-gray-100 bg-gray-50',
+            approval.status === 'APPROVE' ? 'h-28' : 'h-40',
+          ]"
+        >
+          <video
+            v-if="getPreviewUrl(approval) && isVideo(getPreviewUrl(approval), approval.artName)"
+            :src="getPreviewUrl(approval)"
+            class="h-full w-full object-cover"
+            muted
+            playsinline
+            preload="metadata"
+          />
+          <img
+            v-else-if="getPreviewUrl(approval)"
+            :src="getPreviewUrl(approval)"
+            class="h-full w-full object-cover"
+            alt="Arte da demanda"
+          />
+          <div v-else class="flex flex-col items-center gap-2 text-gray-300">
+            <ImageOff class="w-8 h-8" />
+            <span class="text-[11px] font-medium">Arte indisponível</span>
+          </div>
           <div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <div class="bg-white rounded-full p-2 shadow-sm">
               <Eye class="w-5 h-5 text-primary" />
@@ -200,9 +278,13 @@ onMounted(fetchApprovals)
           </div>
         </div>
 
-        <div class="p-4">
-          <p class="text-sm font-semibold text-gray-800 truncate">{{ approval.artName }}</p>
-          <p class="text-xs text-gray-400 mt-1 line-clamp-2">{{ approval.caption }}</p>
+        <div :class="approval.status === 'APPROVE' ? 'p-3' : 'p-4'">
+          <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Demanda</p>
+          <p class="text-sm font-semibold text-gray-800 truncate mt-0.5">{{ getDemandTitle(approval) }}</p>
+          <p v-if="approval.post?.theme" class="text-xs text-gray-400 mt-1 truncate">{{ approval.post.theme }}</p>
+          <p :class="['mt-1 text-xs text-gray-400', approval.status === 'APPROVE' ? 'line-clamp-1' : 'line-clamp-2']">
+            {{ approval.caption }}
+          </p>
 
           <div class="flex items-center justify-between mt-4">
             <div v-if="approval.approvedUser" class="flex items-center gap-1.5">
@@ -240,7 +322,8 @@ onMounted(fetchApprovals)
       <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
         <div class="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
-            <h2 class="text-xl font-bold text-gray-900">{{ selectedApproval.artName }}</h2>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Demanda</p>
+            <h2 class="text-xl font-bold text-gray-900">{{ getDemandTitle(selectedApproval) }}</h2>
             <Badge :variant="statusVariant(selectedApproval.status)" class="mt-1">{{ statusLabel(selectedApproval.status) }}</Badge>
           </div>
           <button @click="isDetailOpen = false" class="p-2 hover:bg-gray-100 rounded-xl text-gray-400">
@@ -255,6 +338,13 @@ onMounted(fetchApprovals)
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <span class="text-xs">Carregando arte...</span>
             </div>
+            <video
+              v-else-if="artPreviewUrl && isVideo(artPreviewUrl, selectedApproval.artName)"
+              :src="artPreviewUrl"
+              class="max-h-80 max-w-full object-contain rounded-lg"
+              controls
+              playsinline
+            />
             <img
               v-else-if="artPreviewUrl"
               :src="artPreviewUrl"
@@ -263,12 +353,24 @@ onMounted(fetchApprovals)
             />
             <div v-else class="flex flex-col items-center gap-2 text-gray-300">
               <ImageOff class="w-12 h-12" />
-              <span class="text-xs">S3 não configurado</span>
+              <span class="text-xs">Arte indisponível</span>
             </div>
           </div>
 
           <!-- Detalhes -->
           <div class="p-6 space-y-4 flex flex-col">
+            <div v-if="selectedApproval.post?.theme || selectedApproval.post?.objective">
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Detalhes da demanda</p>
+              <div class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 space-y-2">
+                <p v-if="selectedApproval.post?.theme">
+                  <span class="font-semibold text-gray-800">Tema:</span> {{ selectedApproval.post.theme }}
+                </p>
+                <p v-if="selectedApproval.post?.objective">
+                  <span class="font-semibold text-gray-800">Objetivo:</span> {{ selectedApproval.post.objective }}
+                </p>
+              </div>
+            </div>
+
             <div>
               <div class="flex items-center justify-between mb-1">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Legenda</p>
@@ -284,11 +386,6 @@ onMounted(fetchApprovals)
                 </button>
               </div>
               <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">{{ selectedApproval.caption || 'Sem legenda gerada.' }}</p>
-            </div>
-
-            <div>
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Chave S3</p>
-              <p class="text-xs text-gray-500 font-mono bg-gray-50 rounded p-2 break-all">{{ selectedApproval.artS3Key }}</p>
             </div>
 
             <div v-if="selectedApproval.approvedUser">
@@ -316,9 +413,9 @@ onMounted(fetchApprovals)
             </div>
 
             <div v-else-if="selectedApproval.status === 'APPROVE'" class="mt-auto pt-4 border-t border-gray-100">
-              <div class="flex items-center gap-2 bg-green-50 text-green-700 rounded-lg px-3 py-2">
-                <CheckCircle class="w-4 h-4" />
-                <span class="text-sm font-medium">Arte aprovada — pronta para publicação</span>
+              <div class="inline-flex w-fit max-w-full items-center gap-2 rounded-lg bg-green-50 px-2.5 py-2 text-green-700">
+                <CheckCircle class="h-4 w-4 shrink-0" />
+                <span class="text-xs font-medium">Arte aprovada — pronta para publicação</span>
               </div>
             </div>
 

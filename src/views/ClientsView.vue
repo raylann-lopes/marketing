@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { X, Pencil, Trash2, MessageCircle, HardDrive, Sparkles, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import { clientService, type Client } from '@/services/clientService'
+import { getErrorMessage } from '@/lib/errors'
+import { useFeedback } from '@/lib/feedback'
 import { z } from 'zod'
 
 const search = ref('')
@@ -13,6 +16,8 @@ const clients = ref<Client[]>([])
 const loading = ref(true)
 const error = ref('')
 const selectedClient = ref<Client | null>(null)
+const feedback = useFeedback()
+const router = useRouter()
 
 // Pagination state
 const currentPage = ref(1)
@@ -140,9 +145,9 @@ async function handleCreateClient() {
     await clientService.create(payload as Client)
     await fetchClients()
     isModalOpen.value = false
+    feedback.success('Cliente cadastrado com sucesso.')
   } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : 'Erro desconhecido'
-    alert('Erro ao cadastrar: ' + errorMsg)
+    feedback.error(`Erro ao cadastrar: ${getErrorMessage(e)}`)
   } finally {
     isSubmitting.value = false
   }
@@ -178,8 +183,9 @@ async function handleEditClient() {
     const updated = clients.value.find(c => String(c.id) === String(clientToEdit.value!.id))
     if (updated) selectedClient.value = updated
     isEditModalOpen.value = false
+    feedback.success('Cliente atualizado com sucesso.')
   } catch (e: unknown) {
-    alert('Erro ao atualizar: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
+    feedback.error(`Erro ao atualizar: ${getErrorMessage(e)}`)
   } finally {
     isSubmitting.value = false
   }
@@ -199,8 +205,7 @@ async function fetchClients() {
       clients.value = []
     }
   } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : 'Erro desconhecido'
-    error.value = 'Erro ao carregar clientes: ' + errorMsg
+    error.value = `Erro ao carregar clientes: ${getErrorMessage(e)}`
   } finally {
     loading.value = false
   }
@@ -238,15 +243,38 @@ function prevPage() {
 }
 
 async function handleDelete(id: string | number) {
-  if (confirm('Tem certeza que deseja excluir este cliente?')) {
-    try {
-      await clientService.delete(id)
-      await fetchClients()
-      selectedClient.value = null
-    } catch (e: unknown) {
-      alert('Erro ao excluir cliente: ' + (e instanceof Error ? e.message : 'Erro desconhecido'))
-    }
+  const confirmed = await feedback.confirm({
+    title: 'Excluir cliente',
+    message: 'Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.',
+    confirmText: 'Excluir',
+    tone: 'danger',
+  })
+  if (!confirmed) return
+
+  try {
+    await clientService.delete(id)
+    await fetchClients()
+    selectedClient.value = null
+    feedback.success('Cliente excluído com sucesso.')
+  } catch (e: unknown) {
+    feedback.error(`Erro ao excluir cliente: ${getErrorMessage(e)}`)
   }
+}
+
+function openClientWorkspace(client: Client) {
+  if (!client.id) return
+  router.push({
+    path: `/clients/${client.id}/workspace`,
+    query: {
+      name: client.name,
+      email: client.email,
+      niche: client.niche || '',
+      status: client.status || '',
+      number: client.number || '',
+      driveLink: client.driveLink || '',
+      voiceTone: client.voiceTone || '',
+    },
+  })
 }
 </script>
 
@@ -422,6 +450,12 @@ async function handleDelete(id: string | number) {
                     <span class="text-xs font-medium text-gray-600">Google Drive</span>
                   </a>
                 </div>
+                <button
+                  class="mt-2 w-full rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                  @click="openClientWorkspace(selectedClient)"
+                >
+                  Abrir Workspace do Cliente
+                </button>
               </div>
 
               <!-- Recent posts (Temporariamente oculto) -->
