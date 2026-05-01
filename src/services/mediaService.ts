@@ -5,19 +5,23 @@ export type PresignedUploadResponse = {
   s3Key: string
 }
 
+export type UploadCompleteResponse = {
+  postId: number
+  postStatus: string
+  webhookDispatched: boolean
+}
+
 export const mediaService = {
   /**
    * Solicita ao backend uma URL presigned para upload direto ao S3.
    * Retorna uploadUrl (para PUT) e s3Key (para salvar no ApproveDTO).
    */
   async getUploadUrl(
-    clientId: string | number,
     postId: string | number,
     filename: string,
     contentType: string
   ): Promise<PresignedUploadResponse> {
     const params = new URLSearchParams({
-      clientId: String(clientId),
       postId: String(postId),
       filename,
       contentType
@@ -40,5 +44,16 @@ export const mediaService = {
     if (!response.ok) {
       throw new Error('Falha no upload para o S3. Tente novamente.')
     }
+  },
+
+  async completeUpload(
+    postId: string | number,
+    s3Key: string,
+    artName: string,
+  ): Promise<UploadCompleteResponse> {
+    return apiFetch<UploadCompleteResponse>('/api/media/upload-complete', {
+      method: 'POST',
+      body: JSON.stringify({ postId, s3Key, artName })
+    })
   }
 }

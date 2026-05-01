@@ -4,16 +4,25 @@ export type AccountConfig = {
   id: number
   clientId: number
   instagramAccountId: string
+  igUserId: string
+  accessTokenMasked: string
   configuredBy: string
   configuredAt: string
 }
 
+export type AccountConfigPayload = {
+  clientId: number
+  igUserId: string
+  instagramAccountId?: string
+  accessToken?: string
+}
+
 // Todos os endpoints requerem role ADMIN
 export const accountConfigService = {
-  async configure(clientId: number, instagramAccountId: string): Promise<AccountConfig> {
+  async configure(data: AccountConfigPayload): Promise<AccountConfig> {
     return apiFetch<AccountConfig>('/api/admin/account-config', {
       method: 'POST',
-      body: JSON.stringify({ clientId, instagramAccountId })
+      body: JSON.stringify(data)
     })
   },
 

@@ -1,17 +1,21 @@
 import { apiFetch } from '@/lib/api'
+import type { Post } from './postService'
 
 // Status espelha o backend: ApproveStatusEnum
 export type ApproveStatus = 'PENDING' | 'APPROVE' | 'REJECT'
 
 export type PostApproval = {
   id?: string | number
-  post?: { id: string | number }
+  post?: Partial<Post> & { id: string | number }
   artS3Key: string   // Chave do objeto no S3 (não a URL)
   artName: string
   caption: string
   status: ApproveStatus
   approvedAt?: string
   approvedUser?: string
+  whatsappStanzaId?: string
+  whatsappSentAt?: string
+  whatsappResponseText?: string
 }
 
 export type CreateApprovalDTO = {

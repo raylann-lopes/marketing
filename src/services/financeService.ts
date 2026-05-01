@@ -1,12 +1,25 @@
 import { apiFetch } from '@/lib/api'
 
+export type FinanceStatus = 'PENDING' | 'PAY'
+
 export type FinanceRecord = {
   id?: string | number
-  client: string | number // FK (Backend usa 'client', não 'clientId')
+  client: string | number
   description: string
-  value: number // Backend usa 'value', não 'amount'
-  status: string // 'PAID', 'PENDING', etc.
-  expirationDate: string // Backend usa 'expirationDate', não 'date'
+  value: number
+  status: FinanceStatus | string
+  expirationDate: string
+}
+
+export type FinancePayload = {
+  id?: string | number
+  client: { id: number }
+  user: { id: number | null }
+  description: string
+  value: number
+  status: FinanceStatus | string
+  expirationDate: string
+  paymentDate: string
 }
 
 export const financeService = {
@@ -19,26 +32,22 @@ export const financeService = {
     return apiFetch<FinanceRecord[]>(`/api/finance/client/${clientId}`)
   },
 
-  async create(data: Partial<FinanceRecord>): Promise<FinanceRecord> {
+  async create(data: FinancePayload): Promise<FinanceRecord> {
     return apiFetch<FinanceRecord>('/api/finance/create', {
       method: 'POST',
       body: JSON.stringify(data)
     })
   },
 
-  async update(data: Partial<FinanceRecord>): Promise<FinanceRecord> {
-    // Note que sua rota é /api/finance/update (PATCH)
-    return apiFetch<FinanceRecord>('/api/finance/update', {
+  async update(id: string | number, data: FinancePayload): Promise<FinanceRecord> {
+    return apiFetch<FinanceRecord>(`/api/finance/update/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data)
     })
   },
 
   async delete(id: string | number): Promise<void> {
-    // Sua rota /api/finance/delete não tem o ID na URL, 
-    // assumirei que ele vai como query parameter ou body.
-    // Se for body, precisará ser transformado para POST ou alterado na API.
-    return apiFetch<void>(`/api/finance/delete?id=${id}`, {
+    return apiFetch<void>(`/api/finance/delete/${id}`, {
       method: 'DELETE'
     })
   }

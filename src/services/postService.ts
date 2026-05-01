@@ -1,5 +1,13 @@
 import { apiFetch } from '@/lib/api'
 
+export type PostStatus =
+  | 'DEMAND'
+  | 'IN_PRODUCTION'
+  | 'FINISHED'
+  | 'WAITING_APPROVAL'
+  | 'SCHEDULE'
+  | 'PUBLISHED'
+
 export type Post = {
   id?: string | number
   clientId?: string | number // Usado no Request
@@ -7,8 +15,13 @@ export type Post = {
   title: string
   theme: string // Backend usa 'theme' e 'objective'
   objective: string
-  status: 'DEMAND' | 'IN_PRODUCTION' | 'WAITING_APPROVAL' | 'FINISHED' | 'PUBLISHED' | string
+  status: PostStatus | string
   scheduledAt: string
+}
+
+export type CaptionResponse = {
+  caption: string
+  [key: string]: unknown
 }
 
 export const postService = {
@@ -20,12 +33,13 @@ export const postService = {
     return apiFetch<Post[]>(`/api/posts/client/${clientId}`)
   },
 
-  async getByStatus(status: string): Promise<Post[]> {
+  async getByStatus(status: PostStatus): Promise<Post[]> {
     return apiFetch<Post[]>(`/api/posts/status/${status}`)
   },
 
-  async getBySchedule(scheduledAt: string): Promise<Post[]> {
-    return apiFetch<Post[]>(`/api/posts/scheduled/${scheduledAt}`)
+  async getBySchedule(scheduledAt: string, scheduledAtBefore: string): Promise<Post[]> {
+    const params = new URLSearchParams({ scheduledAtBefore })
+    return apiFetch<Post[]>(`/api/posts/scheduled/${scheduledAt}?${params}`)
   },
 
   async create(data: Partial<Post>): Promise<Post> {
@@ -48,8 +62,8 @@ export const postService = {
     })
   },
 
-  async generateCaption(id: string | number, artS3Key?: string): Promise<any> {
-    return apiFetch<any>(`/api/posts/${id}/generate-caption`, {
+  async generateCaption(id: string | number, artS3Key?: string): Promise<CaptionResponse> {
+    return apiFetch<CaptionResponse>(`/api/posts/${id}/generate-caption`, {
       method: 'POST',
       body: JSON.stringify({ artS3Key })
     })
