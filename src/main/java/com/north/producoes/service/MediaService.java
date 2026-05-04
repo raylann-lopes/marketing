@@ -162,7 +162,7 @@ public class MediaService {
             throw new AiIntegrationException("Falha ao autenticar/disparar webhook do n8n");
         }
 
-        return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), dispatched);
+        return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), true);
     }
 
     private boolean isBlank(String value) {

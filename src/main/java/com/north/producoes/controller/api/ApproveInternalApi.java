@@ -1,6 +1,5 @@
 package com.north.producoes.controller.api;
 
-import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;

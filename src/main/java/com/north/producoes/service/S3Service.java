@@ -1,5 +1,7 @@
 package com.north.producoes.service;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -12,6 +14,8 @@ import java.time.Duration;
 import java.util.Locale;
 
 @Service
+@Getter
+@Setter
 public class S3Service {
 
     private static final String DEFAULT_PUBLIC_PREFIX = "public/posts";
@@ -87,10 +91,6 @@ public class S3Service {
 
     public String resolveReadUrl(String s3Key) {
         return buildPublicUrl(s3Key);
-    }
-
-    public String getPublicPrefix() {
-        return publicPrefix;
     }
 
     private String normalizePrefix(String configuredPrefix) {

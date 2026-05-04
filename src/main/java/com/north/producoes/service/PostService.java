@@ -14,6 +14,7 @@ import com.north.producoes.repository.PostRepository;
 import com.north.producoes.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -78,15 +79,7 @@ public class PostService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com id: " + dto.userId()));
 
         PostEntity post = new PostEntity();
-        post.setTitle(dto.title());
-        post.setTheme(dto.theme());
-        post.setObjective(dto.objective());
-        post.setStatus(dto.status());
-        post.setScheduledAt(dto.scheduledAt());
-        post.setClient(client);
-        post.setUser(user);
-
-        return postRepository.save(post);
+        return getPostEntity(dto, post, client, user);
     }
 
     @Transactional
@@ -99,6 +92,11 @@ public class PostService {
         UserEntity user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com id: " + dto.userId()));
 
+        return getPostEntity(dto, postExisting, client, user);
+    }
+
+    @NonNull
+    private PostEntity getPostEntity(PostRequestDTO dto, PostEntity postExisting, ClientEntity client, UserEntity user) {
         postExisting.setTitle(dto.title());
         postExisting.setTheme(dto.theme());
         postExisting.setObjective(dto.objective());
