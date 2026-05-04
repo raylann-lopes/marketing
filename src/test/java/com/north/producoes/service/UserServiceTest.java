@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,30 +37,45 @@ class UserServiceTest {
     @Test
     @DisplayName("Deve registrar um novo usuário com sucesso")
     void shouldRegisterNewUserSuccessfully() {
+        // Arrange
         RegisterRequestDTO dto = new RegisterRequestDTO("John Doe", "john@example.com", "password123");
         when(userRepository.findByEmail(dto.email())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(dto.password())).thenReturn("encodedPassword");
         when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // Act
         UserEntity result = userService.register(dto);
 
+        // Assert
         assertThat(result.getName()).isEqualTo(dto.name());
         assertThat(result.getEmail()).isEqualTo(dto.email());
         assertThat(result.getPassword()).isEqualTo("encodedPassword");
         assertThat(result.getRole()).isEqualTo(UserRoleEnum.USER);
-        verify(userRepository).save(any(UserEntity.class));
+
+        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue())
+                .extracting(UserEntity::getName, UserEntity::getEmail, UserEntity::getPassword, UserEntity::getRole)
+                .containsExactly(dto.name(), dto.email(), "encodedPassword", UserRoleEnum.USER);
+
+        verify(userRepository).findByEmail(dto.email());
+        verify(passwordEncoder).encode(dto.password());
     }
 
     @Test
     @DisplayName("Deve lançar ResourceAlreadyExistsException quando e-mail já está em uso")
     void shouldThrowWhenEmailAlreadyInUse() {
+        // Arrange
         RegisterRequestDTO dto = new RegisterRequestDTO("John Doe", "john@example.com", "password123");
         when(userRepository.findByEmail(dto.email())).thenReturn(Optional.of(new UserEntity()));
 
+        // Act & Assert
         assertThatThrownBy(() -> userService.register(dto))
                 .isInstanceOf(ResourceAlreadyExistsException.class)
                 .hasMessageContaining("Usuario ja cadastrado");
 
+        verify(userRepository).findByEmail(dto.email());
+        verifyNoInteractions(passwordEncoder);
         verify(userRepository, never()).save(any(UserEntity.class));
     }
 }
