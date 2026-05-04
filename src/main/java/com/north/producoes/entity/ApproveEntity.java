@@ -1,6 +1,5 @@
 package com.north.producoes.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
