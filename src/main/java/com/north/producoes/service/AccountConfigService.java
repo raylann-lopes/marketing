@@ -33,13 +33,19 @@ public class AccountConfigService {
             );
         }
 
+        accountConfigRepository.findByIgUserId(dto.igUserId())
+                .ifPresent(config -> {
+                    throw new ResourceAlreadyExistsException(
+                            "Conta Instagram já configurada para o cliente ID " + config.getClient().getId()
+                    );
+                });
+
         ClientEntity client = clientRepository.findById(dto.clientId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Cliente não encontrado com id: " + dto.clientId()));
 
         AccountConfigEntity config = new AccountConfigEntity();
         config.setClient(client);
-        config.setInstagramAccountId(resolveInstagramAccountId(dto));
         config.setIgUserId(dto.igUserId());
         config.setAccessToken(normalize(dto.accessToken()));
         config.setConfiguredBy(adminEmail);
@@ -54,26 +60,12 @@ public class AccountConfigService {
                         "Nenhuma configuração de conta encontrada para o cliente ID " + clientId));
     }
 
-    /** Usado internamente pelo MediaController para montar o payload do n8n. */
-    public String getInstagramAccountId(Long clientId) {
-        return findByClientId(clientId).getInstagramAccountId();
-    }
-
     public String getIgUserId(Long clientId) {
         return findByClientId(clientId).getIgUserId();
     }
 
     public String getAccessToken(Long clientId) {
         return findByClientId(clientId).getAccessToken();
-    }
-
-    private String resolveInstagramAccountId(AccountConfigRequestDTO dto) {
-        String instagramAccountId = normalize(dto.instagramAccountId());
-        if (instagramAccountId != null) {
-            return instagramAccountId;
-        }
-
-        return dto.igUserId();
     }
 
     private String normalize(String value) {

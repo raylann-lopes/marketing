@@ -52,7 +52,7 @@ public class MediaService {
         }
         ApproveEntity approve = approvals.getFirst();
         String previewUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
-        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption(), null, null, null);
+        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption(), null, null);
     }
 
     public MediaUrlResponseDTO getMediaUrlForN8n(Long postId) {
@@ -81,7 +81,6 @@ public class MediaService {
                 postId,
                 mediaUrl,
                 approve.getCaption(),
-                config.getInstagramAccountId(),
                 config.getIgUserId(),
                 config.getAccessToken()
         );
@@ -122,6 +121,8 @@ public class MediaService {
         clientPayload.put("name", post.getClient().getName());
         clientPayload.put("number", clientNumber);
         clientPayload.put("whatsappNumber", toWhatsappNumber(clientNumber));
+        clientPayload.put("whatsappGroupId", post.getClient().getWhatsappGroupId());
+        clientPayload.put("whatsappGroupName", post.getClient().getWhatsappGroupName());
         clientPayload.put("niche", post.getClient().getNiche());
         clientPayload.put("voiceTone", post.getClient().getVoiceTone());
         clientPayload.put("status", post.getClient().getStatus().name());
@@ -150,7 +151,7 @@ public class MediaService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("event", "ART_UPLOAD_COMPLETED");
         payload.put("uploadedAt", LocalDateTime.now().toString());
-        payload.put("instagramAccountId", config.getInstagramAccountId());
+        payload.put("igUserId", config.getIgUserId());
         payload.put("client", clientPayload);
         payload.put("post", postPayload);
         payload.put("approval", approvalPayload);

@@ -5,7 +5,6 @@ public record MediaUrlResponseDTO(
         Long postId,
         String mediaUrl,    // URL publica estavel da arte
         String caption,
-        String instagramAccountId,
         String igUserId,
         String accessToken
 ) {}

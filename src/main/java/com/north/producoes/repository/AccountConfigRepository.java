@@ -9,5 +9,6 @@ import java.util.Optional;
 
 public interface AccountConfigRepository extends JpaRepository<AccountConfigEntity, Long> {
     Optional<AccountConfigEntity> findByClientId(Long clientId);
+    Optional<AccountConfigEntity> findByIgUserId(String igUserId);
     boolean existsByClientId(Long clientId);
 }

@@ -24,10 +24,7 @@ public class AccountConfigEntity {
     @JoinColumn(name = "client_id", nullable = false, unique = true)
     private ClientEntity client;
 
-    @Column(name = "instagram_account_id", nullable = false, length = 64)
-    private String instagramAccountId;
-
-    @Column(name = "ig_user_id", length = 64)
+    @Column(name = "ig_user_id", nullable = false, length = 64)
     private String igUserId;
 
     @Column(name = "access_token", length = 2048)

@@ -13,6 +13,8 @@ public record ClientResponseDTO(
         String driveLink,
         String voiceTone,
         String niche,
+        String whatsappGroupId,
+        String whatsappGroupName,
         ClientStatusEnum status,
         LocalDateTime createdAt
 ) {
@@ -25,6 +27,8 @@ public record ClientResponseDTO(
                 entity.getDriveLink(),
                 entity.getVoiceTone(),
                 entity.getNiche(),
+                entity.getWhatsappGroupId(),
+                entity.getWhatsappGroupName(),
                 entity.getStatus(),
                 entity.getCreatedAt()
         );

@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface ClientRepository extends JpaRepository<ClientEntity, Long> {
     Optional<ClientEntity> findByEmail(String email);
     Optional<ClientEntity> findByNumber(String number);
+    Optional<ClientEntity> findByWhatsappGroupId(String whatsappGroupId);
     boolean existsByEmailAndIdNot(String email, Long id);
     boolean existsByNumberAndIdNot(String number, Long id);
     List<ClientEntity> findByStatus(ClientStatusEnum status);

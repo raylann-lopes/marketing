@@ -40,7 +40,13 @@ public class ClientEntity {
     @Column
     private String voiceTone;
 
-    @Column
+    @Column(name = "whatsapp_group_id", unique = true, length = 100)
+    private String whatsappGroupId;
+
+    @Column(name = "whatsapp_group_name")
+    private String whatsappGroupName;
+
+    @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private ClientStatusEnum status = ClientStatusEnum.ACTIVE;
 

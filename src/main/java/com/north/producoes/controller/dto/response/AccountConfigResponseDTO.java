@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 public record AccountConfigResponseDTO(
         Long id,
         Long clientId,
-        String instagramAccountId,
         String igUserId,
         String accessTokenMasked,
         String configuredBy,
@@ -17,7 +16,6 @@ public record AccountConfigResponseDTO(
         return new AccountConfigResponseDTO(
                 entity.getId(),
                 entity.getClient().getId(),
-                entity.getInstagramAccountId(),
                 entity.getIgUserId(),
                 maskToken(entity.getAccessToken()),
                 entity.getConfiguredBy(),
