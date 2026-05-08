@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
-import { CheckCircle, Shield, X, User, Instagram } from 'lucide-vue-next'
+import { CheckCircle, Shield, X, User, Instagram, RefreshCw, Link2, MessageCircle } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Input from '@/components/ui/Input.vue'
@@ -8,7 +8,8 @@ import Button from '@/components/ui/Button.vue'
 import { userService } from '@/services/userService'
 import { setCurrentUserId } from '@/lib/api'
 import { clientService, type Client } from '@/services/clientService'
-import { accountConfigService, type AccountConfig } from '@/services/accountConfigService'
+import { accountConfigService, type AccountConfig, type MetaInstagramAccount } from '@/services/accountConfigService'
+import { evolutionGroupService, type EvolutionGroup } from '@/services/evolutionGroupService'
 
 const loading = ref(true)
 const savingProfile = ref(false)
@@ -31,17 +32,47 @@ const password = ref({
   confirm: ''
 })
 
-// Instagram Account Config
+// Client integrations
 const clients = ref<Client[]>([])
 const selectedClientId = ref('')
-const igUserId = ref('')
-const instagramAccountId = ref('')
-const accessToken = ref('')
-const savingAccount = ref(false)
 const clientConfigs = ref<Map<number, AccountConfig>>(new Map())
+const metaAccounts = ref<MetaInstagramAccount[]>([])
+const selectedMetaAccountKey = ref('')
+const loadingMetaAccounts = ref(false)
+const evolutionGroups = ref<EvolutionGroup[]>([])
+const selectedEvolutionGroupId = ref('')
+const loadingEvolutionGroups = ref(false)
+const savingIntegrations = ref(false)
 const selectedClientConfig = computed(() => {
   if (!selectedClientId.value) return null
   return clientConfigs.value.get(Number(selectedClientId.value)) ?? null
+})
+const selectedMetaAccount = computed(() => {
+  if (!selectedMetaAccountKey.value) return null
+  return metaAccounts.value.find(account => metaAccountKey(account) === selectedMetaAccountKey.value) ?? null
+})
+const selectedGroupClient = computed(() => {
+  if (!selectedClientId.value) return null
+  return clients.value.find(client => String(client.id) === String(selectedClientId.value)) ?? null
+})
+const selectedEvolutionGroup = computed(() => {
+  if (!selectedEvolutionGroupId.value) return null
+  return evolutionGroups.value.find(group => group.groupId === selectedEvolutionGroupId.value) ?? null
+})
+const selectedClientConnectionSummary = computed(() => {
+  if (!selectedClientId.value) return ''
+
+  const connections: string[] = []
+  const whatsappGroupName = selectedGroupClient.value?.whatsappGroupName
+
+  if (selectedClientConfig.value) {
+    connections.push('Instagram configurado')
+  }
+  if (whatsappGroupName) {
+    connections.push(`WhatsApp: ${whatsappGroupName}`)
+  }
+
+  return connections.length > 0 ? connections.join(' | ') : 'Nenhuma conexão cadastrada para este cliente.'
 })
 
 async function fetchClients() {
@@ -64,7 +95,24 @@ async function fetchAccountConfigs() {
   }
 }
 
-async function handleSaveAccount() {
+async function fetchMetaAccounts() {
+  accountSuccess.value = ''
+  error.value = ''
+  loadingMetaAccounts.value = true
+
+  try {
+    metaAccounts.value = await accountConfigService.getMetaInstagramAccounts()
+    if (metaAccounts.value.length === 0) {
+      accountSuccess.value = 'Nenhuma conta Instagram profissional foi retornada pela Meta.'
+    }
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Erro ao buscar contas da Meta'
+  } finally {
+    loadingMetaAccounts.value = false
+  }
+}
+
+async function handleLinkClientIntegrations() {
   accountSuccess.value = ''
   error.value = ''
 
@@ -72,38 +120,105 @@ async function handleSaveAccount() {
     error.value = 'Selecione um cliente.'
     return
   }
-  if (!igUserId.value.trim()) {
-    error.value = 'Informe o IG User ID.'
-    return
-  }
-  if (!/^\d+$/.test(igUserId.value.trim())) {
-    error.value = 'O IG User ID deve conter apenas dígitos.'
+  if (!selectedMetaAccount.value) {
+    error.value = 'Selecione uma conta retornada pela Meta.'
     return
   }
   if (selectedClientConfig.value) {
     error.value = 'Este cliente já possui configuração cadastrada. O backend atual não permite edição por esta tela.'
     return
   }
+  if (selectedMetaAccount.value.alreadyLinked) {
+    error.value = 'Esta conta Instagram já está vinculada a outro cliente.'
+    return
+  }
+  if (!selectedEvolutionGroup.value) {
+    error.value = 'Selecione o grupo do WhatsApp.'
+    return
+  }
+  if (isGroupLinkedToAnotherClient(selectedEvolutionGroup.value)) {
+    error.value = 'Este grupo já está vinculado a outro cliente.'
+    return
+  }
 
-  savingAccount.value = true
+  const accountToLink = selectedMetaAccount.value
+  const groupToLink = selectedEvolutionGroup.value
+  const clientId = Number(selectedClientId.value)
+  const selectedClient = clients.value.find(client => String(client.id) === selectedClientId.value)
+
+  savingIntegrations.value = true
   try {
-    const config = await accountConfigService.configure({
-      clientId: Number(selectedClientId.value),
-      igUserId: igUserId.value.trim(),
-      instagramAccountId: instagramAccountId.value.trim() || undefined,
-      accessToken: accessToken.value.trim() || undefined,
+    const config = await accountConfigService.linkMetaInstagramAccount({
+      clientId,
+      pageId: accountToLink.pageId,
+      igUserId: accountToLink.igUserId,
     })
+    const linkedGroup = await evolutionGroupService.linkGroupToClient({
+      clientId,
+      groupId: groupToLink.groupId,
+    })
+
     clientConfigs.value.set(config.clientId, config)
-    accountSuccess.value = `Conta vinculada por ${config.configuredBy} em ${new Date(config.configuredAt).toLocaleDateString('pt-BR')}`
-    selectedClientId.value = ''
-    igUserId.value = ''
-    instagramAccountId.value = ''
-    accessToken.value = ''
+    metaAccounts.value = metaAccounts.value.map(account => {
+      if (account.pageId !== accountToLink.pageId || account.igUserId !== accountToLink.igUserId) {
+        return account
+      }
+      return {
+        ...account,
+        alreadyLinked: true,
+        linkedClientId: config.clientId,
+        linkedClientName: selectedClient?.name ?? account.linkedClientName,
+      }
+    })
+
+    clients.value = clients.value.map(client => {
+      if (String(client.id) !== String(clientId)) return client
+      return {
+        ...client,
+        whatsappGroupId: linkedGroup.groupId,
+        whatsappGroupName: linkedGroup.groupName,
+      }
+    })
+    evolutionGroups.value = evolutionGroups.value.map(group => {
+      if (group.groupId === linkedGroup.groupId) {
+        return linkedGroup
+      }
+      if (String(group.linkedClientId) === String(clientId)) {
+        return {
+          ...group,
+          alreadyLinked: false,
+          linkedClientId: null,
+          linkedClientName: null,
+        }
+      }
+      return group
+    })
+
+    accountSuccess.value = `Instagram e WhatsApp vinculados ao cliente ${selectedClient?.name ?? clientId}.`
+    selectedMetaAccountKey.value = ''
+    selectedEvolutionGroupId.value = ''
     setTimeout(() => { accountSuccess.value = '' }, 5000)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao configurar conta do Instagram'
+    error.value = e instanceof Error ? e.message : 'Erro ao vincular integrações do cliente'
   } finally {
-    savingAccount.value = false
+    savingIntegrations.value = false
+  }
+}
+
+async function fetchEvolutionGroups() {
+  accountSuccess.value = ''
+  error.value = ''
+  loadingEvolutionGroups.value = true
+
+  try {
+    evolutionGroups.value = await evolutionGroupService.getGroups()
+    if (evolutionGroups.value.length === 0) {
+      accountSuccess.value = 'Nenhum grupo do WhatsApp foi retornado pela Evolution.'
+    }
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Erro ao buscar grupos da Evolution'
+  } finally {
+    loadingEvolutionGroups.value = false
   }
 }
 
@@ -178,6 +293,32 @@ function handleLogout() {
   window.location.href = '/login'
 }
 
+function metaAccountKey(account: MetaInstagramAccount) {
+  return `${account.pageId}:${account.igUserId}`
+}
+
+function metaAccountTitle(account: MetaInstagramAccount) {
+  if (account.igUsername) return `@${account.igUsername}`
+  return account.igName || 'Conta Instagram'
+}
+
+function metaAccountOptionLabel(account: MetaInstagramAccount) {
+  const title = metaAccountTitle(account)
+  const status = account.alreadyLinked && account.linkedClientName ? ` - vinculado a ${account.linkedClientName}` : ''
+  return `${title} - ${account.pageName}${status}`
+}
+
+function isGroupLinkedToAnotherClient(group: EvolutionGroup) {
+  if (!group.alreadyLinked || !group.linkedClientId) return false
+  return String(group.linkedClientId) !== String(selectedClientId.value)
+}
+
+function evolutionGroupOptionLabel(group: EvolutionGroup) {
+  const participants = typeof group.participantsCount === 'number' ? ` - ${group.participantsCount} participantes` : ''
+  const status = group.alreadyLinked && group.linkedClientName ? ` - vinculado a ${group.linkedClientName}` : ''
+  return `${group.groupName}${participants}${status}`
+}
+
 onMounted(async () => {
   await fetchProfile()
   if (isAdmin) {
@@ -189,18 +330,24 @@ onMounted(async () => {
 watch(selectedClientId, (clientId) => {
   accountSuccess.value = ''
   error.value = ''
+  selectedMetaAccountKey.value = ''
+  selectedEvolutionGroupId.value = ''
 
-  if (!clientId) {
-    igUserId.value = ''
-    instagramAccountId.value = ''
-    accessToken.value = ''
+  if (!clientId) return
+})
+
+watch(selectedMetaAccountKey, () => {
+  accountSuccess.value = ''
+  error.value = ''
+
+  if (!selectedMetaAccount.value) {
     return
   }
+})
 
-  const existingConfig = clientConfigs.value.get(Number(clientId))
-  igUserId.value = existingConfig?.igUserId ?? ''
-  instagramAccountId.value = existingConfig?.instagramAccountId ?? ''
-  accessToken.value = ''
+watch(selectedEvolutionGroupId, () => {
+  accountSuccess.value = ''
+  error.value = ''
 })
 
 const roleLabel: Record<string, string> = {
@@ -240,8 +387,8 @@ const roleLabel: Record<string, string> = {
       </div>
 
       <!-- Colunas: esquerda + right sidebar -->
-      <div class="flex gap-6 items-start">
-      <div class="flex-1 min-w-0 space-y-6">
+      <div class="flex flex-col xl:flex-row gap-6 items-start">
+      <div class="w-full xl:flex-1 min-w-0 space-y-6">
         <!-- Perfil -->
         <Card class="p-6">
           <h2 class="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
@@ -317,19 +464,33 @@ const roleLabel: Record<string, string> = {
         </Card>
       </div>
 
-      <!-- Right: Instagram Config (Admin) -->
-      <Card v-if="isAdmin" class="flex-1 min-w-0 p-6">
-        <h2 class="text-xl font-semibold mb-2 text-gray-900 flex items-center gap-2">
-          <Instagram class="w-5 h-5 text-pink-500" />
-          Integração Instagram
-        </h2>
-        <p class="text-sm text-gray-500 mb-6">Vincule o IG User ID e, se necessário, o Instagram Account ID e access token do cliente.</p>
+      <Card v-if="isAdmin" class="w-full xl:flex-1 min-w-0 p-6">
+        <div class="flex flex-col gap-3 mb-6 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <Link2 class="w-5 h-5 text-gray-500" />
+              Integrações do cliente
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">Configure Instagram e grupo de envio no mesmo cliente.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" :disabled="loadingMetaAccounts" @click="fetchMetaAccounts">
+              <RefreshCw :class="['w-4 h-4', loadingMetaAccounts ? 'animate-spin' : '']" />
+              {{ loadingMetaAccounts ? 'Buscando...' : 'Buscar Meta' }}
+            </Button>
+            <Button variant="outline" size="sm" :disabled="loadingEvolutionGroups" @click="fetchEvolutionGroups">
+              <RefreshCw :class="['w-4 h-4', loadingEvolutionGroups ? 'animate-spin' : '']" />
+              {{ loadingEvolutionGroups ? 'Buscando...' : 'Buscar grupos' }}
+            </Button>
+          </div>
+        </div>
 
         <div class="space-y-4">
           <div class="space-y-1.5">
             <label class="text-xs font-semibold text-gray-500 uppercase">Cliente</label>
             <select
               v-model="selectedClientId"
+              required
               class="w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer"
             >
               <option value="">Selecione o cliente</option>
@@ -337,62 +498,85 @@ const roleLabel: Record<string, string> = {
             </select>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">IG User ID</label>
-            <Input v-model="igUserId" placeholder="Ex: 17841400000000000" />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Instagram Account ID</label>
-            <Input v-model="instagramAccountId" placeholder="Opcional" />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Access Token</label>
-            <textarea
-              v-model="accessToken"
-              rows="4"
-              placeholder="Opcional"
-              class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            />
-          </div>
-
-          <div v-if="selectedClientConfig" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Este cliente já possui configuração cadastrada. IG User ID:
-            <code class="font-mono">{{ selectedClientConfig.igUserId }}</code>.
-          </div>
-
-          <Button :disabled="savingAccount || !!selectedClientConfig" @click="handleSaveAccount">
-            {{ savingAccount ? 'Salvando...' : 'Vincular Conta do Instagram' }}
-          </Button>
-
-          <!-- Configured clients list -->
-          <div v-if="clientConfigs.size > 0" class="mt-4 pt-4 border-t border-gray-100">
-            <p class="text-xs font-semibold text-gray-400 uppercase mb-2">Clientes configurados</p>
-            <div class="space-y-2">
-              <div
-                v-for="client in clients.filter(c => clientConfigs.has(Number(c.id)))"
-                :key="client.id"
-                class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2.5"
-              >
-                <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div class="w-7 h-7 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                    <Instagram class="w-3.5 h-3.5 text-pink-600" />
-                  </div>
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-gray-800 truncate">{{ client.name }}</p>
-                    <p class="text-[10px] text-gray-400 truncate">{{ clientConfigs.get(Number(client.id))?.configuredBy }}</p>
-                  </div>
-                </div>
-                <code class="text-[10px] font-mono bg-white px-2 py-1 rounded border border-gray-200 shrink-0">
-                  {{ clientConfigs.get(Number(client.id))?.instagramAccountId || clientConfigs.get(Number(client.id))?.igUserId }}
-                </code>
-              </div>
+          <div class="pt-2 space-y-4">
+            <div class="flex items-center gap-2">
+              <Instagram class="w-4 h-4 text-pink-500" />
+              <h3 class="text-sm font-semibold text-gray-800">Instagram</h3>
             </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-gray-500 uppercase">Conta encontrada na Meta</label>
+            <select
+              v-model="selectedMetaAccountKey"
+              required
+              class="w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="loadingMetaAccounts"
+            >
+              <option value="">Selecione uma conta da Meta</option>
+              <option
+                v-for="account in metaAccounts"
+                :key="metaAccountKey(account)"
+                :value="metaAccountKey(account)"
+                :disabled="account.alreadyLinked"
+              >
+                {{ metaAccountOptionLabel(account) }}
+              </option>
+            </select>
+            <p v-if="metaAccounts.length === 0" class="text-xs text-gray-400">
+              Clique em buscar para carregar as contas disponíveis.
+            </p>
           </div>
-          <div v-else class="text-center py-6 text-sm text-gray-400 bg-gray-50 rounded-lg mt-4">
-            Nenhum cliente com conta do Instagram vinculada.
+
+          <div v-if="selectedMetaAccount" class="rounded-lg border border-pink-100 bg-pink-50 px-3 py-2 text-sm text-pink-800">
+            {{ metaAccountTitle(selectedMetaAccount) }} será vinculada usando a página {{ selectedMetaAccount.pageName }}.
           </div>
+
+        </div>
+
+          <div class="pt-5 space-y-4 border-t border-gray-100">
+            <div class="flex items-center gap-2">
+              <MessageCircle class="w-4 h-4 text-emerald-500" />
+              <h3 class="text-sm font-semibold text-gray-800">WhatsApp</h3>
+            </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-gray-500 uppercase">Grupo do WhatsApp</label>
+            <select
+              v-model="selectedEvolutionGroupId"
+              required
+              class="w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="loadingEvolutionGroups"
+            >
+              <option value="">Selecione um grupo</option>
+              <option
+                v-for="group in evolutionGroups"
+                :key="group.groupId"
+                :value="group.groupId"
+                :disabled="isGroupLinkedToAnotherClient(group)"
+              >
+                {{ evolutionGroupOptionLabel(group) }}
+              </option>
+            </select>
+            <p v-if="evolutionGroups.length === 0" class="text-xs text-gray-400">
+              Clique em buscar para carregar os grupos disponíveis.
+            </p>
+          </div>
+
+          </div>
+
+          <p v-if="selectedClientId" class="text-xs text-gray-500">
+            <span class="font-semibold text-gray-600">Conexões já realizadas:</span>
+            {{ selectedClientConnectionSummary }}
+          </p>
+
+          <Button
+            class="w-full"
+            :disabled="savingIntegrations || loadingMetaAccounts || loadingEvolutionGroups || !selectedClientId || !selectedMetaAccount || !selectedEvolutionGroup || !!selectedClientConfig || selectedMetaAccount?.alreadyLinked || isGroupLinkedToAnotherClient(selectedEvolutionGroup)"
+            @click="handleLinkClientIntegrations"
+          >
+            <Link2 class="w-4 h-4" />
+            {{ savingIntegrations ? 'Vinculando...' : 'Vincular Instagram e WhatsApp' }}
+          </Button>
         </div>
       </Card>
     </div>

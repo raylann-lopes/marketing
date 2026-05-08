@@ -8,6 +8,8 @@ export type Client = {
   driveLink?: string
   voiceTone?: string
   niche?: string
+  whatsappGroupId?: string | null
+  whatsappGroupName?: string | null
   status: 'ACTIVE' | 'INACTIVE' | string
   createdAt?: string
 }

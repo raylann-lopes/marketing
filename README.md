@@ -32,7 +32,7 @@ Componentes UI construídos sobre **Tailwind CSS** + **class-variance-authority*
 - **Clientes** — cadastro, edição, exclusão e link rápido para board do cliente
 - **Aprovações** — lista de artes aguardando aprovação
 - **Financeiro** — cadastro e controle de transações por cliente
-- **Configurações** — perfil do usuário, troca de senha e vinculação de Instagram Account ID por cliente (admin)
+- **Configurações** — perfil do usuário, troca de senha, vinculação de conta Instagram via Meta e grupo de WhatsApp por cliente (admin)
 
 ---
 
