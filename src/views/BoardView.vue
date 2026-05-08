@@ -207,27 +207,21 @@ async function openApprovalModal(post: Post) {
   }
   isApprovalModalOpen.value = true
 
-  if (post.id) {
+  const existing = getApprovalByPost(post)
+  if (post.id && existing) {
+    existingApprovalId.value = existing.id || null
+    approvalData.value.caption = existing.caption || ''
+    approvalData.value.artS3Key = existing.artS3Key || ''
+    approvalData.value.artName = existing.artName || ''
+
     try {
-      const existing = await approvalService.getByPostId(post.id)
-      if (existing) {
-        existingApprovalId.value = existing.id || null
-        approvalData.value.caption = existing.caption || ''
-        approvalData.value.artS3Key = existing.artS3Key || ''
-        approvalData.value.artName = existing.artName || ''
-        
-        try {
-          // A API retorna um MediaUrlResponseDTO que contém o campo mediaUrl
-          const res = await apiFetch<{ mediaUrl: string }>(`/api/media/art-url?postId=${post.id}`)
-          if (res && res.mediaUrl) {
-            approvalData.value.artPreviewUrl = res.mediaUrl
-          }
-        } catch (err) {
-          console.warn('Erro ao carregar preview da arte existente:', err)
-        }
+      // A API retorna um MediaUrlResponseDTO que contém o campo mediaUrl
+      const res = await apiFetch<{ mediaUrl: string }>(`/api/media/art-url?postId=${post.id}`)
+      if (res && res.mediaUrl) {
+        approvalData.value.artPreviewUrl = res.mediaUrl
       }
-    } catch {
-      console.log('Nenhuma aprovação prévia encontrada para este post.')
+    } catch (err) {
+      console.warn('Erro ao carregar preview da arte existente:', err)
     }
   }
 }
