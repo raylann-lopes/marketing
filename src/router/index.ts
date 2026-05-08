@@ -10,22 +10,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/calendar', component: () => import('@/views/CalendarView.vue') },
   { path: '/clients', component: () => import('@/views/ClientsView.vue') },
   { path: '/clients/:id/workspace', component: () => import('@/views/ClientWorkspaceView.vue') },
-  {
-    path: '/ideas',
-    component: () => import('@/views/UnderConstructionView.vue'),
-    meta: {
-      title: 'Ideias de Conteúdo',
-      description: 'Área reservada para banco de ideias e referências por cliente.',
-    },
-  },
-  {
-    path: '/automation-hub',
-    component: () => import('@/views/UnderConstructionView.vue'),
-    meta: {
-      title: 'Hub de Automação',
-      description: 'Área reservada para automações de publicação, aprovação e atendimento.',
-    },
-  },
+  { path: '/ideas', component: () => import('@/views/ContentIdeasView.vue') },
+  { path: '/automation-hub', component: () => import('@/views/AutomationHubView.vue') },
   {
     path: '/client-reports',
     component: () => import('@/views/UnderConstructionView.vue'),
