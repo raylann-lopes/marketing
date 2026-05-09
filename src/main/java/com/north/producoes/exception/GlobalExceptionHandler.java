@@ -105,6 +105,16 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(ApifyIntegrationException.class)
+    public ResponseEntity<Map<String, Object>> handleApifyIntegration(ApifyIntegrationException e) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                "status", 502,
+                "error", "Bad Gateway",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
