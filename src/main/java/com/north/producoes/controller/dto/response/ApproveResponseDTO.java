@@ -7,8 +7,7 @@ import java.time.LocalDateTime;
 
 public record ApproveResponseDTO(
         Long id,
-        Long approvalId,
-        PostResponseDTO post,
+        Long postId,
         String artS3Key,
         String artName,
         String caption,
@@ -17,13 +16,15 @@ public record ApproveResponseDTO(
         String approvedUser,
         String whatsappStanzaId,
         String whatsappSentAt,
-        String whatsappResponseText
+        String whatsappResponseText,
+        String rejectionReason,
+        LocalDateTime rejectedAt,
+        String rejectedBy
 ) {
     public static ApproveResponseDTO from(ApproveEntity entity) {
         return new ApproveResponseDTO(
                 entity.getId(),
-                entity.getId(),
-                PostResponseDTO.from(entity.getPost()),
+                entity.getPost().getId(),
                 entity.getArtS3Key(),
                 entity.getArtName(),
                 entity.getCaption(),
@@ -32,7 +33,10 @@ public record ApproveResponseDTO(
                 entity.getApprovedUser(),
                 entity.getWhatsappStanzaId(),
                 entity.getWhatsappSentAt(),
-                entity.getWhatsappResponseText()
+                entity.getWhatsappResponseText(),
+                entity.getRejectionReason(),
+                entity.getRejectedAt(),
+                entity.getRejectedBy()
         );
     }
 }

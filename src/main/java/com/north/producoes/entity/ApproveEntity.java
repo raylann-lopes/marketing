@@ -54,4 +54,13 @@ public class ApproveEntity {
 
     @Column(name = "whatsapp_response_text")
     private String whatsappResponseText;
+
+    @Column(name = "rejection_reason", length = 1000)
+    private String rejectionReason;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    @Column(name = "rejected_by")
+    private String rejectedBy;
 }

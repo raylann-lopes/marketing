@@ -193,11 +193,11 @@ class ApprovedServiceTest {
             // Act
             ApproveEntity result = approvedService.updateApprovalStatus(
                     5L,
-                    new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.REJECT)
+                    new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.REJECTED)
             );
 
             // Assert
-            assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.REJECT);
+            assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.REJECTED);
             assertThat(result.getApprovedAt()).isNull();
             assertThat(result.getApprovedUser()).isEmpty();
         }

@@ -70,7 +70,7 @@ public class ApproveController implements ApproveApi {
             return ResponseEntity.notFound().build();
         }
         ApproveEntity approve = approvals.getFirst();
-        approve.setStatus(ApproveStatusEnum.REJECT);
+        approve.setStatus(ApproveStatusEnum.REJECTED);
         return ResponseEntity.ok(ApproveResponseDTO.from(approveRepository.save(approve)));
     }
 

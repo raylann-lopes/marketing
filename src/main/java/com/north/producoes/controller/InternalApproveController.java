@@ -3,6 +3,7 @@ package com.north.producoes.controller;
 import com.north.producoes.controller.api.ApproveInternalApi;
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
+import com.north.producoes.controller.dto.request.InternalApprovalRejectRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.service.ApprovedService;
 import jakarta.validation.Valid;
@@ -38,5 +39,15 @@ public class InternalApproveController implements ApproveInternalApi {
     @Override
     public ResponseEntity<ApproveResponseDTO> findByWhatsappStanzaId(@RequestParam String stanzaId) {
         return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.findByStanzaId(stanzaId)));
+    }
+
+    @Override
+    public ResponseEntity<ApproveResponseDTO> internalApprove(@PathVariable Long postId) {
+        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.internalApproveByPostId(postId, "n8n-whatsapp")));
+    }
+
+    @Override
+    public ResponseEntity<ApproveResponseDTO> internalReject(@PathVariable Long postId, @Valid @RequestBody InternalApprovalRejectRequestDTO request) {
+        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.internalRejectByPostId(postId, "n8n-whatsapp", request.rejectionReason())));
     }
 }
