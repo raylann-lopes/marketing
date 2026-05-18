@@ -1,6 +1,6 @@
 package com.north.producoes.config;
 
-import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,7 +41,7 @@ public class S3Config {
     }
 
     private AwsCredentialsProvider credentialsProvider() {
-        if (StringUtils.isNotBlank(accessKeyId) && StringUtils.isNotBlank(secretAccessKey)) {
+        if (StringUtils.hasText(accessKeyId) && StringUtils.hasText(secretAccessKey)) {
             return StaticCredentialsProvider.create(AwsBasicCredentials.create(
                     accessKeyId,
                     secretAccessKey

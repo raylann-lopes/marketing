@@ -1,6 +1,5 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.controller.api.EvolutionGroupApi;
 import com.north.producoes.controller.dto.request.EvolutionGroupLinkRequestDTO;
 import com.north.producoes.controller.dto.response.EvolutionGroupResponseDTO;
 import com.north.producoes.service.EvolutionApiService;
@@ -8,26 +7,27 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/admin/evolution")
 @AllArgsConstructor
-public class EvolutionGroupController implements EvolutionGroupApi {
+public class EvolutionGroupController {
 
     private final EvolutionApiService evolutionApiService;
 
-    @Override
+    @GetMapping("/groups")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<EvolutionGroupResponseDTO>> findGroups() {
         return ResponseEntity.ok(evolutionApiService.findGroups());
     }
 
-    @Override
+    @PostMapping("/groups/link")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<EvolutionGroupResponseDTO> linkGroupToClient(
-            @Valid EvolutionGroupLinkRequestDTO request) {
+            @Valid @RequestBody EvolutionGroupLinkRequestDTO request) {
         return ResponseEntity.ok(evolutionApiService.linkGroupToClient(request));
     }
 }

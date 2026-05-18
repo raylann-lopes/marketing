@@ -1,13 +1,11 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.controller.api.MediaApi;
 import com.north.producoes.controller.dto.request.MediaUploadCompleteRequestDTO;
 import com.north.producoes.controller.dto.response.MediaUrlResponseDTO;
 import com.north.producoes.controller.dto.response.MediaUploadCompleteResponseDTO;
 import com.north.producoes.controller.dto.response.PresignedUploadResponseDTO;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.service.MediaService;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,18 +15,11 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @AllArgsConstructor
-@Tag(name = "Media", description = "Upload S3 e URLs de mídia para integração com n8n")
-public class MediaController implements MediaApi {
+public class MediaController {
 
     private final MediaService mediaService;
 
-    /**
-     * Gera URL presigned para upload direto do frontend ao S3.
-     * O clientId eh sempre derivado pelo servidor a partir do postId.
-     * O upload já aponta para o prefixo público configurado no bucket.
-     */
-
-    @Override
+    @PostMapping("/api/media/upload-url")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PresignedUploadResponseDTO> generateUploadUrl(
             @RequestParam Long postId,
@@ -38,7 +29,7 @@ public class MediaController implements MediaApi {
         return ResponseEntity.ok(mediaService.generateUploadUrl(postId, filename, contentType, user));
     }
 
-    @Override
+    @PostMapping("/api/media/upload-complete")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MediaUploadCompleteResponseDTO> markUploadComplete(
             @Valid @RequestBody MediaUploadCompleteRequestDTO request,
@@ -46,22 +37,13 @@ public class MediaController implements MediaApi {
         return ResponseEntity.ok(mediaService.markUploadComplete(request, user));
     }
 
-    /**
-     * Gera URL de leitura para o frontend.
-     * Todas as artes devem existir no prefixo público configurado.
-     */
-    @Override
+    @GetMapping("/api/media/art-url")
     public ResponseEntity<MediaUrlResponseDTO> getArtPreviewUrl(@RequestParam Long postId,
                                                                 @AuthenticationPrincipal UserEntity user) {
         return ResponseEntity.ok(mediaService.getArtPreviewUrl(postId, user));
     }
 
-    /**
-     * Endpoint interno consumido pelo n8n.
-     * Retorna URL pública da mídia e credenciais do Graph.
-     * Protegido por InternalApiKeyFilter (header X-Internal-Api-Key).
-     */
-    @Override
+    @GetMapping("/api/internal/media-url/{postId}")
     public ResponseEntity<MediaUrlResponseDTO> getMediaUrlForN8n(@PathVariable Long postId) {
         return ResponseEntity.ok(mediaService.getMediaUrlForN8n(postId));
     }

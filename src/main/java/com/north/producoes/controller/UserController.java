@@ -1,6 +1,5 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.controller.api.UserApi;
 import com.north.producoes.controller.dto.request.ChangePasswordRequestDTO;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.controller.dto.request.UserRequestDTO;
@@ -12,17 +11,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/users")
 @AllArgsConstructor
-public class UserController implements UserApi {
+public class UserController {
 
     private final UserService userService;
 
-    @Override
+    @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<UserResponseDTO>> findAll() {
         List<UserResponseDTO> user = userService.findAllUser()
@@ -32,15 +32,15 @@ public class UserController implements UserApi {
         return ResponseEntity.ok(user);
     }
 
-    @Override
+    @GetMapping("/email/{email}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<UserResponseDTO> findUserByEmail(String email) {
+    public ResponseEntity<UserResponseDTO> findUserByEmail(@PathVariable String email) {
         return ResponseEntity.ok(UserResponseDTO.from(userService.findUserByEmail(email).orElseThrow()));
     }
 
-    @Override
+    @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<UserResponseDTO> saveUser(@Valid UserRequestDTO request) {
+    public ResponseEntity<UserResponseDTO> saveUser(@Valid @RequestBody UserRequestDTO request) {
         UserEntity user = new UserEntity();
         user.setName(request.name());
         user.setEmail(request.email());
@@ -49,14 +49,14 @@ public class UserController implements UserApi {
                 .body(UserResponseDTO.from(userService.saveUser(user)));
     }
 
-    @Override
+    @DeleteMapping("/id/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<Void> deleteUserById(Long id) {
+    public ResponseEntity<Void> deleteUserById(@PathVariable Long id) {
         userService.deleteUserById(id);
         return ResponseEntity.noContent().build();
     }
 
-    @Override
+    @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> findMe(@AuthenticationPrincipal UserEntity user) {
         if (user == null) {
             throw new IllegalStateException("Usuário não autenticado");
@@ -64,8 +64,8 @@ public class UserController implements UserApi {
         return ResponseEntity.ok(UserResponseDTO.from(user));
     }
 
-    @Override
-    public ResponseEntity<UserResponseDTO> updateMe(@Valid UserRequestDTO request, @AuthenticationPrincipal UserEntity user) {
+    @PutMapping("/me")
+    public ResponseEntity<UserResponseDTO> updateMe(@Valid @RequestBody UserRequestDTO request, @AuthenticationPrincipal UserEntity user) {
         if (user == null) {
             throw new IllegalStateException("Usuário não autenticado");
         }
@@ -73,8 +73,8 @@ public class UserController implements UserApi {
                 userService.updateProfile(user.getId(), request)));
     }
 
-    @Override
-    public ResponseEntity<Void> changePassword(@Valid ChangePasswordRequestDTO request, @AuthenticationPrincipal UserEntity user) {
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request, @AuthenticationPrincipal UserEntity user) {
         if (user == null) {
             throw new IllegalStateException("Usuário não autenticado");
         }

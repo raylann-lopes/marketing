@@ -1,6 +1,5 @@
 package com.north.producoes.security;
 
-import com.north.producoes.controller.api.AuthApi;
 import com.north.producoes.controller.dto.request.LoginRequestDTO;
 import com.north.producoes.controller.dto.request.RegisterRequestDTO;
 import com.north.producoes.controller.dto.response.LoginResponseDTO;
@@ -13,32 +12,35 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api/auth")
 @AllArgsConstructor
-public class AuthController implements AuthApi {
+public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
 
-    @Override
-    public ResponseEntity<LoginResponseDTO> login(@Valid LoginRequestDTO loginRequestDTO) {
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginRequestDTO loginRequestDTO) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequestDTO.email(), loginRequestDTO.password()));
 
-        UserEntity user = (UserEntity) userService.loadUserByUsername(loginRequestDTO.email());
+        UserEntity user = userService.findUserByEmail(loginRequestDTO.email())
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
         String acessToken = jwtService.generateToken(user);
         String refreshToken = refreshTokenService.generate(user);
 
         return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken, user.getRole().name(), user.getId()));
     }
 
-    @Override
-    public ResponseEntity<LoginResponseDTO> register(@Valid RegisterRequestDTO registerRequestDTO) {
+    @PostMapping("/register")
+    public ResponseEntity<LoginResponseDTO> register(@RequestBody @Valid RegisterRequestDTO registerRequestDTO) {
         UserEntity user = userService.register(registerRequestDTO);
         String acessToken = jwtService.generateToken(user);
         String refreshToken = refreshTokenService.generate(user);
@@ -46,12 +48,13 @@ public class AuthController implements AuthApi {
         return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken, user.getRole().name(), user.getId()));
     }
 
-    @Override
-    public ResponseEntity<LoginResponseDTO> refresh(@Valid RefreshRequestDTO request) {
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponseDTO> refresh(@RequestBody @Valid RefreshRequestDTO request) {
         RefreshTokenService.RotatedRefreshToken rotated = refreshTokenService.rotate(request.refreshToken());
 
         UserEntity user = rotated.user();
-        String newAcessToken = jwtService.generateToken(user);
-        return ResponseEntity.ok(new LoginResponseDTO(newAcessToken, rotated.refreshToken(), user.getRole().name(), user.getId()));
+        String accessToken = jwtService.generateToken(user);
+
+        return ResponseEntity.ok(new LoginResponseDTO(accessToken, rotated.refreshToken(), user.getRole().name(), user.getId()));
     }
 }

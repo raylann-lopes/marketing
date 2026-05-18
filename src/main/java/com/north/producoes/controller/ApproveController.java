@@ -1,6 +1,5 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.controller.api.ApproveApi;
 import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
@@ -12,18 +11,18 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
 @RestController
 @AllArgsConstructor
-public class ApproveController implements ApproveApi {
+@RequestMapping("/api/post-approvals")
+public class ApproveController {
 
     private final ApproveRepository approveRepository;
     private final ApprovedService approvedService;
 
-    @Override
+    @GetMapping("/all")
     public ResponseEntity<List<ApproveResponseDTO>> findAll() {
         List<ApproveEntity> approvals = approveRepository.findAll();
         return ResponseEntity.ok(approvals.
@@ -32,8 +31,8 @@ public class ApproveController implements ApproveApi {
                 .toList());
     }
 
-    @Override
-    public ResponseEntity<ApproveResponseDTO> findByPostId(Long id) {
+    @GetMapping("/{id}")
+    public ResponseEntity<ApproveResponseDTO> findByPostId(@PathVariable Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -41,8 +40,8 @@ public class ApproveController implements ApproveApi {
         return ResponseEntity.ok(ApproveResponseDTO.from(approvals.getFirst()));
     }
 
-    @Override
-    public ResponseEntity<List<ApproveResponseDTO>> findApproveByStatus(ApproveStatusEnum status) {
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<ApproveResponseDTO>> findApproveByStatus(@PathVariable ApproveStatusEnum status) {
         List<ApproveEntity> getApproveStatus = approveRepository.findApproveEntitiesByStatus(status);
         return ResponseEntity.ok(getApproveStatus.
                 stream()
@@ -50,9 +49,9 @@ public class ApproveController implements ApproveApi {
                 .toList());
     }
 
-    @Override
+    @PostMapping("/approve/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<ApproveResponseDTO> approvePost(Long id) {
+    public ResponseEntity<ApproveResponseDTO> approvePost(@PathVariable Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -62,9 +61,9 @@ public class ApproveController implements ApproveApi {
         return ResponseEntity.ok(ApproveResponseDTO.from(approveRepository.save(approve)));
     }
 
-    @Override
+    @PostMapping("/reject/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<ApproveResponseDTO> rejectPost(Long id) {
+    public ResponseEntity<ApproveResponseDTO> rejectPost(@PathVariable Long id) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(id);
         if (approvals.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -74,20 +73,20 @@ public class ApproveController implements ApproveApi {
         return ResponseEntity.ok(ApproveResponseDTO.from(approveRepository.save(approve)));
     }
 
-    @Override
-    public ResponseEntity<ApproveResponseDTO> saveApprove(@Valid ApproveRequestDTO approve) {
+    @PostMapping("/save")
+    public ResponseEntity<ApproveResponseDTO> saveApprove(@Valid @RequestBody ApproveRequestDTO approve) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApproveResponseDTO.from(approvedService.saveApprove(approve)));
     }
 
-    @Override
-    public ResponseEntity<ApproveResponseDTO> updateApprove(Long id, @Valid ApproveRequestDTO approve) {
+    @PutMapping("/update/{id}")
+    public ResponseEntity<ApproveResponseDTO> updateApprove(@PathVariable Long id, @Valid @RequestBody ApproveRequestDTO approve) {
         return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateApprove(id, approve)));
     }
 
-    @Override
+    @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<Void> deleteApproveById(Long id) {
+    public ResponseEntity<Void> deleteApproveById(@PathVariable Long id) {
         approvedService.deleteApproveById(id);
         return ResponseEntity.noContent().build();
     }

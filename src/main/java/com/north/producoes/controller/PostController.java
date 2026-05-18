@@ -1,6 +1,5 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.controller.api.PostApi;
 import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
@@ -9,19 +8,22 @@ import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.service.PostService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/posts")
 @AllArgsConstructor
-public class PostController implements PostApi {
+public class PostController {
 
     private final PostService postService;
 
-    @Override
+    @GetMapping
     public ResponseEntity<List<PostResponseDTO>> findAll() {
         List<PostResponseDTO> post = postService.findAllPost()
                 .stream()
@@ -30,8 +32,8 @@ public class PostController implements PostApi {
         return ResponseEntity.ok(post);
     }
 
-    @Override
-    public ResponseEntity<List<PostResponseDTO>> findByStatus(PostStatusEnum status) {
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<PostResponseDTO>> findByStatus(@PathVariable PostStatusEnum status) {
         List<PostResponseDTO> postStatus = postService.findByStatus(status)
                 .stream()
                 .map(PostResponseDTO::from)
@@ -39,8 +41,8 @@ public class PostController implements PostApi {
         return ResponseEntity.ok(postStatus);
     }
 
-    @Override
-    public ResponseEntity<List<PostResponseDTO>> findByClient(Long id) {
+    @GetMapping("/client/{id}")
+    public ResponseEntity<List<PostResponseDTO>> findByClient(@PathVariable Long id) {
         List<PostResponseDTO> postClient = postService.findByClient(id)
                 .stream()
                 .map(PostResponseDTO::from)
@@ -48,8 +50,8 @@ public class PostController implements PostApi {
         return ResponseEntity.ok(postClient);
     }
 
-    @Override
-    public ResponseEntity<List<PostResponseDTO>> findByUser(Long id) {
+    @GetMapping("/user/{id}")
+    public ResponseEntity<List<PostResponseDTO>> findByUser(@PathVariable Long id) {
         List<PostResponseDTO> postUser = postService.findByUser(id)
                 .stream()
                 .map(PostResponseDTO::from)
@@ -57,8 +59,10 @@ public class PostController implements PostApi {
         return ResponseEntity.ok(postUser);
     }
 
-    @Override
-    public ResponseEntity<List<PostResponseDTO>> findByScheduledAt(LocalDateTime scheduledAt, LocalDateTime scheduledAtBefore) {
+    @GetMapping("/scheduled/{scheduledAt}")
+    public ResponseEntity<List<PostResponseDTO>> findByScheduledAt(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scheduledAt,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scheduledAtBefore) {
         List<PostResponseDTO> postScheduledAt = postService.findByScheduledAt(scheduledAt, scheduledAtBefore)
                 .stream()
                 .map(PostResponseDTO::from)
@@ -66,24 +70,29 @@ public class PostController implements PostApi {
         return ResponseEntity.ok(postScheduledAt);
     }
 
-    @Override
-    public ResponseEntity<PostResponseDTO> savePost(@Valid PostRequestDTO post) {
+    @PostMapping("/save")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<PostResponseDTO> savePost(@Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.savePost(post)));
     }
 
-    @Override
-    public ResponseEntity<PostResponseDTO> updatePost(Long id, @Valid PostRequestDTO post) {
+    @PutMapping("/update/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<PostResponseDTO> updatePost(@PathVariable Long id, @Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(id, post)));
     }
 
-    @Override
-    public ResponseEntity<Void> deletePostById(Long id) {
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<Void> deletePostById(@PathVariable Long id) {
         postService.deletePostById(id);
         return ResponseEntity.ok().build();
     }
 
-    @Override
-    public ResponseEntity<ApproveResponseDTO> generateCaption(Long id, @Valid CaptionRequestDTO request) {
+    @PostMapping("/{id}/generate-caption")
+    public ResponseEntity<ApproveResponseDTO> generateCaption(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) CaptionRequestDTO request) {
         String artS3Key = (request != null) ? request.artS3Key() : null;
         return ResponseEntity.ok(ApproveResponseDTO.from(postService.generateCaption(id, artS3Key)));
     }

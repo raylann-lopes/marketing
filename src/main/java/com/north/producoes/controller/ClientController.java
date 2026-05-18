@@ -1,6 +1,5 @@
 package com.north.producoes.controller;
 
-import com.north.producoes.controller.api.ClientApi;
 import com.north.producoes.controller.dto.request.ClientRequestDTO;
 import com.north.producoes.controller.dto.response.ClientResponseDTO;
 import com.north.producoes.entity.enums.ClientStatusEnum;
@@ -10,17 +9,18 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/clients")
 @AllArgsConstructor
-public class ClientController implements ClientApi {
+public class ClientController {
 
     private final ClientService clientService;
 
-    @Override
+    @GetMapping
     public ResponseEntity<List<ClientResponseDTO>> findAll() {
         List<ClientResponseDTO> clients = clientService.findAllClient()
                 .stream()
@@ -29,18 +29,18 @@ public class ClientController implements ClientApi {
         return ResponseEntity.ok(clients);
     }
 
-    @Override
-    public ResponseEntity<ClientResponseDTO> findByEmail(String email) {
+    @GetMapping("/email/{email}")
+    public ResponseEntity<ClientResponseDTO> findByEmail(@PathVariable String email) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByEmail(email)));
     }
 
-    @Override
-    public ResponseEntity<ClientResponseDTO> findByNumber(String number) {
+    @GetMapping("/number/{number}")
+    public ResponseEntity<ClientResponseDTO> findByNumber(@PathVariable String number) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByNumber(number)));
     }
 
-    @Override
-    public ResponseEntity<List<ClientResponseDTO>> findByStatus(ClientStatusEnum status) {
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<ClientResponseDTO>> findByStatus(@PathVariable ClientStatusEnum status) {
         List<ClientResponseDTO> clients = clientService.findByStatus(status)
                 .stream()
                 .map(ClientResponseDTO::from)
@@ -48,22 +48,22 @@ public class ClientController implements ClientApi {
         return ResponseEntity.ok(clients);
     }
 
-    @Override
+    @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<ClientResponseDTO> saveClient(@Valid ClientRequestDTO request) {
+    public ResponseEntity<ClientResponseDTO> saveClient(@Valid @RequestBody ClientRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ClientResponseDTO.from(clientService.saveClient(request)));
     }
 
-    @Override
+    @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<ClientResponseDTO> updateClient(Long id, @Valid ClientRequestDTO request) {
+    public ResponseEntity<ClientResponseDTO> updateClient(@PathVariable Long id, @Valid @RequestBody ClientRequestDTO request) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateClient(id, request)));
     }
 
-    @Override
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<Void> deleteById(Long id) {
+    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
         clientService.deleteClientById(id);
         return ResponseEntity.noContent().build();
     }
