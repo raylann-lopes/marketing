@@ -1,0 +1,5 @@
+$kind: http-request
+name: List Instagram Accounts
+method: GET
+url: '{{baseUrl}}/api/admin/meta/instagram-accounts'
+order: 1000

@@ -1,0 +1,11 @@
+$kind: http-request
+name: Create Approval
+method: POST
+url: '{{baseUrl}}/api/post-approvals/save'
+order: 6000
+body:
+  type: json
+  content: |-
+    {
+      "postId": 1
+    }

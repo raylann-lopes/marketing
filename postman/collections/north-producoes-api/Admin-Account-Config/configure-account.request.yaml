@@ -1,0 +1,13 @@
+$kind: http-request
+name: Configure Account
+method: POST
+url: '{{baseUrl}}/api/admin/account-config'
+order: 1000
+body:
+  type: json
+  content: |-
+    {
+      "clientId": 1,
+      "instagramAccountId": "17841400000000000",
+      "pageAccessToken": "EAABwzLixnjYBO..."
+    }

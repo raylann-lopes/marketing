@@ -43,7 +43,7 @@ CREATE TABLE tb_posts (
     CONSTRAINT fk_tb_posts_on_client FOREIGN KEY (client_id) REFERENCES tb_client (id),
     CONSTRAINT fk_tb_posts_on_user FOREIGN KEY (user_id) REFERENCES tb_users (id),
     CONSTRAINT ck_tb_posts_status_enum CHECK (
-        status IN ('DEMAND', 'IN_PRODUCTION', 'REJECTED', 'FINISHED', 'WAITING_APPROVAL', 'SCHEDULE', 'POSTED', 'PUBLISHED')
+        status IN ('DEMAND', 'IN_PRODUCTION', 'FINISHED', 'WAITING_APPROVAL', 'SCHEDULE', 'PUBLISHED')
     )
 );
 
@@ -74,9 +74,9 @@ CREATE TABLE tb_post_approvals (
     whatsapp_stanza_id TEXT UNIQUE,
     whatsapp_sent_at TEXT,
     whatsapp_response_text TEXT,
-    rejection_reason VARCHAR(1000),
+    rejection_reason TEXT,
     rejected_at TIMESTAMP WITHOUT TIME ZONE,
-    rejected_by VARCHAR(255),
+    rejected_by TEXT,
     CONSTRAINT uq_tb_post_approvals_post UNIQUE (post_id),
     CONSTRAINT fk_tb_post_approvals_post FOREIGN KEY (post_id) REFERENCES tb_posts (id),
     CONSTRAINT ck_tb_post_approvals_status_enum CHECK (status IN ('APPROVE', 'REJECTED', 'PENDING'))

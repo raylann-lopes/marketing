@@ -1,0 +1,19 @@
+$kind: http-request
+name: Update Approval Status
+method: PATCH
+url: '{{baseUrl}}/api/internal/approvals/{{id}}/status'
+order: 4000
+auth:
+  type: noauth
+headers:
+  - key: X-Internal-Api-Key
+    value: '{{internalApiKey}}'
+pathVariables:
+  - key: id
+    value: '{{id}}'
+body:
+  type: json
+  content: |-
+    {
+      "status": "APPROVE"
+    }

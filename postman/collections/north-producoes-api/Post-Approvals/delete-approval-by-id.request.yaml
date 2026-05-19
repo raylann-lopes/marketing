@@ -1,0 +1,8 @@
+$kind: http-request
+name: Delete Approval by ID
+method: DELETE
+url: '{{baseUrl}}/api/post-approvals/delete/{{id}}'
+order: 8000
+pathVariables:
+  - key: id
+    value: '{{id}}'

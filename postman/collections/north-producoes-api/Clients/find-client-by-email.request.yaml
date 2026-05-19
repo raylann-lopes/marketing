@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Client by Email
+method: GET
+url: '{{baseUrl}}/api/clients/email/{{email}}'
+order: 2000
+pathVariables:
+  - key: email
+    value: '{{email}}'

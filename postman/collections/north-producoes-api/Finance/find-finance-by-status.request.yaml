@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Finance by Status
+method: GET
+url: '{{baseUrl}}/api/finance/status/{{status}}'
+order: 2000
+pathVariables:
+  - key: status
+    value: PENDING

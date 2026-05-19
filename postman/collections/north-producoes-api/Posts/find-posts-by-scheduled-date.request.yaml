@@ -1,0 +1,11 @@
+$kind: http-request
+name: Find Posts by Scheduled Date
+method: GET
+url: '{{baseUrl}}/api/posts/scheduled/{{scheduledAt}}'
+order: 5000
+pathVariables:
+  - key: scheduledAt
+    value: '2025-01-01T00:00:00'
+queryParams:
+  - key: scheduledAtBefore
+    value: '{{scheduledAtBefore}}'

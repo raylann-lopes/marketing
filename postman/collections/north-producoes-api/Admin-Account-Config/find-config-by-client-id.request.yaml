@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Config by Client ID
+method: GET
+url: '{{baseUrl}}/api/admin/account-config/client/{{clientId}}'
+order: 2000
+pathVariables:
+  - key: clientId
+    value: '{{clientId}}'

@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Posts by Client
+method: GET
+url: '{{baseUrl}}/api/posts/client/{{id}}'
+order: 3000
+pathVariables:
+  - key: id
+    value: '{{id}}'

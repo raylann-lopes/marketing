@@ -1,0 +1,19 @@
+$kind: http-request
+name: 'Reject Post (Internal/n8n)'
+method: PATCH
+url: '{{baseUrl}}/api/internal/approvals/post/{{postId}}/reject'
+order: 2000
+auth:
+  type: noauth
+headers:
+  - key: X-Internal-Api-Key
+    value: '{{internalApiKey}}'
+pathVariables:
+  - key: postId
+    value: '{{postId}}'
+body:
+  type: json
+  content: |-
+    {
+      "rejectionReason": "Legenda precisa ser mais criativa."
+    }

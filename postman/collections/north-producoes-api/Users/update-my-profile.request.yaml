@@ -1,0 +1,13 @@
+$kind: http-request
+name: Update My Profile
+method: PUT
+url: '{{baseUrl}}/api/users/me'
+order: 6000
+body:
+  type: json
+  content: |-
+    {
+      "name": "Meu Nome",
+      "email": "meu@email.com",
+      "password": "novasenha"
+    }

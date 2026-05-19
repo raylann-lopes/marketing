@@ -1,0 +1,13 @@
+$kind: http-request
+name: Link Instagram Account
+method: POST
+url: '{{baseUrl}}/api/admin/meta/instagram-accounts/link'
+order: 2000
+body:
+  type: json
+  content: |-
+    {
+      "clientId": 1,
+      "instagramAccountId": "17841400000000000",
+      "instagramUsername": "cliente_instagram"
+    }

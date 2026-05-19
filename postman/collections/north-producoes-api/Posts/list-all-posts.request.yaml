@@ -1,0 +1,5 @@
+$kind: http-request
+name: List All Posts
+method: GET
+url: '{{baseUrl}}/api/posts'
+order: 1000

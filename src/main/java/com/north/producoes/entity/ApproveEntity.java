@@ -44,7 +44,7 @@ public class ApproveEntity {
     private LocalDateTime approvedAt;
 
     @Column(name = "approved_user", nullable = false)
-    private String ApprovedUser;
+    private String approvedUser;
 
     @Column(name = "whatsapp_stanza_id", unique = true)
     private String whatsappStanzaId;

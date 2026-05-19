@@ -50,6 +50,7 @@ public class ApprovedService {
         approve.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
         approve.setArtName(dto.artName());
         approve.setCaption(dto.caption());
+        approve.setStatus(ApproveStatusEnum.PENDING);
         approve.setApprovedUser("");
 
         return approveRepository.save(approve);
@@ -96,9 +97,8 @@ public class ApprovedService {
         ApproveEntity existing = approveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
 
-        existing.setWhatsappStanzaId(dto.whatsappStanzaId());
-        existing.setWhatsappSentAt(dto.whatsappSentAt());
-        existing.setWhatsappResponseText(dto.whatsappResponseText());
+        existing.setWhatsappStanzaId(dto.stanzaId());
+        existing.setWhatsappSentAt(dto.sentAt());
 
         return approveRepository.save(existing);
     }

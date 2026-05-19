@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Posts by Status
+method: GET
+url: '{{baseUrl}}/api/posts/status/{{status}}'
+order: 2000
+pathVariables:
+  - key: status
+    value: PENDING

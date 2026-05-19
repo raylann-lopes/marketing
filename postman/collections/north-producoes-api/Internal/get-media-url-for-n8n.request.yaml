@@ -1,0 +1,13 @@
+$kind: http-request
+name: Get Media URL for n8n
+method: GET
+url: '{{baseUrl}}/api/internal/media-url/{{postId}}'
+order: 6000
+auth:
+  type: noauth
+headers:
+  - key: X-Internal-Api-Key
+    value: '{{internalApiKey}}'
+pathVariables:
+  - key: postId
+    value: '{{postId}}'

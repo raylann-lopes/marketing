@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Finance by Client
+method: GET
+url: '{{baseUrl}}/api/finance/client/{{id}}'
+order: 3000
+pathVariables:
+  - key: id
+    value: '{{id}}'

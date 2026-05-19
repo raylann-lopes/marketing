@@ -1,0 +1,14 @@
+$kind: http-request
+name: Create Finance Record
+method: POST
+url: '{{baseUrl}}/api/finance/create'
+order: 4000
+body:
+  type: json
+  content: |-
+    {
+      "clientId": 1,
+      "amount": 1500.00,
+      "description": "Mensalidade",
+      "status": "PENDING"
+    }

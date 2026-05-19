@@ -1,0 +1,13 @@
+$kind: http-request
+name: Link Group to Client
+method: POST
+url: '{{baseUrl}}/api/admin/evolution/groups/link'
+order: 2000
+body:
+  type: json
+  content: |-
+    {
+      "clientId": 1,
+      "groupId": "group123@g.us",
+      "groupName": "Grupo do Cliente"
+    }

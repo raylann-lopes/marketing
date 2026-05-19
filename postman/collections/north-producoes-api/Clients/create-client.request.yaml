@@ -1,0 +1,16 @@
+$kind: http-request
+name: Create Client
+method: POST
+url: '{{baseUrl}}/api/clients'
+order: 5000
+body:
+  type: json
+  content: |-
+    {
+      "name": "Cliente Exemplo",
+      "email": "cliente@email.com",
+      "number": "11999999999",
+      "drive_link": "https://drive.google.com/...",
+      "niche": "Moda",
+      "voice_tone": "Descontraído"
+    }

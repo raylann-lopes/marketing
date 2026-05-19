@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Approval by Post ID
+method: GET
+url: '{{baseUrl}}/api/post-approvals/{{id}}'
+order: 2000
+pathVariables:
+  - key: id
+    value: '{{id}}'

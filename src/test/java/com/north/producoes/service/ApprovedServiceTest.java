@@ -6,6 +6,7 @@ import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDT
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
+import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.PostRepository;
@@ -147,7 +148,7 @@ class ApprovedServiceTest {
         void shouldUpdateWhatsappMetadata() {
             // Arrange
             ApproveEntity approve = approval(5L, post(10L));
-            ApproveWhatsAppUpdateRequestDTO request = new ApproveWhatsAppUpdateRequestDTO("stanza-1", "sent-at", "ok", null);
+            ApproveWhatsAppUpdateRequestDTO request = new ApproveWhatsAppUpdateRequestDTO("stanza-1", "sent-at");
             when(approveRepository.findById(5L)).thenReturn(Optional.of(approve));
             when(approveRepository.save(approve)).thenReturn(approve);
 
@@ -157,7 +158,6 @@ class ApprovedServiceTest {
             // Assert
             assertThat(result.getWhatsappStanzaId()).isEqualTo("stanza-1");
             assertThat(result.getWhatsappSentAt()).isEqualTo("sent-at");
-            assertThat(result.getWhatsappResponseText()).isEqualTo("ok");
         }
 
         @Test
@@ -181,7 +181,7 @@ class ApprovedServiceTest {
         }
 
         @Test
-        @DisplayName("deve rejeitar e limpar auditoria quando status for REJECT")
+        @DisplayName("deve rejeitar e limpar auditoria quando status for REJECTED")
         void shouldRejectAndClearAuditFields() {
             // Arrange
             ApproveEntity approve = approval(5L, post(10L));
@@ -214,38 +214,46 @@ class ApprovedServiceTest {
                     new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.PENDING)
             ))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("APPROVE ou REJECT");
+                    .hasMessageContaining("APPROVE ou REJECTED");
         }
     }
 
     @Nested
-    @DisplayName("deleteApproveById()")
-    class DeleteApproveById {
-
+    @DisplayName("internal methods")
+    class InternalMethods {
         @Test
-        @DisplayName("deve deletar aprovação quando existir")
-        void shouldDeleteApprovalWhenExists() {
+        @DisplayName("deve aprovar por post ID")
+        void shouldInternalApproveByPostId() {
             // Arrange
-            when(approveRepository.existsById(5L)).thenReturn(true);
+            ApproveEntity approve = approval(5L, post(10L));
+            when(approveRepository.findByPostId(10L)).thenReturn(List.of(approve));
+            when(approveRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
             // Act
-            approvedService.deleteApproveById(5L);
+            ApproveEntity result = approvedService.internalApproveByPostId(10L, "user");
 
             // Assert
-            verify(approveRepository).deleteById(5L);
+            assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.APPROVE);
+            assertThat(result.getApprovedUser()).isEqualTo("user");
         }
 
         @Test
-        @DisplayName("deve lançar ResourceNotFoundException quando aprovação não existir")
-        void shouldThrowWhenApprovalDoesNotExist() {
+        @DisplayName("deve rejeitar por post ID e atualizar status do post")
+        void shouldInternalRejectByPostId() {
             // Arrange
-            when(approveRepository.existsById(99L)).thenReturn(false);
+            PostEntity post = post(10L);
+            ApproveEntity approve = approval(5L, post);
+            when(approveRepository.findByPostId(10L)).thenReturn(List.of(approve));
+            when(approveRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-            // Act & Assert
-            assertThatThrownBy(() -> approvedService.deleteApproveById(99L))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("99");
-            verify(approveRepository, never()).deleteById(99L);
+            // Act
+            ApproveEntity result = approvedService.internalRejectByPostId(10L, "user", "motivo");
+
+            // Assert
+            assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.REJECTED);
+            assertThat(result.getRejectedBy()).isEqualTo("user");
+            assertThat(result.getRejectionReason()).isEqualTo("motivo");
+            assertThat(post.getStatus()).isEqualTo(PostStatusEnum.REJECTED);
         }
     }
 

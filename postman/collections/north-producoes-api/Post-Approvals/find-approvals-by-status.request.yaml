@@ -1,0 +1,8 @@
+$kind: http-request
+name: Find Approvals by Status
+method: GET
+url: '{{baseUrl}}/api/post-approvals/status/{{status}}'
+order: 3000
+pathVariables:
+  - key: status
+    value: PENDING

@@ -1,0 +1,12 @@
+$kind: http-request
+name: 'Generate Upload URL (S3 Presigned)'
+method: POST
+url: '{{baseUrl}}/api/media/upload-url'
+order: 1000
+queryParams:
+  - key: postId
+    value: '{{postId}}'
+  - key: filename
+    value: '{{filename}}'
+  - key: contentType
+    value: '{{contentType}}'

@@ -1,0 +1,14 @@
+$kind: http-request
+name: Update Approval
+method: PUT
+url: '{{baseUrl}}/api/post-approvals/update/{{id}}'
+order: 7000
+pathVariables:
+  - key: id
+    value: '{{id}}'
+body:
+  type: json
+  content: |-
+    {
+      "postId": 1
+    }

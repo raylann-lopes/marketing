@@ -1,0 +1,12 @@
+$kind: http-request
+name: Confirm Upload Complete
+method: POST
+url: '{{baseUrl}}/api/media/upload-complete'
+order: 2000
+body:
+  type: json
+  content: |-
+    {
+      "postId": 1,
+      "s3Key": "posts/1/arte.jpg"
+    }

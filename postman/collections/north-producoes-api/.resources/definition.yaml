@@ -1,0 +1,43 @@
+$kind: collection
+name: North Produções API
+description: 'API completa para gestão de agência de marketing (Clientes, Posts, Financeiro, Aprovações)'
+variables:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+    description: 'Base URL do servidor'
+  - key: token
+    value: ''
+    description: 'JWT Bearer Token'
+  - key: refreshToken
+    value: ''
+    description: 'Refresh Token JWT'
+  - key: internalApiKey
+    value: ''
+    description: 'Chave de API interna (X-Internal-Api-Key)'
+  - key: id
+    value: '1'
+  - key: email
+    value: 'user@north.com'
+  - key: number
+    value: '11999999999'
+  - key: status
+    value: 'ACTIVE'
+  - key: postId
+    value: '1'
+  - key: clientId
+    value: '1'
+  - key: filename
+    value: 'arte.jpg'
+  - key: contentType
+    value: 'image/jpeg'
+  - key: scheduledAt
+    value: '2025-06-01T00:00:00'
+  - key: scheduledAtBefore
+    value: '2025-12-31T23:59:59'
+  - key: stanzaId
+    value: 'stanza123'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'

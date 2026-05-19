@@ -5,4 +5,3 @@ public enum ApproveStatusEnum {
     REJECTED,
     PENDING
 }
-

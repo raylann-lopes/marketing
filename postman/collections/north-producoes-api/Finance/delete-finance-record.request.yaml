@@ -1,0 +1,8 @@
+$kind: http-request
+name: Delete Finance Record
+method: DELETE
+url: '{{baseUrl}}/api/finance/delete/{{id}}'
+order: 6000
+pathVariables:
+  - key: id
+    value: '{{id}}'

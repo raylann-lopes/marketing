@@ -1,0 +1,19 @@
+$kind: http-request
+name: Update Post
+method: PUT
+url: '{{baseUrl}}/api/posts/update/{{id}}'
+order: 7000
+pathVariables:
+  - key: id
+    value: '{{id}}'
+body:
+  type: json
+  content: |-
+    {
+      "title": "Post Atualizado",
+      "theme": "Promoção",
+      "objective": "Engajamento",
+      "scheduledAt": "2025-06-01T10:00:00",
+      "clientId": 1,
+      "userId": 1
+    }

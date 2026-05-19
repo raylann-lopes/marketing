@@ -1,0 +1,13 @@
+$kind: http-request
+name: Find Approval by WhatsApp Stanza ID
+method: GET
+url: '{{baseUrl}}/api/internal/approvals/whatsapp'
+order: 5000
+auth:
+  type: noauth
+headers:
+  - key: X-Internal-Api-Key
+    value: '{{internalApiKey}}'
+queryParams:
+  - key: stanzaId
+    value: '{{stanzaId}}'

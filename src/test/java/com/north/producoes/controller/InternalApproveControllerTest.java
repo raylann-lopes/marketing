@@ -2,6 +2,7 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
+import com.north.producoes.controller.dto.request.InternalApprovalRejectRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
@@ -37,7 +38,7 @@ class InternalApproveControllerTest {
     @DisplayName("deve atualizar metadados do WhatsApp")
     void shouldUpdateWhatsappMetadata() {
         // Arrange
-        ApproveWhatsAppUpdateRequestDTO request = new ApproveWhatsAppUpdateRequestDTO("stanza", "sent", "ok", null);
+        ApproveWhatsAppUpdateRequestDTO request = new ApproveWhatsAppUpdateRequestDTO("stanza", "sent");
         ApproveEntity approve = approval(5L);
         approve.setWhatsappStanzaId("stanza");
         when(approvedService.updateWhatsappMetadata(5L, request)).thenReturn(approve);
@@ -49,6 +50,39 @@ class InternalApproveControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().whatsappStanzaId()).isEqualTo("stanza");
+    }
+
+    @Test
+    @DisplayName("deve aprovar internamente por post ID")
+    void shouldInternalApprove() {
+        // Arrange
+        ApproveEntity approve = approval(5L);
+        approve.setStatus(ApproveStatusEnum.APPROVE);
+        when(approvedService.internalApproveByPostId(10L, "n8n-whatsapp")).thenReturn(approve);
+
+        // Act
+        ResponseEntity<ApproveResponseDTO> response = internalApproveController.internalApprove(10L);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().status()).isEqualTo(ApproveStatusEnum.APPROVE);
+    }
+
+    @Test
+    @DisplayName("deve rejeitar internamente por post ID")
+    void shouldInternalReject() {
+        // Arrange
+        InternalApprovalRejectRequestDTO request = new InternalApprovalRejectRequestDTO("Motivo");
+        ApproveEntity approve = approval(5L);
+        approve.setStatus(ApproveStatusEnum.REJECTED);
+        when(approvedService.internalRejectByPostId(10L, "n8n-whatsapp", "Motivo")).thenReturn(approve);
+
+        // Act
+        ResponseEntity<ApproveResponseDTO> response = internalApproveController.internalReject(10L, request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().status()).isEqualTo(ApproveStatusEnum.REJECTED);
     }
 
     @Test
