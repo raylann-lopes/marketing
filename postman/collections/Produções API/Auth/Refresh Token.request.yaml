@@ -1,0 +1,52 @@
+$kind: http-request
+name: Refresh Token
+method: POST
+url: '{{baseUrl}}/api/auth/refresh'
+order: 3000
+auth:
+  type: noauth
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "refreshToken": "{{refreshToken}}"
+    }
+events:
+  - listen: test
+    script: |-
+      const res = pm.response.json();
+
+      pm.test("Refresh successful - status 200", function () {
+        pm.response.to.have.status(200);
+      });
+
+      pm.test("Response contains new token", function () {
+        pm.expect(res).to.have.property("token");
+        pm.expect(res.token).to.be.a("string").and.not.empty;
+      });
+
+      pm.test("Response contains new refreshToken", function () {
+        pm.expect(res).to.have.property("refreshToken");
+        pm.expect(res.refreshToken).to.be.a("string").and.not.empty;
+      });
+
+      if (res.token) {
+        pm.environment.set("token", res.token);
+        console.log("✅ token refreshed and saved to environment");
+      }
+
+      if (res.refreshToken) {
+        pm.environment.set("refreshToken", res.refreshToken);
+        console.log("✅ refreshToken rotated and saved to environment");
+      }
+
+      if (res.role) {
+        pm.environment.set("role", res.role);
+      }
+
+      if (res.userId) {
+        pm.environment.set("userId", res.userId);
+      }

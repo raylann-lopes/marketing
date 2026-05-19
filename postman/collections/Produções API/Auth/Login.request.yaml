@@ -1,0 +1,56 @@
+$kind: http-request
+name: Login
+method: POST
+url: "{{baseUrl}}/api/auth/login"
+order: 1000
+auth:
+  type: inherit
+  credentials:
+    id: collection-4a9b3CecB2DbD920e7A2f62b-bearer
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "user@example.com",
+      "password": "password123"
+    }
+events:
+  - listen: test
+    script: |-
+      const res = pm.response.json();
+
+      pm.test("Login successful - status 200", function () {
+        pm.response.to.have.status(200);
+      });
+
+      pm.test("Response contains token", function () {
+        pm.expect(res).to.have.property("token");
+        pm.expect(res.token).to.be.a("string").and.not.empty;
+      });
+
+      pm.test("Response contains refreshToken", function () {
+        pm.expect(res).to.have.property("refreshToken");
+        pm.expect(res.refreshToken).to.be.a("string").and.not.empty;
+      });
+
+      if (res.token) {
+        pm.environment.set("token", res.token);
+        console.log("✅ token saved to environment");
+      }
+
+      if (res.refreshToken) {
+        pm.environment.set("refreshToken", res.refreshToken);
+        console.log("✅ refreshToken saved to environment");
+      }
+
+      if (res.role) {
+        pm.environment.set("role", res.role);
+        console.log("✅ role saved to environment:", res.role);
+      }
+
+      if (res.userId) {
+        pm.environment.set("userId", res.userId);
+        console.log("✅ userId saved to environment:", res.userId);
+      }

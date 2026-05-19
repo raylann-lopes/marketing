@@ -1,0 +1,5 @@
+$kind: http-request
+name: Approve Post Internal
+method: PATCH
+url: '{{baseUrl}}/api/internal/approvals/post/{{postId}}/approve'
+order: 4000

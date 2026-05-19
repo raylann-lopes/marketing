@@ -1,0 +1,12 @@
+$kind: collection
+name: Produções API
+variables:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+  - key: token
+    value: ''
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'

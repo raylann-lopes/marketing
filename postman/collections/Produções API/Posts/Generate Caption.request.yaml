@@ -1,0 +1,14 @@
+$kind: http-request
+name: Generate Caption
+method: POST
+url: '{{baseUrl}}/api/posts/{{id}}/generate-caption'
+order: 9000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "artS3Key": "path/to/art.jpg"
+    }

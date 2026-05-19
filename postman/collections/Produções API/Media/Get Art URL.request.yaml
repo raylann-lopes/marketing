@@ -1,0 +1,8 @@
+$kind: http-request
+name: Get Art URL
+method: GET
+url: '{{baseUrl}}/api/media/art-url'
+order: 3000
+queryParams:
+  - key: postId
+    value: '{{postId}}'

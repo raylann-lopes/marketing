@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Posts by Client
+method: GET
+url: '{{baseUrl}}/api/posts/client/{{id}}'
+order: 3000

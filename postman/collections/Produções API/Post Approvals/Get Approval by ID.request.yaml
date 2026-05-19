@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Approval by ID
+method: GET
+url: '{{baseUrl}}/api/post-approvals/{{id}}'
+order: 2000

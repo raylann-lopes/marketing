@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Posts by Status
+method: GET
+url: '{{baseUrl}}/api/posts/status/{{status}}'
+order: 2000

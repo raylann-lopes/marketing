@@ -1,0 +1,8 @@
+$kind: http-request
+name: Get Approval by WhatsApp Stanza
+method: GET
+url: '{{baseUrl}}/api/internal/approvals/whatsapp'
+order: 3000
+queryParams:
+  - key: stanzaId
+    value: '{{stanzaId}}'

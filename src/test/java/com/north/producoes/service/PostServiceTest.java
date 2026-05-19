@@ -86,10 +86,10 @@ class PostServiceTest {
         @DisplayName("deve lançar ResourceNotFoundException quando não houver posts com o status")
         void shouldThrowWhenStatusHasNoPosts() {
             // Arrange
-            when(postRepository.findByStatus(PostStatusEnum.PUBLISHED)).thenReturn(List.of());
+            when(postRepository.findByStatus(PostStatusEnum.POSTED)).thenReturn(List.of());
 
             // Act & Assert
-            assertThatThrownBy(() -> postService.findByStatus(PostStatusEnum.PUBLISHED))
+            assertThatThrownBy(() -> postService.findByStatus(PostStatusEnum.POSTED))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Nenhum post encontrado com status");
         }

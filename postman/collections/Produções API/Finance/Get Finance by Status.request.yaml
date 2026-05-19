@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Finance by Status
+method: GET
+url: '{{baseUrl}}/api/finance/status/{{status}}'
+order: 2000

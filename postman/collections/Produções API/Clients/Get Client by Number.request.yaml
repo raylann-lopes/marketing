@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Client by Number
+method: GET
+url: '{{baseUrl}}/api/clients/number/{{number}}'
+order: 3000

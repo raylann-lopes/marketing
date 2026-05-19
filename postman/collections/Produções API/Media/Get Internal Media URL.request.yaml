@@ -1,0 +1,5 @@
+$kind: http-request
+name: Get Internal Media URL
+method: GET
+url: '{{baseUrl}}/api/internal/media-url/{{postId}}'
+order: 4000
