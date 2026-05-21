@@ -3,6 +3,7 @@ package com.north.producoes.controller;
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.InternalApprovalRejectRequestDTO;
+import com.north.producoes.controller.dto.request.InternalApprovalRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
@@ -56,12 +57,13 @@ class InternalApproveControllerTest {
     @DisplayName("deve aprovar internamente por post ID")
     void shouldInternalApprove() {
         // Arrange
+        InternalApprovalRequestDTO request = new InternalApprovalRequestDTO(LocalDateTime.now().plusDays(1), "Notas");
         ApproveEntity approve = approval(5L);
         approve.setStatus(ApproveStatusEnum.APPROVE);
-        when(approvedService.internalApproveByPostId(10L, "n8n-whatsapp")).thenReturn(approve);
+        when(approvedService.internalApproveByPostId(10L, "admin", request)).thenReturn(approve);
 
         // Act
-        ResponseEntity<ApproveResponseDTO> response = internalApproveController.internalApprove(10L);
+        ResponseEntity<ApproveResponseDTO> response = internalApproveController.internalApprove(10L, request);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
