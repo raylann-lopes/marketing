@@ -315,8 +315,7 @@ class PostServiceTest {
                 LocalDateTime.of(2026, 4, 25, 14, 0),
                 clientId,
                 userId,
-                null,
-                null,
+                false,
                 null
         );
     }

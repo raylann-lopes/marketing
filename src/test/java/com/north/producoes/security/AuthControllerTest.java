@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -49,7 +51,7 @@ class AuthControllerTest {
         // Arrange
         LoginRequestDTO request = new LoginRequestDTO("user@example.com", "password123");
         UserEntity user = user(1L);
-        when(userService.loadUserByUsername("user@example.com")).thenReturn(user);
+        when(userService.findUserByEmail("user@example.com")).thenReturn(Optional.of(user));
         when(jwtService.generateToken(user)).thenReturn("access-token");
         when(refreshTokenService.generate(user)).thenReturn("refresh-token");
 

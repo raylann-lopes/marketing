@@ -106,8 +106,7 @@ class PostControllerTest {
                 LocalDateTime.of(2026, 5, 10, 10, 0),
                 1L,
                 2L,
-                null,
-                null,
+                false,
                 null
         );
     }

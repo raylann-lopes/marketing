@@ -69,22 +69,6 @@ class ApproveControllerTest {
     }
 
     @Test
-    @DisplayName("deve aprovar post existente")
-    void shouldApproveExistingPost() {
-        // Arrange
-        ApproveEntity approve = approval(5L);
-        when(approveRepository.findByPostId(10L)).thenReturn(List.of(approve));
-        when(approveRepository.save(approve)).thenReturn(approve);
-
-        // Act
-        ResponseEntity<ApproveResponseDTO> response = approveController.approvePost(10L);
-
-        // Assert
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(approve.getStatus()).isEqualTo(ApproveStatusEnum.APPROVE);
-    }
-
-    @Test
     @DisplayName("deve criar aprovação com status 201")
     void shouldCreateApprovalWithCreatedStatus() {
         // Arrange

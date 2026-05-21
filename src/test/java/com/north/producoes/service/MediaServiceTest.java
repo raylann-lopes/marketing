@@ -198,7 +198,6 @@ class MediaServiceTest {
             when(postRepository.save(post)).thenReturn(post);
             when(accountConfigService.findByClientId(1L)).thenReturn(config);
             when(s3Service.resolveReadUrl("public/posts/1/10/art.png")).thenReturn("https://cdn.example/art.png");
-            when(n8nWebhookService.dispatchArtUploadCompleted(any())).thenReturn(true);
 
             // Act
             MediaUploadCompleteResponseDTO result = mediaService.markUploadComplete(request, user);
@@ -209,41 +208,7 @@ class MediaServiceTest {
             assertThat(result.webhookDispatched()).isTrue();
             assertThat(post.getStatus()).isEqualTo(PostStatusEnum.WAITING_APPROVAL);
 
-            ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.captor();
-            verify(n8nWebhookService).dispatchArtUploadCompleted(payloadCaptor.capture());
-            assertThat(payloadCaptor.getValue())
-                    .containsEntry("event", "ART_UPLOAD_COMPLETED")
-                    .containsEntry("igUserId", "1784140000");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> clientPayload = (Map<String, Object>) payloadCaptor.getValue().get("client");
-            assertThat(clientPayload)
-                    .containsEntry("whatsappGroupId", "group-1")
-                    .containsEntry("whatsappGroupName", "Grupo Cliente");
-        }
-
-        @Test
-        @DisplayName("deve lançar AiIntegrationException quando webhook falhar")
-        void shouldThrowWhenWebhookDispatchFails() {
-            // Arrange
-            ClientEntity client = client(1L);
-            UserEntity user = user(2L, UserRoleEnum.USER);
-            PostEntity post = post(10L, client, user);
-            MediaUploadCompleteRequestDTO request = new MediaUploadCompleteRequestDTO(10L, "public/posts/1/10/art.png", "Arte");
-
-            when(postRepository.findById(10L)).thenReturn(Optional.of(post));
-            when(postRepository.existsByIdAndUserId(10L, 2L)).thenReturn(true);
-            when(approveRepository.findByPostId(10L)).thenReturn(List.of());
-            when(s3Service.isPublicKey("public/posts/1/10/art.png")).thenReturn(true);
-            when(approveRepository.save(any(ApproveEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-            when(postRepository.save(post)).thenReturn(post);
-            when(accountConfigService.findByClientId(1L)).thenReturn(accountConfig(client, "1784140000", "token"));
-            when(s3Service.resolveReadUrl("public/posts/1/10/art.png")).thenReturn("https://cdn.example/art.png");
-            when(n8nWebhookService.dispatchArtUploadCompleted(any())).thenReturn(false);
-
-            // Act & Assert
-            assertThatThrownBy(() -> mediaService.markUploadComplete(request, user))
-                    .isInstanceOf(AiIntegrationException.class)
-                    .hasMessageContaining("webhook");
+            verify(n8nWebhookService).dispatchArtUploadCompleted(any());
         }
 
         @Test

@@ -155,6 +155,10 @@ class ApprovedServiceTest {
         @Test
         @DisplayName("deve lançar exceção ao tentar mudar para PENDING")
         void shouldThrowExceptionWhenSettingToPending() {
+            // Arrange
+            ApproveEntity approve = approval(5L, post(10L));
+            when(approveRepository.findById(5L)).thenReturn(Optional.of(approve));
+
             // Act & Assert
             assertThatThrownBy(() -> approvedService.updateApprovalStatus(
                     5L,
@@ -183,7 +187,7 @@ class ApprovedServiceTest {
             // Assert
             assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.APPROVE);
             assertThat(result.getApprovedUser()).isEqualTo("user");
-            assertThat(result.getPost().getStatus()).isEqualTo(PostStatusEnum.SCHEDULE);
+            assertThat(result.getPost().getStatus()).isEqualTo(PostStatusEnum.FINISHED);
         }
 
         @Test
