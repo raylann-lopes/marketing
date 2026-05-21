@@ -56,28 +56,38 @@ function isVideo(url: string, filename?: string) {
         </div>
         <button @click="$emit('close')" class="p-2 hover:bg-white rounded-xl text-gray-400 transition-colors shadow-sm"><X class="w-5 h-5" /></button>
       </div>
-
-      <div class="p-8 grid grid-cols-2 gap-8">
+import { X, Sparkles, Upload, MessageSquare, Check, Maximize } from 'lucide-vue-next'
+...
         <!-- Coluna 1: Upload da Arte -->
         <div class="space-y-4">
           <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">Arte do Post</label>
           <input ref="fileInputRef" type="file" accept="image/*,video/*" class="hidden" @change="$emit('fileSelect', $event)" />
           <div
-            class="relative aspect-square rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-3 group hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer overflow-hidden"
+            class="relative aspect-square rounded-2xl border border-gray-100 bg-gray-950 flex flex-col items-center justify-center gap-3 group hover:border-primary/40 transition-all cursor-pointer overflow-hidden shadow-2xl"
             @click="fileInputRef?.click()"
           >
             <template v-if="data.artPreviewUrl">
               <video 
                 v-if="isVideo(data.artPreviewUrl, data.artName)"
                 :src="data.artPreviewUrl" 
-                class="absolute inset-0 w-full h-full object-cover animate-in fade-in duration-500"
+                class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner"
                 autoplay muted loop
               ></video>
               <img 
                 v-else
                 :src="data.artPreviewUrl" 
-                class="absolute inset-0 w-full h-full object-cover animate-in fade-in duration-500" 
+                class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner" 
               />
+
+              <!-- Botão Tela Cheia -->
+              <a 
+                :href="data.artPreviewUrl" 
+                target="_blank" 
+                @click.stop
+                class="absolute top-4 right-4 p-2 rounded-xl bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10 z-10"
+              >
+                <Maximize class="w-4 h-4" />
+              </a>
             </template>
             
             <div v-else-if="data.isUploading" class="flex flex-col items-center gap-2 text-primary">

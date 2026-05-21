@@ -27,7 +27,8 @@ const form = ref({
   theme: '',
   objective: '',
   status: 'DEMAND',
-  scheduledAt: ''
+  scheduledAt: '',
+  isUrgent: false
 })
 
 watch(() => props.isOpen, (newVal) => {
@@ -41,7 +42,8 @@ watch(() => props.isOpen, (newVal) => {
         theme: p.theme,
         objective: p.objective,
         status: p.status,
-        scheduledAt: p.scheduledAt.substring(0, 16)
+        scheduledAt: p.scheduledAt.substring(0, 16),
+        isUrgent: p.isUrgent || false
       }
     } else {
       form.value = {
@@ -50,7 +52,8 @@ watch(() => props.isOpen, (newVal) => {
         theme: '',
         objective: '',
         status: 'DEMAND',
-        scheduledAt: new Date().toISOString().slice(0, 16)
+        scheduledAt: new Date().toISOString().slice(0, 16),
+        isUrgent: false
       }
     }
   }
@@ -97,6 +100,12 @@ function handleSave() {
             <p v-if="fieldErrors.scheduledAt" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.scheduledAt }}</p>
           </div>
         </div>
+
+        <div class="flex items-center gap-2 px-1 py-1">
+          <input id="isUrgent" v-model="form.isUrgent" type="checkbox" class="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary" />
+          <label for="isUrgent" class="text-xs font-bold text-red-500 uppercase cursor-pointer">Marcar como URGENTE</label>
+        </div>
+
         <div class="space-y-1.5">
           <label class="text-xs font-semibold text-gray-500 uppercase">Objetivo da Demanda</label>
           <textarea v-model="form.objective" rows="3" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.objective ? 'border-red-500' : 'border-gray-200']" placeholder="O que precisamos entregar neste projeto?"></textarea>

@@ -6,7 +6,7 @@ export type ApproveStatus = 'PENDING' | 'APPROVE' | 'REJECT'
 
 export type PostApproval = {
   id?: string | number
-  post?: Partial<Post> & { id: string | number }
+  postId: string | number
   artS3Key: string   // Chave do objeto no S3 (não a URL)
   artName: string
   caption: string

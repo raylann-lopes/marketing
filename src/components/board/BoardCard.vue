@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Eye, ChevronDown, Pencil, Sparkles, Image, AlertTriangle } from 'lucide-vue-next'
+import { Eye, ChevronDown, Pencil, Sparkles, Image, AlertTriangle, Send, Clock } from 'lucide-vue-next'
 import Avatar from '@/components/ui/Avatar.vue'
 import { type Post, getPostId, getPostClientId } from '@/services/postService'
 import type { PostApproval } from '@/services/approvalService'
@@ -32,7 +32,20 @@ defineEmits<{
   (e: 'internalReview'): void
   (e: 'addReference'): void
   (e: 'viewReference'): void
+  (e: 'resend'): void
 }>()
+
+function formatSentAt(dateStr?: string) {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  } catch (e) {
+    return dateStr
+  }
+}
+
+const canShowReference = computed(() => ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].includes(props.columnId))
 </script>
 
 <template>
@@ -47,7 +60,7 @@ defineEmits<{
         <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full uppercase leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis', columnTheme.clientBadge]">
           {{ clientName }}
         </span>
-        <div v-if="card.referenceImageS3Key" @click.stop="$emit('viewReference')" class="cursor-pointer p-1 rounded-md bg-amber-50 border border-amber-100" title="Ver imagem de referência">
+        <div v-if="canShowReference && card.referenceImageS3Key" @click.stop="$emit('viewReference')" class="cursor-pointer p-1 rounded-md bg-amber-50 border border-amber-100" title="Ver imagem de referência">
           <Image class="w-3 h-3 text-amber-600" />
         </div>
       </div>
@@ -86,6 +99,34 @@ defineEmits<{
       <p class="text-[9px] font-bold uppercase tracking-wide text-red-500">Mensagem de rejeição</p>
       <p :class="['mt-1 text-[11px] font-medium leading-snug', columnTheme.softText]">
         {{ rejectionMessage }}
+      </p>
+    </div>
+
+    <div
+      v-if="columnId === 'WAITING_APPROVAL' && approval?.whatsappSentAt"
+      class="mt-3 flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border border-amber-100 bg-amber-50/50"
+    >
+      <p class="text-[10px] font-semibold text-amber-700 truncate">
+        <span class="font-bold text-amber-600 uppercase text-[9px] mr-1">Enviado:</span>
+        {{ formatSentAt(approval.whatsappSentAt) }}
+      </p>
+      <button
+        @click.stop="$emit('resend')"
+        :disabled="isSendingApproval"
+        class="p-1 rounded-md bg-white border border-amber-200 text-amber-600 hover:bg-amber-100 transition-colors disabled:opacity-50 shrink-0"
+      >
+        <Send class="w-2.5 h-2.5" />
+      </button>
+    </div>
+
+    <div
+      v-if="columnId === 'SCHEDULE' && card.scheduledAt"
+      class="mt-3 flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-indigo-100 bg-indigo-50/50"
+    >
+      <Clock class="w-3 h-3 text-indigo-500 shrink-0" />
+      <p class="text-[10px] font-semibold text-indigo-700 truncate">
+        <span class="font-bold text-indigo-600 uppercase text-[9px] mr-1">Programado:</span>
+        {{ formatSentAt(card.scheduledAt) }}
       </p>
     </div>
 
@@ -128,14 +169,26 @@ defineEmits<{
       </div>
     </div>
 
-    <button 
-      v-if="columnId === 'DEMAND'"
-      @click.stop="$emit('addReference')"
-      :class="['mt-3 w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
-    >
-      <Image class="w-3 h-3" />
-      {{ card.referenceImageS3Key ? 'ALTERAR REFERÊNCIA' : 'ADD REFERÊNCIA' }}
-    </button>
+    <!-- Botões de ação na Demanda -->
+    <div v-if="columnId === 'DEMAND'" class="mt-3">
+      <button 
+        v-if="!card.referenceImageS3Key"
+        @click.stop="$emit('addReference')"
+        :class="['w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
+      >
+        <Image class="w-3 h-3" />
+        ADD REFERÊNCIA
+      </button>
+
+      <button 
+        v-else
+        @click.stop="$emit('addReference')"
+        :class="['w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
+      >
+        <Pencil class="w-3 h-3" />
+        ALTERAR REFERÊNCIA
+      </button>
+    </div>
 
     <button 
       v-if="columnId === 'IN_PRODUCTION'"
