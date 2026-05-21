@@ -21,6 +21,9 @@ public class N8nWebhookService {
     @Value("${n8n.webhook.upload-complete-url:}")
     private String uploadCompleteUrl;
 
+    @Value("${n8n.webhook.publish-url:}")
+    private String publishUrl;
+
     @Value("${n8n.webhook.api-key:}")
     private String webhookApiKey;
 
@@ -29,8 +32,16 @@ public class N8nWebhookService {
     }
 
     public boolean dispatchArtUploadCompleted(Map<String, Object> payload) {
-        if (!StringUtils.hasText(uploadCompleteUrl)) {
-            log.warn("Webhook n8n não configurado (n8n.webhook.upload-complete-url). Payload não enviado.");
+        return dispatch(uploadCompleteUrl, payload);
+    }
+
+    public boolean dispatchPublishPost(Map<String, Object> payload) {
+        return dispatch(publishUrl, payload);
+    }
+
+    private boolean dispatch(String url, Map<String, Object> payload) {
+        if (!StringUtils.hasText(url)) {
+            log.warn("Webhook n8n não configurado para URL: {}. Payload não enviado.", url);
             return false;
         }
 
@@ -41,14 +52,14 @@ public class N8nWebhookService {
 
         try {
             RestClient.RequestBodySpec request = restClient.post()
-                    .uri(uploadCompleteUrl)
+                    .uri(url)
                     .contentType(MediaType.APPLICATION_JSON)
                     .header(API_KEY_HEADER, webhookApiKey);
 
             request.body(payload).retrieve().toBodilessEntity();
             return true;
         } catch (Exception ex) {
-            log.error("Falha ao disparar webhook n8n em {} às {}: {}", uploadCompleteUrl, LocalDateTime.now(), ex.getMessage(), ex);
+            log.error("Falha ao disparar webhook n8n em {} às {}: {}", url, LocalDateTime.now(), ex.getMessage(), ex);
             return false;
         }
     }

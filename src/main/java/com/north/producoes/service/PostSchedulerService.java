@@ -68,7 +68,7 @@ public class PostSchedulerService {
 
             Map<String, Object> payload = buildN8nPayload(post, approve, config, mediaUrl);
 
-            boolean dispatched = n8nWebhookService.dispatchArtUploadCompleted(payload);
+            boolean dispatched = n8nWebhookService.dispatchPublishPost(payload);
             if (dispatched) {
                 post.setStatus(PostStatusEnum.POSTED);
                 postRepository.save(post);

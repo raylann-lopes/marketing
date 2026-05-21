@@ -115,6 +115,13 @@ public class ApprovedService {
         if (dto.status() == ApproveStatusEnum.APPROVE) {
             existing.setApprovedAt(LocalDateTime.now());
             existing.setApprovedUser("n8n-callback");
+
+            // Quando o cliente aprova, o post entra em agendamento automático
+            PostEntity post = existing.getPost();
+            if (post != null) {
+                post.setStatus(PostStatusEnum.SCHEDULE);
+                postRepository.save(post);
+            }
         } else {
             existing.setApprovedAt(null);
             existing.setApprovedUser("");
