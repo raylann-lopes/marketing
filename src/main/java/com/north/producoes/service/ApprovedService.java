@@ -3,6 +3,7 @@ package com.north.producoes.service;
 import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
+import com.north.producoes.controller.dto.request.InternalApprovalRequestDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -14,9 +15,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.time.LocalDateTime;
 
 @Service
 @AllArgsConstructor
@@ -33,15 +34,15 @@ public class ApprovedService {
         return approveRepository.findById(id);
     }
 
-    public List<ApproveEntity> findApproveByStatus(ApproveStatusEnum status){
+    public List<ApproveEntity> findApproveByStatus(ApproveStatusEnum status) {
         List<ApproveEntity> approveStatus = approveRepository.findApproveEntitiesByStatus(status);
-        if (approveStatus.isEmpty()){
+        if (approveStatus.isEmpty()) {
             throw new ResourceNotFoundException("Nenhum post encontrado com status: " + status);
         }
         return approveStatus;
     }
 
-    public ApproveEntity saveApprove(ApproveRequestDTO dto){
+    public ApproveEntity saveApprove(ApproveRequestDTO dto) {
         PostEntity post = postRepository.findById(dto.postId())
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + dto.postId()));
 
@@ -56,13 +57,13 @@ public class ApprovedService {
         return approveRepository.save(approve);
     }
 
-    public ApproveEntity findByStanzaId(String stanzaId ) {
+    public ApproveEntity findByStanzaId(String stanzaId) {
         return approveRepository.findByWhatsappStanzaId(stanzaId)
-                .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com WhatsApp Stanza ID: " + stanzaId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Nenhum registro de aprovação encontrado com WhatsApp Stanza ID: " + stanzaId));
     }
 
-
-    public ApproveEntity updateApprove(Long id, ApproveRequestDTO dto){
+    public ApproveEntity updateApprove(Long id, ApproveRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
 
@@ -85,13 +86,12 @@ public class ApprovedService {
         return approvals.getFirst().getArtS3Key();
     }
 
-    public void deleteApproveById(Long id){
+    public void deleteApproveById(Long id) {
         if (!approveRepository.existsById(id)) {
             throw new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id);
         }
         approveRepository.deleteById(id);
     }
-
 
     public ApproveEntity updateWhatsappMetadata(Long id, ApproveWhatsAppUpdateRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
@@ -123,7 +123,7 @@ public class ApprovedService {
         return approveRepository.save(existing);
     }
 
-    public ApproveEntity internalApproveByPostId(Long postId, String username) {
+    public ApproveEntity internalApproveByPostId(Long postId, String username, InternalApprovalRequestDTO dto) {
         List<ApproveEntity> approvals = approveRepository.findByPostId(postId);
         if (approvals.isEmpty()) {
             throw new ResourceNotFoundException("Nenhuma aprovação encontrada para o post ID: " + postId);
@@ -133,6 +133,16 @@ public class ApprovedService {
         existing.setStatus(ApproveStatusEnum.APPROVE);
         existing.setApprovedAt(LocalDateTime.now());
         existing.setApprovedUser(username);
+
+        if (dto != null) {
+            PostEntity post = existing.getPost();
+            if (dto.scheduledAt() != null) {
+                post.setScheduledAt(dto.scheduledAt());
+                post.setStatus(PostStatusEnum.SCHEDULE); // Muda para AGENDADO
+                postRepository.save(post);
+            }
+            existing.setInternalRevisionNotes(dto.internalRevisionNotes());
+        }
 
         existing.setRejectionReason(null);
         existing.setRejectedAt(null);
