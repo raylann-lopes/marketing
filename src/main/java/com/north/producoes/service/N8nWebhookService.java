@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
@@ -31,27 +32,30 @@ public class N8nWebhookService {
         this.restClient = restClientBuilder.build();
     }
 
-    public boolean dispatchArtUploadCompleted(Map<String, Object> payload) {
-        return dispatch(uploadCompleteUrl, payload);
+    @Async
+    public void dispatchArtUploadCompleted(Map<String, Object> payload) {
+        dispatch(uploadCompleteUrl, payload);
     }
 
-    public boolean dispatchPublishPost(Map<String, Object> payload) {
-        return dispatch(publishUrl, payload);
+    @Async
+    public void dispatchPublishPost(Map<String, Object> payload) {
+        dispatch(publishUrl, payload);
     }
 
-    public boolean dispatchPostRejected(Map<String, Object> payload) {
-        return dispatch(uploadCompleteUrl, payload); // Usando a mesma URL de eventos por enquanto
+    @Async
+    public void dispatchPostRejected(Map<String, Object> payload) {
+        dispatch(uploadCompleteUrl, payload);
     }
 
-    private boolean dispatch(String url, Map<String, Object> payload) {
+    private void dispatch(String url, Map<String, Object> payload) {
         if (!StringUtils.hasText(url)) {
-            log.warn("Webhook n8n não configurado para URL: {}. Payload não enviado.", url);
-            return false;
+            log.warn("Webhook n8n não configurado. Payload não enviado.");
+            return;
         }
 
         if (!StringUtils.hasText(webhookApiKey)) {
             log.error("Webhook n8n bloqueado: n8n.webhook.api-key não configurado.");
-            return false;
+            return;
         }
 
         try {
@@ -61,10 +65,9 @@ public class N8nWebhookService {
                     .header(API_KEY_HEADER, webhookApiKey);
 
             request.body(payload).retrieve().toBodilessEntity();
-            return true;
+            log.info("Webhook enviado com sucesso para: {}", url);
         } catch (Exception ex) {
-            log.error("Falha ao disparar webhook n8n em {} às {}: {}", url, LocalDateTime.now(), ex.getMessage(), ex);
-            return false;
+            log.error("Falha ao disparar webhook n8n em {} às {}: {}", url, LocalDateTime.now(), ex.getMessage());
         }
     }
 }

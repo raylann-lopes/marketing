@@ -7,5 +7,5 @@ public enum PostStatusEnum {
     FINISHED,
     WAITING_APPROVAL,
     SCHEDULE,
-    POSTED
+    PUBLISHED
 }

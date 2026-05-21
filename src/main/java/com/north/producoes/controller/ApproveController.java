@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @RestController
 @AllArgsConstructor
 @RequestMapping("/api/post-approvals")
@@ -25,8 +26,7 @@ public class ApproveController {
     @GetMapping("/all")
     public ResponseEntity<List<ApproveResponseDTO>> findAll() {
         List<ApproveEntity> approvals = approveRepository.findAll();
-        return ResponseEntity.ok(approvals.
-                stream()
+        return ResponseEntity.ok(approvals.stream()
                 .map(ApproveResponseDTO::from)
                 .toList());
     }
@@ -43,34 +43,9 @@ public class ApproveController {
     @GetMapping("/status/{status}")
     public ResponseEntity<List<ApproveResponseDTO>> findApproveByStatus(@PathVariable ApproveStatusEnum status) {
         List<ApproveEntity> getApproveStatus = approveRepository.findApproveEntitiesByStatus(status);
-        return ResponseEntity.ok(getApproveStatus.
-                stream()
+        return ResponseEntity.ok(getApproveStatus.stream()
                 .map(ApproveResponseDTO::from)
                 .toList());
-    }
-
-    @PostMapping("/approve/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<ApproveResponseDTO> approvePost(@PathVariable Long id) {
-        List<ApproveEntity> approvals = approveRepository.findByPostId(id);
-        if (approvals.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        ApproveEntity approve = approvals.getFirst();
-        approve.setStatus(ApproveStatusEnum.APPROVE);
-        return ResponseEntity.ok(ApproveResponseDTO.from(approveRepository.save(approve)));
-    }
-
-    @PostMapping("/reject/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<ApproveResponseDTO> rejectPost(@PathVariable Long id) {
-        List<ApproveEntity> approvals = approveRepository.findByPostId(id);
-        if (approvals.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        ApproveEntity approve = approvals.getFirst();
-        approve.setStatus(ApproveStatusEnum.REJECTED);
-        return ResponseEntity.ok(ApproveResponseDTO.from(approveRepository.save(approve)));
     }
 
     @PostMapping("/save")

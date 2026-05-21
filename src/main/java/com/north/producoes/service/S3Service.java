@@ -61,13 +61,13 @@ public class S3Service {
     }
 
     public String buildReferenceKey(Long clientId, Long postId, String filename) {
-        return String.format("%s/%d/%d/%s", DEFAULT_REFERENCE_PREFIX, clientId, postId, sanitizeFilename(filename));
+        return String.format("%s/references/%d/%d/%s", publicPrefix, clientId, postId, sanitizeFilename(filename));
     }
 
     public boolean isPublicKey(String s3Key) {
         if (!StringUtils.hasText(s3Key)) return false;
         String key = normalizeKey(s3Key);
-        return key.startsWith(publicPrefix + "/") || key.startsWith(DEFAULT_REFERENCE_PREFIX + "/");
+        return key.startsWith(publicPrefix + "/");
     }
 
     public String buildPublicUrl(String s3Key) {

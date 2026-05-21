@@ -20,7 +20,7 @@ public class MediaController {
 
     private final MediaService mediaService;
 
-    @GetMapping("/upload-url")
+    @RequestMapping(value = "/upload-url", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<PresignedUploadResponseDTO> generateUploadUrl(
             @RequestParam Long postId,
             @RequestParam String filename,
@@ -29,7 +29,7 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.generateUploadUrl(postId, filename, contentType, user));
     }
 
-    @GetMapping("/reference-url")
+    @RequestMapping(value = "/reference-url", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<PresignedUploadResponseDTO> generateReferenceUploadUrl(
             @RequestParam Long postId,
             @RequestParam String filename,
@@ -58,10 +58,5 @@ public class MediaController {
             @PathVariable Long postId,
             @AuthenticationPrincipal UserEntity user) {
         return ResponseEntity.ok(mediaService.getReferencePreviewUrl(postId, user));
-    }
-
-    @GetMapping("/internal/media-url/{postId}")
-    public ResponseEntity<MediaUrlResponseDTO> getMediaUrlForN8n(@PathVariable Long postId) {
-        return ResponseEntity.ok(mediaService.getMediaUrlForN8n(postId));
     }
 }

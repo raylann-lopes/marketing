@@ -17,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @DisplayName("MediaController")
@@ -83,19 +82,19 @@ class MediaControllerTest {
     }
 
     @Test
-    @DisplayName("deve retornar URL para n8n")
-    void shouldReturnMediaUrlForN8n() {
+    @DisplayName("deve buscar URL de preview da referência")
+    void shouldGetReferencePreviewUrl() {
         // Arrange
-        MediaUrlResponseDTO serviceResponse = new MediaUrlResponseDTO(5L, 10L, "https://cdn.example/art.png", "Legenda", "ig", "token");
-        when(mediaService.getMediaUrlForN8n(10L)).thenReturn(serviceResponse);
+        UserEntity user = user();
+        MediaUrlResponseDTO response = new MediaUrlResponseDTO(null, 10L, "url", "caption", null, null);
+        when(mediaService.getReferencePreviewUrl(10L, user)).thenReturn(response);
 
         // Act
-        ResponseEntity<MediaUrlResponseDTO> response = mediaController.getMediaUrlForN8n(10L);
+        ResponseEntity<MediaUrlResponseDTO> result = mediaController.getReferencePreviewUrl(10L, user);
 
         // Assert
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isEqualTo(serviceResponse);
-        verify(mediaService).getMediaUrlForN8n(10L);
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody().mediaUrl()).isEqualTo("url");
     }
 
     private static UserEntity user() {

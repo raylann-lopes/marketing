@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -16,6 +18,7 @@ import java.io.IOException;
 /**
  * Protege as rotas /api/internal/** com uma API Key estática.
  * Essas rotas são consumidas pelo n8n e não usam JWT.
+ * Também permite acesso para usuários ADMIN autenticados via JWT.
  */
 @Component
 public class InternalApiKeyFilter extends OncePerRequestFilter {
@@ -31,6 +34,18 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws IOException, ServletException {
         if (request.getRequestURI().startsWith(INTERNAL_PATH_PREFIX)) {
+            
+            // 1. Verifica se já existe um usuário ADMIN autenticado (via JWT Filter que rodou antes)
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = auth != null && auth.isAuthenticated() && auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+
+            if (isAdmin) {
+                chain.doFilter(request, response);
+                return;
+            }
+
+            // 2. Caso contrário, exige a API Key estática (Cenário do n8n)
             if (!StringUtils.hasText(expectedApiKey)) {
                 response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
                 response.setContentType("application/json");

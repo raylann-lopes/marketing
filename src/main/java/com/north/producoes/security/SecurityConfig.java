@@ -44,11 +44,10 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
 
-                // InternalApiKeyFilter roda antes do JwtFilter para interceptar /api/internal/**
-                .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 // Registra o JwtFilter para rodar antes do filtro padrão do Spring Security
-                // assim o token é validado antes de qualquer tentativa de autenticação
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                // InternalApiKeyFilter roda agora depois do JwtFilter
+                .addFilterAfter(internalApiKeyFilter, JwtFilter.class);
 
         return http.build();
     }

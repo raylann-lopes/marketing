@@ -174,10 +174,7 @@ public class MediaService {
         payload.put("approval", approvalPayload);
         payload.put("actor", actorPayload);
 
-        boolean dispatched = n8nWebhookService.dispatchArtUploadCompleted(payload);
-        if (!dispatched) {
-            throw new AiIntegrationException("Falha ao autenticar/disparar webhook do n8n");
-        }
+        n8nWebhookService.dispatchArtUploadCompleted(payload);
 
         return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), true);
     }

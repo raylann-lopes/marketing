@@ -49,13 +49,19 @@ public class ApprovedService {
         PostEntity post = postRepository.findById(dto.postId())
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + dto.postId()));
 
-        ApproveEntity approve = new ApproveEntity();
+        // Verifica se já existe uma aprovação para este post para evitar erro de UNIQUE constraint
+        ApproveEntity approve = approveRepository.findByPostId(dto.postId()).stream().findFirst()
+                .orElse(new ApproveEntity());
+        
         approve.setPost(post);
         approve.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
         approve.setArtName(dto.artName());
         approve.setCaption(dto.caption());
         approve.setStatus(ApproveStatusEnum.PENDING);
-        approve.setApprovedUser("");
+        
+        if (approve.getId() == null) {
+            approve.setApprovedUser("");
+        }
 
         return approveRepository.save(approve);
     }

@@ -103,14 +103,11 @@ public class PostSchedulerService {
 
             Map<String, Object> payload = buildN8nPayload(post, approve, config, mediaUrl);
 
-            boolean dispatched = n8nWebhookService.dispatchPublishPost(payload);
-            if (dispatched) {
-                post.setStatus(PostStatusEnum.POSTED);
-                postRepository.save(post);
-                log.info("Post ID: {} enviado com sucesso ao n8n e atualizado para POSTED.", post.getId());
-            } else {
-                log.error("Falha ao disparar webhook n8n para o post ID: {}", post.getId());
-            }
+            n8nWebhookService.dispatchPublishPost(payload);
+            
+            post.setStatus(PostStatusEnum.PUBLISHED);
+            postRepository.save(post);
+            log.info("Post ID: {} enviado para processamento no n8n e atualizado para PUBLISHED.", post.getId());
 
         } catch (Exception e) {
             log.error("Erro ao processar post agendado ID: {}: {}", post.getId(), e.getMessage(), e);

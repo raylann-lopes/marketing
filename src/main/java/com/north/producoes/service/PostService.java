@@ -73,6 +73,9 @@ public class PostService {
 
     @Transactional
     public PostEntity savePost(PostRequestDTO dto){
+        if (dto.clientId() == null || dto.userId() == null) {
+            throw new IllegalArgumentException("Cliente e Usuário são obrigatórios para novas demandas");
+        }
         ClientEntity client = clientRepository.findById(dto.clientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com id: " + dto.clientId()));
         UserEntity user = userRepository.findById(dto.userId())
@@ -87,10 +90,17 @@ public class PostService {
         PostEntity postExisting = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + id));
 
-        ClientEntity client = clientRepository.findById(dto.clientId())
+        ClientEntity client = null;
+        if (dto.clientId() != null) {
+            client = clientRepository.findById(dto.clientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com id: " + dto.clientId()));
-        UserEntity user = userRepository.findById(dto.userId())
+        }
+
+        UserEntity user = null;
+        if (dto.userId() != null) {
+            user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com id: " + dto.userId()));
+        }
 
         return getPostEntity(dto, postExisting, client, user);
     }
@@ -104,8 +114,13 @@ public class PostService {
         postExisting.setIsUrgent(dto.isUrgent() != null ? dto.isUrgent() : false);
         postExisting.setReferenceImageS3Key(dto.referenceImageS3Key());
         postExisting.setScheduledAt(dto.scheduledAt());
-        postExisting.setClient(client);
-        postExisting.setUser(user);
+        
+        if (client != null) {
+            postExisting.setClient(client);
+        }
+        if (user != null) {
+            postExisting.setUser(user);
+        }
 
         return postRepository.save(postExisting);
     }
@@ -123,8 +138,6 @@ public class PostService {
         if(!postRepository.existsById(id)){
             throw new ResourceNotFoundException("Post nao encontrado com id: " + id);
         }
-        // Remove a aprovação vinculada antes do post para evitar inconsistência
-        // de relacionamento no flush do Hibernate.
         approveRepository.deleteByPostId(id);
         postRepository.deleteById(id);
     }
@@ -156,36 +169,20 @@ public class PostService {
     }
 
     private String sanitizeS3Key(String artS3Key) {
-        if (!StringUtils.hasText(artS3Key)) {
-            return null;
-        }
-
-        String cleaned = artS3Key.trim()
-                .replace("\"", "")
-                .replace("{", "")
-                .replace("}", "");
-
-        if (cleaned.startsWith("artS3Key:")) {
-            cleaned = cleaned.substring("artS3Key:".length()).trim();
-        }
-
+        if (!StringUtils.hasText(artS3Key)) return null;
+        String cleaned = artS3Key.trim().replace("\"", "").replace("{", "").replace("}", "");
+        if (cleaned.startsWith("artS3Key:")) cleaned = cleaned.substring("artS3Key:".length()).trim();
         return StringUtils.hasText(cleaned) ? cleaned : null;
     }
 
     private String resolveArtS3Key(String manualArtS3Key, ApproveEntity approve) {
-        if (StringUtils.hasText(manualArtS3Key)) {
-            return manualArtS3Key;
-        }
-        if (approve != null && StringUtils.hasText(approve.getArtS3Key())) {
-            return approve.getArtS3Key();
-        }
+        if (StringUtils.hasText(manualArtS3Key)) return manualArtS3Key;
+        if (approve != null && StringUtils.hasText(approve.getArtS3Key())) return approve.getArtS3Key();
         return null;
     }
 
     private String resolveImageUrl(String s3Key) {
-        if (!StringUtils.hasText(s3Key)) {
-            return null;
-        }
+        if (!StringUtils.hasText(s3Key)) return null;
         return s3Service.resolveReadUrl(s3Key);
     }
 }

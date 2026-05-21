@@ -3,7 +3,6 @@ package com.north.producoes.controller.dto.request;
 import com.north.producoes.entity.enums.PostStatusEnum;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
@@ -22,11 +21,7 @@ public record PostRequestDTO(
         PostStatusEnum status,
         @NotNull(message = "Data de agendamento é obrigatória")
         LocalDateTime scheduledAt,
-        @NotNull(message = "Cliente é obrigatório")
-        @Positive(message = "ClientId deve ser maior que zero")
         Long clientId,
-        @NotNull(message = "Usuário é obrigatório")
-        @Positive(message = "UserId deve ser maior que zero")
         Long userId,
         Boolean isUrgent,
         String referenceImageS3Key

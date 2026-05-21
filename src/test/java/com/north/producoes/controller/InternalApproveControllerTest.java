@@ -77,7 +77,7 @@ class InternalApproveControllerTest {
         InternalApprovalRejectRequestDTO request = new InternalApprovalRejectRequestDTO("Motivo");
         ApproveEntity approve = approval(5L);
         approve.setStatus(ApproveStatusEnum.REJECTED);
-        when(approvedService.internalRejectByPostId(10L, "n8n-whatsapp", "Motivo")).thenReturn(approve);
+        when(approvedService.internalRejectByPostId(10L, "admin", "Motivo")).thenReturn(approve);
 
         // Act
         ResponseEntity<ApproveResponseDTO> response = internalApproveController.internalReject(10L, request);
