@@ -58,6 +58,9 @@ public class ApproveEntity {
     @Column(name = "rejection_reason", length = 1000)
     private String rejectionReason;
 
+    @Column(name = "internal_revision_notes", length = 1000)
+    private String internalRevisionNotes;
+
     @Column(name = "rejected_at")
     private LocalDateTime rejectedAt;
 

@@ -18,6 +18,7 @@ public record ApproveResponseDTO(
         String whatsappSentAt,
         String whatsappResponseText,
         String rejectionReason,
+        String internalRevisionNotes,
         LocalDateTime rejectedAt,
         String rejectedBy
 ) {
@@ -35,6 +36,7 @@ public record ApproveResponseDTO(
                 entity.getWhatsappSentAt(),
                 entity.getWhatsappResponseText(),
                 entity.getRejectionReason(),
+                entity.getInternalRevisionNotes(),
                 entity.getRejectedAt(),
                 entity.getRejectedBy()
         );
