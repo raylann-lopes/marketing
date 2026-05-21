@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChevronLeft, ChevronRight, Plus, X, Pencil, ChevronDown } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import Button from '@/components/ui/Button.vue'
 import { postService, type Post } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
@@ -11,11 +10,13 @@ import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
 import { z } from 'zod'
 
+import CalendarSidebar from '@/components/calendar/CalendarSidebar.vue'
+import PostModal from '@/components/board/PostModal.vue'
+
 const route = useRoute()
 const today = new Date()
 const feedback = useFeedback()
 
-// Inicializa com a data passada via query param (ex: ?date=2026-04-07) ou hoje
 const initialDate = (() => {
   const q = route.query.date
   if (q && typeof q === 'string') {
@@ -26,7 +27,7 @@ const initialDate = (() => {
 })()
 
 const currentDate = ref(initialDate)
-const selectedDay = ref(initialDate.getDate())
+const selectedDay = ref<number | null>(initialDate.getDate())
 const sidebarOpen = ref(true)
 
 const allPosts = ref<Post[]>([])
@@ -34,15 +35,7 @@ const clients = ref<Client[]>([])
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
-
-const newPost = ref({
-  clientId: '',
-  title: '',
-  theme: '',
-  objective: '',
-  status: 'DEMAND',
-  scheduledAt: new Date().toISOString().slice(0, 16)
-})
+const postToEdit = ref<Post | null>(null)
 
 const postSchema = z.object({
   clientId: z.union([z.string(), z.number()]).refine(v => String(v).length > 0, 'Selecione um cliente'),
@@ -55,7 +48,7 @@ const postSchema = z.object({
 const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
 
-const currentMonth = computed(() => monthNames[currentDate.value.getMonth()])
+const currentMonth = computed(() => monthNames[currentDate.value.getMonth()] || '')
 const currentYear = computed(() => currentDate.value.getFullYear())
 
 async function fetchInitialData() {
@@ -77,21 +70,21 @@ function openPostModal(day?: number | null) {
   const date = new Date(currentDate.value)
   if (day) date.setDate(day)
   
-  newPost.value = {
+  postToEdit.value = {
     clientId: '',
     title: '',
     theme: '',
     objective: '',
     status: 'DEMAND',
-    scheduledAt: date.toISOString().slice(0, 16)
-  }
+    scheduledAt: date.toISOString()
+  } as unknown as Post
   fieldErrors.value = {}
   isModalOpen.value = true
 }
 
-async function handleCreatePost() {
+async function handleCreatePost(form: any) {
   fieldErrors.value = {}
-  const result = postSchema.safeParse(newPost.value)
+  const result = postSchema.safeParse(form)
   
   if (!result.success) {
     result.error.issues.forEach(issue => {
@@ -104,12 +97,12 @@ async function handleCreatePost() {
   isSubmitting.value = true
   try {
     const payload = {
-      title: newPost.value.title,
-      theme: newPost.value.theme,
-      objective: newPost.value.objective,
-      status: newPost.value.status,
-      scheduledAt: newPost.value.scheduledAt + ":00",
-      client: { id: Number(newPost.value.clientId) },
+      title: form.title,
+      theme: form.theme,
+      objective: form.objective,
+      status: form.status,
+      scheduledAt: form.scheduledAt.length === 16 ? form.scheduledAt + ":00" : form.scheduledAt,
+      client: { id: Number(form.clientId) },
       user: { id: getCurrentUserId() }
     }
     await postService.create(payload as unknown as Post)
@@ -179,17 +172,7 @@ const postsPerDay = computed<Record<number, DayPost[]>>(() => {
   return map
 })
 
-type SelectedDayPost = {
-  time: string | null
-  tag: string
-  tagColor: string
-  title: string
-  description: string
-  client: string | null
-  status: string | null
-}
-
-const selectedDayPosts = computed<SelectedDayPost[]>(() => {
+const selectedDayPosts = computed(() => {
   if (!selectedDay.value) return []
   const year = currentDate.value.getFullYear()
   const month = currentDate.value.getMonth()
@@ -282,46 +265,14 @@ const selectedDayPosts = computed<SelectedDayPost[]>(() => {
       </div>
 
       <!-- Day sidebar -->
-      <transition name="slide">
-        <div v-if="sidebarOpen && selectedDay" class="w-80 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col shrink-0">
-          <div class="flex items-start justify-between p-5 border-b border-gray-100">
-            <div>
-              <p class="text-xs text-gray-400 uppercase tracking-wide">Agenda do Dia</p>
-              <p class="text-4xl font-bold text-gray-900">{{ selectedDay }} {{ currentMonth?.substring(0,3) }}</p>
-            </div>
-            <button class="p-1.5 hover:bg-gray-100 rounded-lg" @click="sidebarOpen = false">
-              <X class="w-4 h-4 text-gray-500" />
-            </button>
-          </div>
-
-          <div class="flex-1 overflow-y-auto p-4 space-y-3">
-            <div v-if="selectedDayPosts.length === 0" class="flex flex-col items-center justify-center h-40 text-center text-gray-400">
-              <Plus class="w-8 h-8 mb-2 opacity-20" />
-              <p class="text-sm">Nenhum post agendado para este dia.</p>
-            </div>
-            <div
-              v-for="(post, i) in selectedDayPosts"
-              :key="i"
-              class="bg-gray-50 rounded-xl p-4 space-y-2 border border-transparent hover:border-primary/20 transition-all"
-            >
-              <div class="flex items-center justify-between">
-                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full uppercase', post.tagColor]">{{ post.tag }}</span>
-                <span v-if="post.time" class="text-xs font-semibold text-primary">{{ post.time }}</span>
-              </div>
-              <p class="text-sm font-semibold text-gray-800 leading-snug">{{ post.title }}</p>
-              <p class="text-xs text-gray-500 line-clamp-2">{{ post.description }}</p>
-              <p v-if="post.client" class="text-[10px] text-gray-400 font-medium">● {{ post.client }}</p>
-            </div>
-          </div>
-
-          <div class="p-4 border-t border-gray-100">
-            <Button class="w-full gap-2" @click="openPostModal(selectedDay)">
-              <Pencil class="w-4 h-4" />
-              Adicionar Novo no Dia
-            </Button>
-          </div>
-        </div>
-      </transition>
+      <CalendarSidebar
+        :is-open="sidebarOpen"
+        :selected-day="selectedDay"
+        :current-month="currentMonth"
+        :posts="selectedDayPosts"
+        @close="sidebarOpen = false"
+        @open-post-modal="openPostModal"
+      />
     </div>
 
     <!-- FAB -->
@@ -332,65 +283,14 @@ const selectedDayPosts = computed<SelectedDayPost[]>(() => {
       <Plus class="w-6 h-6" />
     </button>
 
-    <!-- Modal Novo Post -->
-    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div class="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 class="text-xl font-bold text-gray-900">Novo Projeto / Post</h2>
-          <button @click="isModalOpen = false" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400"><X class="w-5 h-5" /></button>
-        </div>
-        
-        <div class="p-6 space-y-4">
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Cliente</label>
-            <div class="relative">
-              <select v-model="newPost.clientId" :class="['w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer', fieldErrors.clientId ? 'border-red-500' : 'border-gray-200']">
-                <option value="">Selecione o cliente</option>
-                <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-              <ChevronDown class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-            <p v-if="fieldErrors.clientId" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.clientId }}</p>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Título do Post</label>
-            <input v-model="newPost.title" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.title ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Lançamento Coleção Inverno" />
-            <p v-if="fieldErrors.title" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.title }}</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Tema</label>
-              <input v-model="newPost.theme" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.theme ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Moda / Lifestyle" />
-              <p v-if="fieldErrors.theme" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.theme }}</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Data e Hora</label>
-              <input v-model="newPost.scheduledAt" type="datetime-local" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.scheduledAt ? 'border-red-500' : 'border-gray-200']" />
-              <p v-if="fieldErrors.scheduledAt" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.scheduledAt }}</p>
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Objetivo / Descrição</label>
-            <textarea v-model="newPost.objective" rows="3" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.objective ? 'border-red-500' : 'border-gray-200']" placeholder="Descreva o objetivo criativo deste post..."></textarea>
-            <p v-if="fieldErrors.objective" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.objective }}</p>
-          </div>
-        </div>
-
-        <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-          <Button variant="outline" class="flex-1" @click="isModalOpen = false">Cancelar</Button>
-          <Button class="flex-1" :disabled="isSubmitting" @click="handleCreatePost">
-            {{ isSubmitting ? 'Agendando...' : 'Criar e Agendar' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <PostModal
+      :is-open="isModalOpen"
+      :post-to-edit="postToEdit?.title ? postToEdit : null"
+      :clients="clients"
+      :is-submitting="isSubmitting"
+      :field-errors="fieldErrors"
+      @close="isModalOpen = false"
+      @save="handleCreatePost"
+    />
   </AppLayout>
 </template>
-
-<style scoped>
-.slide-enter-active, .slide-leave-active { transition: all 0.2s ease; }
-.slide-enter-from, .slide-leave-to { opacity: 0; transform: translateX(20px); }
-</style>

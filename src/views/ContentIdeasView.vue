@@ -1,22 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import {
-  Bookmark,
-  Eye,
-  Filter,
-  Lightbulb,
-  Plus,
-  RefreshCw,
-  Search,
-  Sparkles,
-  ThumbsDown,
-  X,
-} from 'lucide-vue-next'
+import { Filter, Lightbulb, RefreshCw, Search, Sparkles } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
 import { useFeedback } from '@/lib/feedback'
+
+import IdeaCard from '@/components/ideas/IdeaCard.vue'
+import IdeaModal from '@/components/ideas/IdeaModal.vue'
 
 type IdeaStatus = 'SUGGESTED' | 'SAVED' | 'DISMISSED' | 'CONVERTED'
 type IdeaPriority = 'ALTA' | 'MEDIA' | 'BAIXA'
@@ -62,8 +53,7 @@ const ideas = ref<ContentIdea[]>([
     previewTitle: 'Isso muda o resultado antes de qualquer procedimento',
     theme: 'Educação rápida com quebra de objeção',
     objective: 'Aumentar confiança e gerar conversas no direct',
-    reason:
-      'Conteúdos curtos com explicação simples e CTA de avaliação aparecem com forte retenção no nicho.',
+    reason: 'Conteúdos curtos com explicação simples e CTA de avaliação aparecem com forte retenção no nicho.',
     sourceSignal: '#esteticaavancada · #cuidadoscomapele · vídeos educativos',
     profile: '@clinica.aurora',
     postedAt: '17 de abr.',
@@ -82,8 +72,7 @@ const ideas = ref<ContentIdea[]>([
     previewTitle: 'O erro que todo corretor comete no anúncio',
     theme: 'Dicas práticas para compradores e proprietários',
     objective: 'Atrair leads de avaliação e venda de imóveis',
-    reason:
-      'Posts de checklist performam bem porque geram salvamentos e abrem conversa consultiva.',
+    reason: 'Posts de checklist performam bem porque geram salvamentos e abrem conversa consultiva.',
     sourceSignal: '#mercadoimobiliario · #decoracaodeinteriores · checklists',
     profile: '@imobiliaria.norte',
     postedAt: '19 de abr.',
@@ -102,8 +91,7 @@ const ideas = ref<ContentIdea[]>([
     previewTitle: 'Por que você ainda está travado na rotina',
     theme: 'Sequência interativa com enquete diária',
     objective: 'Reativar audiência e gerar respostas nos stories',
-    reason:
-      'Desafios curtos e progressivos tendem a aumentar interação sem exigir produção pesada.',
+    reason: 'Desafios curtos e progressivos tendem a aumentar interação sem exigir produção pesada.',
     sourceSignal: '#vidasaudavel · #treinoemcasa · enquetes',
     profile: '@bellafit.studio',
     postedAt: '16 de abr.',
@@ -122,8 +110,7 @@ const ideas = ref<ContentIdea[]>([
     previewTitle: 'Acordei às 4h por 30 dias e aprendi isso',
     theme: 'Bastidor sensorial do preparo',
     objective: 'Valorizar experiência e aumentar desejo de visita',
-    reason:
-      'Bastidores com cortes rápidos e close no produto têm boa resposta visual para negócios locais.',
+    reason: 'Bastidores com cortes rápidos e close no produto têm boa resposta visual para negócios locais.',
     sourceSignal: '#cafeteria · #cafesespeciais · bastidores',
     profile: '@cafejardim',
     postedAt: '20 de abr.',
@@ -161,8 +148,7 @@ const ideas = ref<ContentIdea[]>([
     previewTitle: 'Joguei fora esse hábito e minha pele respondeu',
     theme: 'Post institucional com autoridade leve',
     objective: 'Educar sem promessa exagerada e reforçar recorrência',
-    reason:
-      'Temas de rotina e manutenção ajudam a criar agenda de retorno sem parecer oferta direta.',
+    reason: 'Temas de rotina e manutenção ajudam a criar agenda de retorno sem parecer oferta direta.',
     sourceSignal: '#skincareroutine · #cuidadosdiarios · posts educativos',
     profile: '@clinica.aurora',
     postedAt: '23 de abr.',
@@ -273,9 +259,7 @@ function resetFilters() {
     <div class="space-y-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="flex items-center gap-2">
-          <div
-            class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"
-          >
+          <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Lightbulb class="h-5 w-5" />
           </div>
           <div>
@@ -283,9 +267,7 @@ function resetFilters() {
               <h1 class="text-2xl font-bold text-gray-900">Ideias Virais</h1>
               <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Demo</span>
             </div>
-            <p class="text-sm text-gray-500">
-              Inspire-se em ganchos de Reels e adapte para cada cliente.
-            </p>
+            <p class="text-sm text-gray-500">Inspire-se em ganchos de Reels e adapte para cada cliente.</p>
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -320,9 +302,7 @@ function resetFilters() {
       <Card class="p-4">
         <div class="flex flex-wrap items-end gap-3">
           <div class="min-w-[220px] flex-1">
-            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500"
-              >Busca local</label
-            >
+            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500">Busca local</label>
             <div class="relative">
               <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
@@ -377,189 +357,36 @@ function resetFilters() {
 
       <section class="space-y-3">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-semibold text-gray-700">
-            {{ filteredIdeas.length }} ideias encontradas
-          </p>
+          <p class="text-sm font-semibold text-gray-700">{{ filteredIdeas.length }} ideias encontradas</p>
           <p class="text-xs text-gray-400">Clique no card para abrir a demanda</p>
         </div>
 
-        <div
-          class="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
-        >
-          <button
+        <div class="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+          <IdeaCard
             v-for="idea in filteredIdeas"
             :key="idea.id"
-            type="button"
-            class="group mx-auto w-full max-w-[190px] text-left focus:outline-none"
+            :idea="idea"
+            :status-label="statusLabels[idea.status]"
             @click="openIdea(idea.id)"
-          >
-            <div
-              :class="[
-                'relative aspect-[9/16] overflow-hidden rounded-lg p-2 text-white shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md group-focus:ring-2 group-focus:ring-primary/30',
-                idea.cardClass,
-              ]"
-            >
-              <div
-                class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.22),transparent_34%)]"
-              />
-              <div class="relative flex h-full flex-col">
-                <div class="flex items-center justify-end">
-                  <span
-                    class="rounded-full bg-white/18 px-1.5 py-0.5 text-[9px] font-semibold text-white/90 backdrop-blur"
-                  >
-                    {{ idea.format }}
-                  </span>
-                </div>
-
-                <div class="flex flex-1 items-center justify-center px-1 text-center">
-                  <h2
-                    class="text-[13px] font-extrabold leading-tight tracking-normal text-white drop-shadow-sm md:text-sm"
-                  >
-                    {{ idea.previewTitle }}
-                  </h2>
-                </div>
-
-                <div class="mb-3 flex items-center justify-between gap-1">
-                  <span
-                    class="inline-flex items-center gap-0.5 rounded-full bg-black/28 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur"
-                  >
-                    <Eye class="h-2.5 w-2.5" />
-                    {{ idea.viewsLabel }}
-                  </span>
-                  <span
-                    class="shrink-0 whitespace-nowrap rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-bold leading-none text-gray-700"
-                  >
-                    {{ statusLabels[idea.status] }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-0.5 px-0.5 leading-tight">
-              <p class="truncate text-[11px] font-semibold text-gray-800">{{ idea.profile }}</p>
-              <p class="text-[10px] text-gray-400">{{ idea.postedAt }}</p>
-            </div>
-          </button>
+          />
         </div>
 
         <Card v-if="filteredIdeas.length === 0" class="p-8 text-center">
           <Lightbulb class="mx-auto mb-2 h-8 w-8 text-gray-300" />
           <p class="text-sm font-semibold text-gray-700">Nenhuma ideia encontrada.</p>
-          <p class="mt-1 text-sm text-gray-500">
-            Ajuste os filtros para visualizar outros exemplos mockados.
-          </p>
+          <p class="mt-1 text-sm text-gray-500">Ajuste os filtros para visualizar outros exemplos mockados.</p>
         </Card>
       </section>
     </div>
 
-    <div
+    <IdeaModal
       v-if="activeIdea"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/50 p-4 backdrop-blur-sm"
-      @click.self="closeIdea"
-    >
-      <section
-        class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl"
-      >
-        <div
-          class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-5 py-4"
-        >
-          <div>
-            <div class="mb-2 flex flex-wrap items-center gap-2">
-              <Badge :variant="statusVariants[activeIdea.status]">{{
-                statusLabels[activeIdea.status]
-              }}</Badge>
-              <span
-                :class="[
-                  'rounded-full border px-2.5 py-0.5 text-xs font-semibold',
-                  priorityClasses[activeIdea.priority],
-                ]"
-              >
-                {{ activeIdea.priority }}
-              </span>
-              <span
-                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600"
-              >
-                <Eye class="h-3.5 w-3.5" />
-                {{ activeIdea.viewsLabel }}
-              </span>
-            </div>
-            <h2 class="text-xl font-bold leading-tight text-gray-900">{{ activeIdea.title }}</h2>
-            <p class="mt-1 text-sm text-gray-500">
-              {{ activeIdea.client }} · {{ activeIdea.profile }}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            class="shrink-0"
-            aria-label="Fechar janela"
-            @click="closeIdea"
-          >
-            <X class="h-5 w-5" />
-          </Button>
-        </div>
-
-        <div class="space-y-4 p-5">
-          <div :class="['rounded-2xl p-6 text-center text-white', activeIdea.cardClass]">
-            <p class="text-sm font-semibold uppercase tracking-wide text-white/70">Gancho viral</p>
-            <p class="mx-auto mt-3 max-w-md text-3xl font-extrabold leading-tight text-white">
-              {{ activeIdea.previewTitle }}
-            </p>
-          </div>
-
-          <div class="grid gap-3 md:grid-cols-2">
-            <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Tema</p>
-              <p class="mt-1 text-sm font-semibold text-gray-900">{{ activeIdea.theme }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                Objetivo
-              </p>
-              <p class="mt-1 text-sm font-semibold text-gray-900">{{ activeIdea.objective }}</p>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-primary/10 bg-primary/5 p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-primary">
-              Ideia para produção
-            </p>
-            <p class="mt-2 text-sm leading-6 text-gray-700">{{ activeIdea.reason }}</p>
-          </div>
-
-          <div class="rounded-xl border border-gray-100 p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              Sinal usado pela IA
-            </p>
-            <p class="mt-2 text-sm text-gray-600">{{ activeIdea.sourceSignal }}</p>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            class="gap-2"
-            @click="setIdeaStatus(activeIdea.id, 'SAVED')"
-          >
-            <Bookmark class="h-4 w-4" />
-            Salvar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            class="gap-2"
-            @click="setIdeaStatus(activeIdea.id, 'DISMISSED')"
-          >
-            <ThumbsDown class="h-4 w-4" />
-            Descartar
-          </Button>
-          <Button size="sm" class="gap-2" @click="setIdeaStatus(activeIdea.id, 'CONVERTED')">
-            <Plus class="h-4 w-4" />
-            Converter em demanda
-          </Button>
-        </div>
-      </section>
-    </div>
+      :idea="activeIdea"
+      :status-label="statusLabels[activeIdea.status]"
+      :status-variant="statusVariants[activeIdea.status]"
+      :priority-class="priorityClasses[activeIdea.priority]"
+      @close="closeIdea"
+      @set-status="setIdeaStatus"
+    />
   </AppLayout>
 </template>

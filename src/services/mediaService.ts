@@ -55,5 +55,9 @@ export const mediaService = {
       method: 'POST',
       body: JSON.stringify({ postId, s3Key, artName })
     })
+  },
+
+  async getArtUrl(postId: string | number): Promise<{ mediaUrl: string }> {
+    return apiFetch<{ mediaUrl: string }>(`/api/media/art-url?postId=${postId}`)
   }
 }

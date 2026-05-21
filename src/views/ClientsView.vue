@@ -6,6 +6,9 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Avatar from '@/components/ui/Avatar.vue'
+
+import ClientModal from '@/components/clients/ClientModal.vue'
+
 import { clientService, type Client } from '@/services/clientService'
 import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
@@ -19,16 +22,13 @@ const selectedClient = ref<Client | null>(null)
 const feedback = useFeedback()
 const router = useRouter()
 
-// Pagination state
 const currentPage = ref(1)
 const itemsPerPage = 9
 
-// Reset to first page when searching
 watch(search, () => {
   currentPage.value = 1
 })
 
-// Modal state
 const isModalOpen = ref(false)
 const isEditModalOpen = ref(false)
 const clientToEdit = ref<Client | null>(null)
@@ -54,28 +54,6 @@ const editClient = ref<Partial<Client>>({
   voiceTone: '',
 })
 
-function formatPhone(value: string) {
-  // Remove tudo que não for número
-  let d = value.replace(/\D/g, '')
-  
-  // Se não começar com 55 e tiver algo, adiciona
-  if (d.length > 0 && !d.startsWith('55')) {
-    d = '55' + d
-  }
-
-  if (d.length === 0) return ''
-  if (d.length <= 2) return `+${d}`
-  if (d.length <= 4) return `+${d.substring(0, 2)} (${d.substring(2, 4)}`
-  if (d.length <= 9) return `+${d.substring(0, 2)} (${d.substring(2, 4)}) ${d.substring(4)}`
-  return `+${d.substring(0, 2)} (${d.substring(2, 4)}) ${d.substring(4, 9)}-${d.substring(9, 13)}`
-}
-
-function handlePhoneInput(e: Event) {
-  const input = e.target as HTMLInputElement
-  newClient.value.number = formatPhone(input.value)
-}
-
-// Zod Schema
 const clientSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('E-mail inválido'),
@@ -115,17 +93,15 @@ function openEditModal(client: Client) {
 async function handleCreateClient() {
   fieldErrors.value = {}
 
-  // Limpar dados (trim e remover máscara do telefone para o backend se necessário)
   const payload = {
     name: newClient.value.name?.trim(),
     email: newClient.value.email?.trim(),
-    number: newClient.value.number?.replace(/\D/g, ''), // Envia apenas números: 5533998165517
+    number: newClient.value.number?.replace(/\D/g, ''),
     driveLink: newClient.value.driveLink?.trim(),
     voiceTone: newClient.value.voiceTone?.trim() || '',
     niche: newClient.value.niche?.trim() || ''
   }
 
-  // Frontend Validation with Zod
   const result = clientSchema.safeParse(payload)
 
   if (!result.success) {
@@ -179,7 +155,6 @@ async function handleEditClient() {
   try {
     await clientService.update(clientToEdit.value!.id!, payload as Client)
     await fetchClients()
-    // Atualiza o painel lateral com os novos dados
     const updated = clients.value.find(c => String(c.id) === String(clientToEdit.value!.id))
     if (updated) selectedClient.value = updated
     isEditModalOpen.value = false
@@ -381,7 +356,6 @@ function openClientWorkspace(client: Client) {
       <!-- Detail sidebar -->
       <transition name="slide">
         <div v-if="selectedClient" class="w-80 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col shrink-0 overflow-hidden">
-          <!-- Actions -->
           <div class="flex items-center justify-end gap-2 p-3 border-b border-gray-100">
             <button
               class="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
@@ -402,7 +376,6 @@ function openClientWorkspace(client: Client) {
           </div>
 
           <div class="flex-1 overflow-y-auto">
-            <!-- Avatar + name -->
             <div class="flex flex-col items-center py-6 px-5 border-b border-gray-100">
               <Avatar :name="selectedClient.name" size="lg" class="w-16 h-16 text-2xl mb-3" />
               <h2 class="text-lg font-bold text-gray-900">{{ selectedClient.name }}</h2>
@@ -414,7 +387,6 @@ function openClientWorkspace(client: Client) {
             </div>
 
             <div class="p-4 space-y-4">
-              <!-- Brand identity -->
               <div>
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Identidade de Marca</p>
                 <div class="bg-gray-50 rounded-lg p-3 space-y-3">
@@ -429,7 +401,6 @@ function openClientWorkspace(client: Client) {
                 </div>
               </div>
 
-              <!-- Quick access -->
               <div>
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Acessos Rápidos</p>
                 <div class="grid grid-cols-2 gap-2">
@@ -458,9 +429,6 @@ function openClientWorkspace(client: Client) {
                 </button>
               </div>
 
-              <!-- Recent posts (Temporariamente oculto) -->
-
-              <!-- AI suggestion -->
               <div class="bg-purple-50 rounded-xl p-3 flex items-center gap-3">
                 <Sparkles class="w-4 h-4 text-purple-600 shrink-0" />
                 <div class="flex-1">
@@ -480,131 +448,25 @@ function openClientWorkspace(client: Client) {
       </transition>
     </div>
 
-    <!-- Modal Novo Cliente -->
-    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div class="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 class="text-xl font-bold text-gray-900">Cadastrar Novo Cliente</h2>
-          <button @click="isModalOpen = false" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400"><X class="w-5 h-5" /></button>
-        </div>
+    <ClientModal
+      :is-open="isModalOpen"
+      :is-edit="false"
+      v-model:client="newClient"
+      :is-submitting="isSubmitting"
+      :field-errors="fieldErrors"
+      @close="isModalOpen = false"
+      @save="handleCreateClient"
+    />
 
-        <div class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Nome do Cliente</label>
-              <input v-model="newClient.name" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.name ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Raylan Lopes" />
-              <p v-if="fieldErrors.name" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.name }}</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">E-mail</label>
-              <input v-model="newClient.email" type="email" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.email ? 'border-red-500' : 'border-gray-200']" placeholder="cliente@email.com" />
-              <p v-if="fieldErrors.email" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.email }}</p>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Telefone (WhatsApp)</label>
-              <input 
-                :value="newClient.number" 
-                @input="handlePhoneInput"
-                type="text" 
-                :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.number ? 'border-red-500' : 'border-gray-200']" 
-                placeholder="+55 (33) 99999-9999" 
-              />
-              <p v-if="fieldErrors.number" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.number }}</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Nicho</label>
-              <input v-model="newClient.niche" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.niche ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Imobiliária" />
-              <p v-if="fieldErrors.niche" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.niche }}</p>
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Link do Google Drive</label>
-            <input v-model="newClient.driveLink" type="url" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.driveLink ? 'border-red-500' : 'border-gray-200']" placeholder="https://drive.google.com/..." />
-            <p v-if="fieldErrors.driveLink" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.driveLink }}</p>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Tom de Voz / Identidade</label>
-            <textarea v-model="newClient.voiceTone" rows="3" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.voiceTone ? 'border-red-500' : 'border-gray-200']" placeholder="Descreva como a marca deve se comunicar..."></textarea>
-            <p v-if="fieldErrors.voiceTone" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.voiceTone }}</p>
-          </div>
-        </div>
-
-        <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-          <Button variant="outline" class="flex-1" @click="isModalOpen = false">Cancelar</Button>
-          <Button class="flex-1" :disabled="isSubmitting" @click="handleCreateClient">
-            {{ isSubmitting ? 'Salvando...' : 'Salvar Cliente' }}
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Editar Cliente -->
-    <div v-if="isEditModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div class="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 class="text-xl font-bold text-gray-900">Editar Cliente</h2>
-          <button @click="isEditModalOpen = false" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400"><X class="w-5 h-5" /></button>
-        </div>
-
-        <div class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Nome do Cliente</label>
-              <input v-model="editClient.name" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.name ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Raylan Lopes" />
-              <p v-if="editFieldErrors.name" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.name }}</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">E-mail</label>
-              <input v-model="editClient.email" type="email" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.email ? 'border-red-500' : 'border-gray-200']" placeholder="cliente@email.com" />
-              <p v-if="editFieldErrors.email" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.email }}</p>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Telefone (WhatsApp)</label>
-              <input
-                :value="editClient.number"
-                @input="(e) => { editClient.number = formatPhone((e.target as HTMLInputElement).value) }"
-                type="text"
-                :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.number ? 'border-red-500' : 'border-gray-200']"
-                placeholder="+55 (33) 99999-9999"
-              />
-              <p v-if="editFieldErrors.number" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.number }}</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Nicho</label>
-              <input v-model="editClient.niche" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.niche ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Imobiliária" />
-              <p v-if="editFieldErrors.niche" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.niche }}</p>
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Link do Google Drive</label>
-            <input v-model="editClient.driveLink" type="url" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.driveLink ? 'border-red-500' : 'border-gray-200']" placeholder="https://drive.google.com/..." />
-            <p v-if="editFieldErrors.driveLink" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.driveLink }}</p>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Tom de Voz / Identidade</label>
-            <textarea v-model="editClient.voiceTone" rows="3" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.voiceTone ? 'border-red-500' : 'border-gray-200']" placeholder="Descreva como a marca deve se comunicar..."></textarea>
-            <p v-if="editFieldErrors.voiceTone" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.voiceTone }}</p>
-          </div>
-        </div>
-
-        <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-          <Button variant="outline" class="flex-1" @click="isEditModalOpen = false">Cancelar</Button>
-          <Button class="flex-1" :disabled="isSubmitting" @click="handleEditClient">
-            {{ isSubmitting ? 'Salvando...' : 'Atualizar Cliente' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ClientModal
+      :is-open="isEditModalOpen"
+      :is-edit="true"
+      v-model:client="editClient"
+      :is-submitting="isSubmitting"
+      :field-errors="editFieldErrors"
+      @close="isEditModalOpen = false"
+      @save="handleEditClient"
+    />
   </AppLayout>
 </template>
 

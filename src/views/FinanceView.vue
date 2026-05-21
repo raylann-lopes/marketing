@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { TrendingUp, TrendingDown, DollarSign, Plus, CheckCircle, Pencil, Trash2, X, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Plus, CheckCircle, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+
+import FinanceStats from '@/components/finance/FinanceStats.vue'
+import FinanceModal from '@/components/finance/FinanceModal.vue'
+
 import { financeService, type FinancePayload, type FinanceRecord } from '@/services/financeService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
@@ -22,18 +26,15 @@ const netProfit = ref(0)
 const search = ref('')
 const feedback = useFeedback()
 
-// Pagination state
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-// Filtered transactions based on search
 const filteredTransactions = computed(() => {
   if (!search.value) return transactions.value
   const term = search.value.toLowerCase()
   return transactions.value.filter(t => {
     const descriptionMatch = t.description.toLowerCase().includes(term)
 
-    // Get client name for this transaction
     const tAny = t as Record<string, unknown>
     const clientRaw = tAny.client
     const clientId = typeof clientRaw === 'object' && clientRaw !== null
@@ -91,7 +92,7 @@ const newTransaction = ref({
   description: '',
   value: 0,
   status: 'PENDING',
-  expirationDate: new Date().toISOString().split('T')[0]
+  expirationDate: new Date().toISOString().split('T')[0] || ''
 })
 
 const editTransaction = ref({
@@ -99,7 +100,7 @@ const editTransaction = ref({
   description: '',
   value: 0,
   status: 'PENDING',
-  expirationDate: new Date().toISOString().split('T')[0]
+  expirationDate: new Date().toISOString().split('T')[0] || ''
 })
 
 const financeSchema = z.object({
@@ -115,7 +116,7 @@ function openFinanceModal() {
     description: '',
     value: 0,
     status: 'PENDING',
-    expirationDate: new Date().toISOString().split('T')[0]
+    expirationDate: new Date().toISOString().split('T')[0] || ''
   }
   fieldErrors.value = {}
   isModalOpen.value = true
@@ -129,7 +130,7 @@ function openEditTransactionModal(t: FinanceRecord) {
     description: t.description,
     value: t.value,
     status: t.status,
-    expirationDate: t.expirationDate?.split('T')[0] ?? new Date().toISOString().split('T')[0]
+    expirationDate: t.expirationDate?.split('T')[0] ?? new Date().toISOString().split('T')[0] ?? ''
   }
   editFieldErrors.value = {}
   isEditModalOpen.value = true
@@ -273,12 +274,6 @@ onMounted(() => {
   fetchTransactions()
 })
 
-const stats = computed(() => [
-  { label: 'Receita do Mês', value: formatCurrency(incomeTotal.value), sub: 'Total bruto', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
-  { label: 'Despesas', value: formatCurrency(expenseTotal.value), sub: 'Total de saídas', icon: TrendingDown, color: 'text-red-500', bg: 'bg-red-50' },
-  { label: 'Lucro Líquido', value: formatCurrency(netProfit.value), sub: 'Margem real', icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
-])
-
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
@@ -303,18 +298,11 @@ function formatDate(dateStr: string) {
       </Button>
     </div>
 
-    <div class="grid grid-cols-3 gap-4 mb-6">
-      <Card v-for="stat in stats" :key="stat.label" class="p-5 flex items-center gap-4">
-        <div :class="['w-12 h-12 rounded-xl flex items-center justify-center', stat.bg]">
-          <component :is="stat.icon" :class="['w-6 h-6', stat.color]" />
-        </div>
-        <div>
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ stat.label }}</p>
-          <p class="text-2xl font-bold text-gray-900 mt-0.5">{{ stat.value }}</p>
-          <p class="text-xs text-gray-400 mt-0.5">{{ stat.sub }}</p>
-        </div>
-      </Card>
-    </div>
+    <FinanceStats
+      :income-total="formatCurrency(incomeTotal)"
+      :expense-total="formatCurrency(expenseTotal)"
+      :net-profit="formatCurrency(netProfit)"
+    />
 
     <Card class="overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -380,7 +368,6 @@ function formatDate(dateStr: string) {
           </tr>
         </tbody>
       </table>
-      <!-- Pagination Footer -->
       <div v-if="filteredTransactions.length > itemsPerPage" class="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
         <p class="text-xs text-gray-500">
           Mostrando <span class="font-semibold">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> a 
@@ -407,129 +394,26 @@ function formatDate(dateStr: string) {
       </div>
     </Card>
 
-    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div class="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 class="text-xl font-bold text-gray-900">Nova Transação</h2>
-          <button @click="isModalOpen = false" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400"><X class="w-5 h-5" /></button>
-        </div>
-        <div class="p-6 space-y-4">
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Cliente</label>
-            <div class="relative">
-              <select 
-                v-model="newTransaction.client" 
-                :class="['w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer', fieldErrors.client ? 'border-red-500' : 'border-gray-200']"
-              >
-                <option value="">Selecione um cliente</option>
-                <option v-for="c in sortedClients" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-              <ChevronDown class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-            <p v-if="fieldErrors.client" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.client }}</p>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Descrição</label>
-            <input v-model="newTransaction.description" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.description ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Mensalidade Abril" />
-            <p v-if="fieldErrors.description" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.description }}</p>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Valor (R$)</label>
-              <input v-model.number="newTransaction.value" type="number" step="0.01" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.value ? 'border-red-500' : 'border-gray-200']" placeholder="0.00" />
-              <p v-if="fieldErrors.value" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.value }}</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Vencimento</label>
-              <input v-model="newTransaction.expirationDate" type="date" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.expirationDate ? 'border-red-500' : 'border-gray-200']" />
-              <p v-if="fieldErrors.expirationDate" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.expirationDate }}</p>
-            </div>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Status Inicial</label>
-            <div class="flex gap-2">
-              <button
-                v-for="s in ['PENDING', 'PAY']"
-                :key="s"
-                type="button"
-                @click="newTransaction.status = s"
-                :class="['flex-1 py-2 rounded-lg text-xs font-bold border transition-all', newTransaction.status === s ? 'bg-primary text-white border-primary' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100']"
-              >
-                {{ s === 'PENDING' ? 'PENDENTE' : 'PAGO' }}
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-          <Button variant="outline" class="flex-1" @click="isModalOpen = false">Cancelar</Button>
-          <Button class="flex-1" :disabled="isSubmitting" @click="handleCreateTransaction">
-            {{ isSubmitting ? 'Salvando...' : 'Salvar Transação' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <FinanceModal
+      :is-open="isModalOpen"
+      :is-edit="false"
+      v-model:transaction="newTransaction"
+      :clients="sortedClients"
+      :is-submitting="isSubmitting"
+      :field-errors="fieldErrors"
+      @close="isModalOpen = false"
+      @save="handleCreateTransaction"
+    />
 
-    <!-- Modal Editar Transação -->
-    <div v-if="isEditModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div class="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 class="text-xl font-bold text-gray-900">Editar Transação</h2>
-          <button @click="isEditModalOpen = false" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400"><X class="w-5 h-5" /></button>
-        </div>
-        <div class="p-6 space-y-4">
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Cliente</label>
-            <div class="relative">
-              <select
-                v-model="editTransaction.client"
-                :class="['w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer', editFieldErrors.client ? 'border-red-500' : 'border-gray-200']"
-              >
-                <option value="">Selecione um cliente</option>
-                <option v-for="c in sortedClients" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-              <ChevronDown class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-            <p v-if="editFieldErrors.client" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.client }}</p>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Descrição</label>
-            <input v-model="editTransaction.description" type="text" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.description ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Mensalidade Abril" />
-            <p v-if="editFieldErrors.description" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.description }}</p>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Valor (R$)</label>
-              <input v-model.number="editTransaction.value" type="number" step="0.01" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.value ? 'border-red-500' : 'border-gray-200']" placeholder="0.00" />
-              <p v-if="editFieldErrors.value" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.value }}</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold text-gray-500 uppercase">Vencimento</label>
-              <input v-model="editTransaction.expirationDate" type="date" :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', editFieldErrors.expirationDate ? 'border-red-500' : 'border-gray-200']" />
-              <p v-if="editFieldErrors.expirationDate" class="text-[10px] text-red-500 font-medium">{{ editFieldErrors.expirationDate }}</p>
-            </div>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold text-gray-500 uppercase">Status</label>
-            <div class="flex gap-2">
-              <button
-                v-for="s in ['PENDING', 'PAY']"
-                :key="s"
-                type="button"
-                @click="editTransaction.status = s"
-                :class="['flex-1 py-2 rounded-lg text-xs font-bold border transition-all', editTransaction.status === s ? 'bg-primary text-white border-primary' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100']"
-              >
-                {{ s === 'PENDING' ? 'PENDENTE' : 'PAGO' }}
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-          <Button variant="outline" class="flex-1" @click="isEditModalOpen = false">Cancelar</Button>
-          <Button class="flex-1" :disabled="isSubmitting" @click="handleEditTransaction">
-            {{ isSubmitting ? 'Salvando...' : 'Atualizar Transação' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <FinanceModal
+      :is-open="isEditModalOpen"
+      :is-edit="true"
+      v-model:transaction="editTransaction"
+      :clients="sortedClients"
+      :is-submitting="isSubmitting"
+      :field-errors="editFieldErrors"
+      @close="isEditModalOpen = false"
+      @save="handleEditTransaction"
+    />
   </AppLayout>
 </template>

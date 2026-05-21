@@ -16,6 +16,8 @@ export type PostApproval = {
   whatsappStanzaId?: string
   whatsappSentAt?: string
   whatsappResponseText?: string
+  rejectionReason?: string
+  internalRevisionNotes?: string
 }
 
 export type CreateApprovalDTO = {
@@ -63,6 +65,20 @@ export const approvalService = {
   async reject(postId: string | number): Promise<PostApproval> {
     return apiFetch<PostApproval>(`/api/post-approvals/reject/${postId}`, {
       method: 'POST'
+    })
+  },
+
+  async rejectInternalApproval(postId: string | number, data: { rejectionReason: string }): Promise<PostApproval> {
+    return apiFetch<PostApproval>(`/api/internal/approvals/post/${postId}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  },
+
+  async internalApprove(postId: string | number, data?: { scheduledAt?: string, internalRevisionNotes?: string }): Promise<PostApproval> {
+    return apiFetch<PostApproval>(`/api/internal/approvals/post/${postId}/approve`, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined
     })
   },
 

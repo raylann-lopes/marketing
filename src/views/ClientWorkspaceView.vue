@@ -1,21 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ArrowLeft,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle2,
-  Clock3,
-  Plus,
-  Save,
-  Trash2,
-} from 'lucide-vue-next'
+import { ArrowLeft } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { useFeedback } from '@/lib/feedback'
+
+import ClientDetailsTab from '@/components/client-workspace/ClientDetailsTab.vue'
+import ClientCalendarTab from '@/components/client-workspace/ClientCalendarTab.vue'
+import ClientAiTab from '@/components/client-workspace/ClientAiTab.vue'
+import UploadModal from '@/components/client-workspace/UploadModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -98,7 +93,6 @@ const uploadsByClient = ref<RecordMap<ClientUploadItem[]>>(readStorage<RecordMap
 const detailsByClient = ref<RecordMap<ClientWorkspaceDetails>>(readStorage<RecordMap<ClientWorkspaceDetails>>(DETAILS_STORAGE_KEY, {}))
 
 const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
 
 const clientId = computed(() => String(route.params.id ?? ''))
 
@@ -396,18 +390,6 @@ function cycleStatus(upload: ClientUploadItem) {
   upsertClientUploads(nextList)
 }
 
-function statusVariant(status: UploadStatus): 'secondary' | 'warning' | 'success' {
-  if (status === 'PLANNED') return 'secondary'
-  if (status === 'UPLOADED') return 'warning'
-  return 'success'
-}
-
-function statusLabel(status: UploadStatus) {
-  if (status === 'PLANNED') return 'Planejado'
-  if (status === 'UPLOADED') return 'Enviado'
-  return 'Aprovado'
-}
-
 async function saveDetails() {
   isSavingDetails.value = true
   try {
@@ -424,6 +406,15 @@ async function saveDetails() {
 
 function goBackToClients() {
   router.push('/clients')
+}
+
+function selectDay(day: number) {
+  selectedDay.value = day
+}
+
+function selectToday() {
+  currentDate.value = new Date(today.getFullYear(), today.getMonth(), 1)
+  selectedDay.value = today.getDate()
 }
 </script>
 
@@ -478,308 +469,47 @@ function goBackToClients() {
         </div>
       </div>
 
-      <section v-if="activeTab === 'details'" class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <div class="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-xl font-bold text-gray-900">Dados Essenciais do Cliente</h2>
-            <p class="text-sm text-gray-500">Somente contexto necessário para planejar posts e melhorar recomendações.</p>
-          </div>
-          <Button class="gap-2" :disabled="isSavingDetails" @click="saveDetails">
-            <Save class="h-4 w-4" />
-            {{ isSavingDetails ? 'Salvando...' : 'Salvar Dados' }}
-          </Button>
-        </div>
+      <ClientDetailsTab
+        v-if="activeTab === 'details'"
+        :client="client"
+        v-model:details-draft="detailsDraft"
+        :is-saving-details="isSavingDetails"
+        @save-details="saveDetails"
+      />
 
-        <div class="mb-4 grid gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Nome</p>
-            <p class="mt-1 text-sm font-semibold text-gray-800">{{ client.name }}</p>
-          </div>
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Nicho</p>
-            <p class="mt-1 text-sm font-semibold text-gray-800">{{ client.niche }}</p>
-          </div>
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">E-mail</p>
-            <p class="mt-1 text-sm font-semibold text-gray-800">{{ client.email }}</p>
-          </div>
-          <div>
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Tom de voz</p>
-            <p class="mt-1 text-sm font-semibold text-gray-800">{{ client.voiceTone || 'Não informado' }}</p>
-          </div>
-        </div>
+      <ClientCalendarTab
+        v-else-if="activeTab === 'calendar'"
+        :current-month-label="currentMonthLabel"
+        :current-date="currentDate"
+        :selected-day="selectedDay"
+        :calendar-days="calendarDays"
+        :uploads-per-day="uploadsPerDay"
+        :selected-day-uploads="selectedDayUploads"
+        @prev-month="prevMonth"
+        @next-month="nextMonth"
+        @today="selectToday"
+        @select-day="selectDay"
+        @cycle-status="cycleStatus"
+        @remove-upload="removeUpload"
+        @open-upload-modal="openUploadModal"
+      />
 
-        <div class="grid gap-4 md:grid-cols-2">
-          <div class="space-y-1.5 md:col-span-2">
-            <label class="text-xs font-semibold uppercase text-gray-500">Objetivo Principal</label>
-            <textarea v-model="detailsDraft.mainGoal" rows="3" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ex: gerar mais leads qualificados com conteúdo semanal." />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">Público-alvo</label>
-            <input v-model="detailsDraft.targetAudience" type="text" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ex: donos de negócio local 30-50 anos" />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">Canais Prioritários</label>
-            <input v-model="detailsDraft.preferredChannels" type="text" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ex: Instagram, Facebook" />
-          </div>
-
-          <div class="space-y-1.5 md:col-span-2">
-            <label class="text-xs font-semibold uppercase text-gray-500">Pilares de Conteúdo</label>
-            <input v-model="detailsDraft.contentPillars" type="text" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ex: prova social, bastidores, oferta" />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">SLA de Aprovação</label>
-            <input v-model="detailsDraft.approvalSla" type="text" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ex: 24h úteis" />
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">Sazonalidade</label>
-            <input v-model="detailsDraft.seasonality" type="text" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ex: campanhas fortes em novembro e dezembro" />
-          </div>
-
-          <div class="space-y-1.5 md:col-span-2">
-            <label class="text-xs font-semibold uppercase text-gray-500">Lembretes da Equipe</label>
-            <textarea v-model="detailsDraft.reminders" rows="3" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ex: sempre validar CTA com comercial antes de enviar." />
-          </div>
-        </div>
-      </section>
-
-      <div v-else-if="activeTab === 'calendar'" class="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="mb-5 flex items-center justify-between">
-            <h2 class="text-xl font-bold text-gray-900">{{ currentMonthLabel }}</h2>
-            <div class="flex items-center gap-2">
-              <Button variant="outline" class="h-9 px-3" @click="currentDate = new Date(today.getFullYear(), today.getMonth(), 1); selectedDay = today.getDate()">
-                Hoje
-              </Button>
-              <button class="rounded-lg p-1.5 hover:bg-gray-100" @click="prevMonth"><ChevronLeft class="h-4 w-4" /></button>
-              <button class="rounded-lg p-1.5 hover:bg-gray-100" @click="nextMonth"><ChevronRight class="h-4 w-4" /></button>
-            </div>
-          </div>
-
-          <div class="mb-2 grid grid-cols-7 text-center">
-            <div v-for="d in dayNames" :key="d" class="py-1 text-xs font-semibold text-gray-400">{{ d }}</div>
-          </div>
-
-          <div class="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200">
-            <div
-              v-for="(day, index) in calendarDays"
-              :key="index"
-              :class="[
-                'min-h-[110px] bg-white p-2 transition-colors',
-                day ? 'cursor-pointer hover:bg-primary/5' : ''
-              ]"
-              @click="day && (selectedDay = day)"
-            >
-              <div
-                v-if="day"
-                :class="[
-                  'mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
-                  day === selectedDay ? 'bg-primary text-white' : 'text-gray-600'
-                ]"
-              >
-                {{ day }}
-              </div>
-
-              <div v-if="day && uploadsPerDay[day]" class="space-y-1">
-                <div
-                  v-for="upload in uploadsPerDay[day].slice(0, 2)"
-                  :key="upload.id"
-                  class="truncate rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary"
-                >
-                  {{ upload.title }}
-                </div>
-                <p v-if="uploadsPerDay[day].length > 2" class="text-[10px] font-semibold text-gray-400">
-                  +{{ uploadsPerDay[day].length - 2 }} itens
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <aside class="flex min-h-[520px] flex-col rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div class="border-b border-gray-100 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Agenda do dia</p>
-            <p class="text-3xl font-bold text-gray-900">{{ selectedDay }}</p>
-            <p class="text-sm text-gray-500">{{ monthNames[currentDate.getMonth()] }}</p>
-          </div>
-
-          <div class="flex-1 space-y-3 overflow-y-auto p-4">
-            <div v-if="selectedDayUploads.length === 0" class="flex h-40 flex-col items-center justify-center text-center text-gray-400">
-              <CalendarDays class="mb-2 h-8 w-8 opacity-30" />
-              <p class="text-sm">Nenhum post planejado para esse dia.</p>
-            </div>
-
-            <div
-              v-for="upload in selectedDayUploads"
-              :key="upload.id"
-              class="rounded-xl border border-gray-100 bg-gray-50 p-3"
-            >
-              <div class="mb-2 flex items-center justify-between gap-2">
-                <Badge :variant="statusVariant(upload.status)">{{ statusLabel(upload.status) }}</Badge>
-                <div class="flex items-center gap-1">
-                  <button
-                    class="rounded-md p-1 text-gray-400 hover:bg-green-50 hover:text-green-600"
-                    title="Atualizar status"
-                    @click="cycleStatus(upload)"
-                  >
-                    <CheckCircle2 class="h-4 w-4" />
-                  </button>
-                  <button
-                    class="rounded-md p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                    title="Remover"
-                    @click="removeUpload(upload.id)"
-                  >
-                    <Trash2 class="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <p class="text-sm font-semibold text-gray-800">{{ upload.title }}</p>
-              <p class="mt-1 text-xs text-gray-500">{{ upload.channel }} · {{ upload.format }}</p>
-              <p v-if="upload.notes" class="mt-2 text-xs text-gray-500">{{ upload.notes }}</p>
-            </div>
-          </div>
-
-          <div class="border-t border-gray-100 p-4">
-            <Button class="w-full gap-2" @click="openUploadModal(selectedDay)">
-              <Plus class="h-4 w-4" />
-              Agendar Post no Dia
-            </Button>
-          </div>
-        </aside>
-      </div>
-
-      <section v-else class="grid gap-6 xl:grid-cols-[380px_1fr]">
-        <div class="space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div>
-            <h2 class="text-lg font-bold text-gray-900">Qualidade do Contexto</h2>
-            <p class="text-xs text-gray-500">Recomendações ficam melhores quando os dados essenciais estão completos.</p>
-          </div>
-
-          <div>
-            <div class="mb-1 flex items-center justify-between text-xs font-semibold text-gray-500">
-              <span>Campos preenchidos</span>
-              <span>{{ aiFieldChecks.filled }}/{{ aiFieldChecks.total }}</span>
-            </div>
-            <div class="h-2 rounded-full bg-gray-100">
-              <div class="h-2 rounded-full bg-primary transition-all" :style="{ width: `${aiFieldChecks.percent}%` }" />
-            </div>
-            <p class="mt-1 text-xs text-gray-500">{{ aiFieldChecks.percent }}% do briefing principal</p>
-          </div>
-
-          <div class="rounded-xl border border-gray-200 bg-gray-50 p-3">
-            <p class="text-xs font-semibold uppercase text-gray-500">Pendências</p>
-            <ul v-if="aiMissingInputs.length > 0" class="mt-2 space-y-1 text-xs text-gray-700">
-              <li v-for="missing in aiMissingInputs" :key="missing">• {{ missing }}</li>
-            </ul>
-            <p v-else class="mt-2 text-xs text-emerald-600">Contexto essencial preenchido.</p>
-          </div>
-
-          <div class="rounded-xl border border-gray-200 bg-gray-50 p-3">
-            <p class="text-xs font-semibold uppercase text-gray-500">Resumo para Prompt</p>
-            <pre class="mt-2 whitespace-pre-wrap text-xs text-gray-700">{{ aiPromptContext }}</pre>
-          </div>
-        </div>
-
-        <div class="space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div>
-            <h2 class="text-lg font-bold text-gray-900">Recomendações de IA por Nicho</h2>
-            <p class="text-xs text-gray-500">Sugestões simples com base no nicho e no calendário já planejado.</p>
-          </div>
-
-          <div class="grid gap-3">
-            <article
-              v-for="(rec, index) in aiRecommendations"
-              :key="`${rec.title}-${index}`"
-              class="rounded-xl border border-gray-100 bg-gray-50 p-4"
-            >
-              <div class="mb-2 flex items-center justify-between gap-2">
-                <p class="text-sm font-semibold text-gray-900">{{ rec.title }}</p>
-                <span
-                  :class="[
-                    'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
-                    rec.priority === 'ALTA'
-                      ? 'border border-red-200 bg-red-50 text-red-700'
-                      : rec.priority === 'MEDIA'
-                        ? 'border border-amber-200 bg-amber-50 text-amber-700'
-                        : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                  ]"
-                >
-                  {{ rec.priority }}
-                </span>
-              </div>
-              <p class="text-xs leading-relaxed text-gray-600">{{ rec.details }}</p>
-            </article>
-          </div>
-        </div>
-      </section>
+      <ClientAiTab
+        v-else-if="activeTab === 'ai'"
+        :ai-field-checks="aiFieldChecks"
+        :ai-missing-inputs="aiMissingInputs"
+        :ai-prompt-context="aiPromptContext"
+        :ai-recommendations="aiRecommendations"
+      />
     </div>
 
-    <div v-if="isUploadModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl">
-        <div class="flex items-center justify-between border-b border-gray-100 p-5">
-          <h3 class="text-lg font-bold text-gray-900">Agendar Post</h3>
-          <button class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" @click="isUploadModalOpen = false">×</button>
-        </div>
-
-        <div class="space-y-4 p-5">
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">Data</label>
-            <input v-model="uploadDraft.date" type="date" :class="['w-full rounded-lg border bg-gray-50 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20', uploadFieldErrors.date ? 'border-red-500' : 'border-gray-200']" />
-            <p v-if="uploadFieldErrors.date" class="text-[10px] font-medium text-red-500">{{ uploadFieldErrors.date }}</p>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">Título do Post</label>
-            <input v-model="uploadDraft.title" type="text" :class="['w-full rounded-lg border bg-gray-50 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20', uploadFieldErrors.title ? 'border-red-500' : 'border-gray-200']" placeholder="Ex: Reels - oferta da semana" />
-            <p v-if="uploadFieldErrors.title" class="text-[10px] font-medium text-red-500">{{ uploadFieldErrors.title }}</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold uppercase text-gray-500">Formato</label>
-              <select v-model="uploadDraft.format" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
-                <option>Feed</option>
-                <option>Reels</option>
-                <option>Story</option>
-                <option>Carrossel</option>
-                <option>Vídeo Curto</option>
-              </select>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold uppercase text-gray-500">Canal</label>
-              <input v-model="uploadDraft.channel" type="text" :class="['w-full rounded-lg border bg-gray-50 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20', uploadFieldErrors.channel ? 'border-red-500' : 'border-gray-200']" placeholder="Instagram" />
-              <p v-if="uploadFieldErrors.channel" class="text-[10px] font-medium text-red-500">{{ uploadFieldErrors.channel }}</p>
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">Status inicial</label>
-            <select v-model="uploadDraft.status" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
-              <option value="PLANNED">Planejado</option>
-              <option value="UPLOADED">Enviado</option>
-              <option value="APPROVED">Aprovado</option>
-            </select>
-          </div>
-
-          <div class="space-y-1.5">
-            <label class="text-xs font-semibold uppercase text-gray-500">Observações</label>
-            <textarea v-model="uploadDraft.notes" rows="3" class="w-full rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Briefing curto, CTA ou observações para equipe." />
-          </div>
-        </div>
-
-        <div class="flex gap-3 border-t border-gray-100 bg-gray-50 p-5">
-          <Button variant="outline" class="flex-1" @click="isUploadModalOpen = false">Cancelar</Button>
-          <Button class="flex-1 gap-2" :disabled="isSavingUpload" @click="saveUpload">
-            <Clock3 class="h-4 w-4" />
-            {{ isSavingUpload ? 'Salvando...' : 'Salvar Agendamento' }}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <UploadModal
+      :is-open="isUploadModalOpen"
+      :is-saving-upload="isSavingUpload"
+      v-model:upload-draft="uploadDraft"
+      :upload-field-errors="uploadFieldErrors"
+      @close="isUploadModalOpen = false"
+      @save-upload="saveUpload"
+    />
   </AppLayout>
 </template>
