@@ -21,7 +21,7 @@ import ApprovalModal from '@/components/board/ApprovalModal.vue'
 import ArtPreviewModal from '@/components/board/ArtPreviewModal.vue'
 
 type BoardColumn = {
-  id: PostStatus
+  id: PostStatus | string
   label: string
   color: string
   cards: Post[]
@@ -85,7 +85,10 @@ const rejectionReasonError = ref('')
 const scheduledAtForApproval = ref('')
 const internalRevisionNotes = ref('')
 
-const columnThemeMap: Record<PostStatus, ColumnTheme> = {
+const referenceInput = ref<HTMLInputElement | null>(null)
+const selectedPostForReference = ref<Post | null>(null)
+
+const columnThemeMap: Record<string, ColumnTheme> = {
   DEMAND: {
     clientBadge: 'text-slate-700 bg-slate-100 border border-slate-200',
     primaryButton: 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200',
@@ -144,409 +147,13 @@ const columnThemeMap: Record<PostStatus, ColumnTheme> = {
   },
 }
 
-function getColumnTheme(columnId: PostStatus): ColumnTheme {
+function getColumnTheme(columnId: string): ColumnTheme {
   return columnThemeMap[columnId] || columnThemeMap.DEMAND
 }
 
-function getColumnLabel(columnId: PostStatus) {
+function getColumnLabel(columnId: string) {
   return columns.value.find((column) => column.id === columnId)?.label || columnId
 }
-
-function getResponsibleLabel(post: Post) {
-  return post.userId ? `U${post.userId}` : 'Não definido'
-}
-
-function getPostTypeLabel(post: Post) {
-  const raw = post as Record<string, unknown>
-  const typeCandidate = raw.postType ?? raw.type ?? raw.format ?? raw.mediaType
-  if (typeof typeCandidate === 'string' && typeCandidate.trim()) return typeCandidate
-  return 'Post'
-}
-
-function formatDueDate(dateString?: string) {
-  if (!dateString) return 'Sem prazo'
-  const date = new Date(dateString)
-  if (Number.isNaN(date.getTime())) return 'Sem prazo'
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-function isOverdue(post: Post) {
-  if (!post.scheduledAt) return false
-  const due = new Date(post.scheduledAt).getTime()
-  if (Number.isNaN(due)) return false
-  return due < Date.now()
-}
-
-function getPriorityInfo(post: Post) {
-  if (!post.scheduledAt) {
-    return {
-      label: 'MÉDIA',
-      className: 'text-amber-700 bg-amber-50 border border-amber-200'
-    }
-  }
-
-  const due = new Date(post.scheduledAt).getTime()
-  if (Number.isNaN(due)) {
-    return {
-      label: 'MÉDIA',
-      className: 'text-amber-700 bg-amber-50 border border-amber-200'
-    }
-  }
-
-  const diffDays = (due - Date.now()) / (1000 * 60 * 60 * 24)
-  if (diffDays <= 2) {
-    return {
-      label: 'ALTA',
-      className: 'text-red-700 bg-red-50 border border-red-200'
-    }
-  }
-  if (diffDays <= 5) {
-    return {
-      label: 'MÉDIA',
-      className: 'text-amber-700 bg-amber-50 border border-amber-200'
-    }
-  }
-  return {
-    label: 'BAIXA',
-    className: 'text-emerald-700 bg-emerald-50 border border-emerald-200'
-  }
-}
-
-function getClientName(clientId: string | number | undefined) {
-  if (!clientId) return '—'
-  const client = clients.value.find(c => String(c.id) === String(clientId))
-  return client ? client.name : `ID: ${clientId}`
-}
-
-async function loadArtPreviewUrl(post: Post) {
-  const postId = getPostId(post)
-  if (!postId || !post.id) return ''
-
-  if (artPreviewUrlsByPostId.value[postId]) {
-    return artPreviewUrlsByPostId.value[postId]
-  }
-
-  const approval = getApprovalByPost(post)
-  if (!approval?.artS3Key) return ''
-
-  const response = await mediaService.getArtUrl(post.id)
-  const mediaUrl = response.mediaUrl || ''
-  if (mediaUrl) {
-    artPreviewUrlsByPostId.value = {
-      ...artPreviewUrlsByPostId.value,
-      [postId]: mediaUrl
-    }
-  }
-  return mediaUrl
-}
-
-async function openArtPreviewModal(post: Post, mode: ArtPreviewMode = 'preview') {
-  const approval = getApprovalByPost(post)
-  if (!approval?.artS3Key) {
-    feedback.warning('Este post ainda não possui imagem adicionada.')
-    return
-  }
-
-  selectedPostForPreview.value = post
-  selectedApprovalForPreview.value = approval
-  selectedArtPreviewUrl.value = ''
-  artPreviewMode.value = mode
-
-  // Inicializa agendamento e notas
-  scheduledAtForApproval.value = post.scheduledAt ? post.scheduledAt.substring(0, 16) : ''
-  internalRevisionNotes.value = approval.internalRevisionNotes || ''
-
-  isArtPreviewModalOpen.value = true
-  isLoadingArtPreview.value = true
-
-  try {
-    selectedArtPreviewUrl.value = await loadArtPreviewUrl(post)
-  } catch (e: unknown) {
-    feedback.error(`Erro ao carregar imagem: ${getErrorMessage(e, 'Tente novamente.')}`)
-  } finally {
-    isLoadingArtPreview.value = false
-  }
-}
-
-function closeArtPreviewModal() {
-  isArtPreviewModalOpen.value = false
-  isRejectReasonModalOpen.value = false
-  selectedPostForPreview.value = null
-  selectedApprovalForPreview.value = null
-  selectedArtPreviewUrl.value = ''
-  rejectionReason.value = ''
-  rejectionReasonError.value = ''
-  internalReviewAction.value = null
-}
-
-async function openApprovalModal(post: Post) {
-  selectedPostForApproval.value = post
-  existingApprovalId.value = null
-  approvalData.value = {
-    caption: '',
-    artS3Key: '',
-    artName: '',
-    artPreviewUrl: '',
-    isUploading: false,
-    isGenerating: false,
-    isSending: false
-  }
-  isApprovalModalOpen.value = true
-
-  const existing = getApprovalByPost(post)
-  if (post.id && existing) {
-    existingApprovalId.value = existing.id || null
-    approvalData.value.caption = existing.caption || ''
-    approvalData.value.artS3Key = existing.artS3Key || ''
-    approvalData.value.artName = existing.artName || ''
-
-    try {
-      approvalData.value.artPreviewUrl = await loadArtPreviewUrl(post)
-    } catch (err) {
-      console.warn('Erro ao carregar preview da arte existente:', err)
-    }
-  }
-}
-
-async function handleFileSelect(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !selectedPostForApproval.value) return
-
-  const postId = selectedPostForApproval.value.id
-
-  approvalData.value.isUploading = true
-  try {
-    const { uploadUrl, s3Key } = await mediaService.getUploadUrl(postId!, file.name, file.type)
-    await mediaService.uploadToS3(uploadUrl, file)
-    approvalData.value.artS3Key = s3Key
-    approvalData.value.artName = file.name
-    approvalData.value.artPreviewUrl = URL.createObjectURL(file)
-  } catch (e: unknown) {
-    feedback.error(`Erro no upload: ${getErrorMessage(e, 'Tente novamente.')}`)
-  } finally {
-    approvalData.value.isUploading = false
-  }
-}
-
-async function generateAICaption() {
-  if (!selectedPostForApproval.value?.id) return
-  approvalData.value.isGenerating = true
-  
-  try {
-    const res = await postService.generateCaption(selectedPostForApproval.value.id, approvalData.value.artS3Key)
-    approvalData.value.caption = res.caption
-    feedback.success('Legenda gerada com sucesso.')
-  } catch (e: unknown) {
-    feedback.error(`Erro ao gerar legenda: ${getErrorMessage(e, 'Tente novamente.')}`)
-  } finally {
-    approvalData.value.isGenerating = false
-  }
-}
-
-async function saveApproval() {
-  if (!selectedPostForApproval.value) return
-  if (!approvalData.value.artS3Key) {
-    feedback.warning('Faça o upload da arte antes de salvar.')
-    return
-  }
-
-  approvalData.value.isSending = true
-  try {
-    const payload = {
-      postId: selectedPostForApproval.value.id!,
-      artS3Key: approvalData.value.artS3Key,
-      artName: approvalData.value.artName,
-      caption: approvalData.value.caption
-    }
-
-    if (existingApprovalId.value) {
-      await approvalService.update(existingApprovalId.value, payload)
-    } else {
-      await approvalService.create(payload)
-    }
-    await movePostToFinished(selectedPostForApproval.value)
-    
-    isApprovalModalOpen.value = false
-    await fetchInitialData()
-    feedback.success('Aprovação salva e demanda movida para Finalizado.')
-  } catch (e: unknown) {
-    feedback.error(`Erro ao salvar aprovação: ${getErrorMessage(e, 'Tente novamente.')}`)
-  } finally {
-    approvalData.value.isSending = false
-  }
-}
-
-function isCardExpanded(post: Post) {
-  const postId = getPostId(post)
-  return Boolean(postId && expandedCardsByPostId.value[postId])
-}
-
-function toggleCardExpanded(post: Post) {
-  const postId = getPostId(post)
-  if (!postId) return
-  expandedCardsByPostId.value = {
-    ...expandedCardsByPostId.value,
-    [postId]: !expandedCardsByPostId.value[postId]
-  }
-}
-
-async function movePostToFinished(post: Post) {
-  if (!post.id) throw new Error('Demanda sem ID.')
-  const clientId = getPostClientId(post)
-  if (!clientId) throw new Error('Demanda sem cliente associado.')
-
-  const payload = {
-    id: post.id,
-    title: post.title,
-    theme: post.theme,
-    objective: post.objective,
-    status: 'FINISHED',
-    scheduledAt: post.scheduledAt,
-    clientId,
-    userId: getUserOrFallback()
-  }
-  await postService.update(post.id, payload as unknown as Post)
-}
-
-function mapApprovalsByPostId(list: PostApproval[]) {
-  const entries = list
-    .filter((approval) => approval.post?.id !== undefined && approval.post?.id !== null)
-    .map((approval) => [String(approval.post!.id), approval] as const)
-  approvalsByPostId.value = Object.fromEntries(entries)
-}
-
-function getApprovalByPost(post: Post) {
-  const postId = getPostId(post)
-  if (!postId) return null
-  return approvalsByPostId.value[postId] || null
-}
-
-function getApprovalStatusLabel(post: Post) {
-  const approval = getApprovalByPost(post)
-  if (!approval) {
-    return { text: 'Não preparada', className: 'text-amber-700' }
-  }
-  if (post.status === 'REJECTED' || approval.status === 'REJECT') {
-    return { text: 'Rejeitado', className: 'text-red-700' }
-  }
-  if (approval.whatsappResponseText?.trim()) {
-    return { text: 'Cliente respondeu', className: 'text-violet-700' }
-  }
-  if (approval.whatsappSentAt) {
-    return { text: `Enviada`, className: 'text-emerald-700' }
-  }
-  return { text: 'Pronta para envio', className: 'text-blue-700' }
-}
-
-function getRejectionMessage(post: Post) {
-  const approval = getApprovalByPost(post)
-  const reason = approval?.rejectionReason?.trim()
-  return reason || 'Rejeitado na aprovação interna.'
-}
-
-function isSendingApproval(post: Post) {
-  const postId = getPostId(post)
-  return Boolean(postId && sendingApprovalByPostId.value[postId])
-}
-
-async function handleSendApprovalFromFinished(post: Post, isResend = false) {
-  const postId = getPostId(post)
-  if (!postId || !post.id) return false
-  if (isSendingApproval(post)) return false
-
-  const approval = getApprovalByPost(post)
-  if (!approval?.artS3Key || !approval.artName) {
-    feedback.warning('Esta demanda ainda não possui aprovação preparada. Prepare a aprovação primeiro.')
-    openApprovalModal(post)
-    return false
-  }
-
-  sendingApprovalByPostId.value = { ...sendingApprovalByPostId.value, [postId]: true }
-  try {
-    const completion = await mediaService.completeUpload(post.id, approval.artS3Key, approval.artName)
-    try {
-      const refreshedApproval = await approvalService.getByPostId(post.id)
-      approvalsByPostId.value = { ...approvalsByPostId.value, [postId]: refreshedApproval }
-    } catch {}
-
-    if (completion.webhookDispatched) {
-      feedback.success(isResend ? 'Aprovação reenviada ao cliente.' : 'Aprovação enviada ao cliente.')
-    } else {
-      feedback.warning('Aprovação processada, mas o webhook do n8n não foi disparado.')
-    }
-    return true
-  } catch (e: unknown) {
-    feedback.error(`Erro ao ${isResend ? 'reenviar' : 'enviar'} aprovação: ${getErrorMessage(e, 'Tente novamente.')}`)
-    return false
-  } finally {
-    sendingApprovalByPostId.value = { ...sendingApprovalByPostId.value, [postId]: false }
-  }
-}
-
-async function handleSendApprovalFromInternalReview() {
-  const post = selectedPostForPreview.value
-  if (!post?.id) return
-
-  if (!scheduledAtForApproval.value) {
-    feedback.warning('Informe a data e hora programada para postagem.')
-    return
-  }
-
-  internalReviewAction.value = 'send'
-  try {
-    // 1. Salva a aprovação interna com agendamento e notas. 
-    // O backend agora mudará o status para SCHEDULE e o Scheduler fará o envio na hora certa.
-    await approvalService.internalApprove(post.id, {
-      scheduledAt: scheduledAtForApproval.value.length === 16 ? scheduledAtForApproval.value + ":00" : scheduledAtForApproval.value,
-      internalRevisionNotes: internalRevisionNotes.value
-    })
-
-    feedback.success('Post agendado com sucesso! O envio ao n8n ocorrerá na data programada.')
-    closeArtPreviewModal()
-    await fetchInitialData()
-  } catch (e: unknown) {
-    feedback.error(`Erro na aprovação interna: ${getErrorMessage(e)}`)
-  } finally {
-    internalReviewAction.value = null
-  }
-}
-
-async function confirmInternalRejection() {
-  const post = selectedPostForPreview.value
-  if (!post?.id) return
-
-  const reason = rejectionReason.value.trim()
-  if (reason.length < 5) {
-    rejectionReasonError.value = 'Informe uma justificativa com pelo menos 5 caracteres.'
-    return
-  }
-
-  internalReviewAction.value = 'reject'
-  try {
-    await approvalService.rejectInternalApproval(post.id, { rejectionReason: reason })
-    closeArtPreviewModal()
-    await fetchInitialData()
-    feedback.success('Post rejeitado e movido para Rejeitado.')
-  } catch (e: unknown) {
-    feedback.error(`Erro ao rejeitar aprovação interna: ${getErrorMessage(e, 'Tente novamente.')}`)
-  } finally {
-    internalReviewAction.value = null
-  }
-}
-
-const postSchema = z.object({
-  clientId: z.union([z.string(), z.number()]).refine(v => String(v).length > 0, 'Selecione um cliente'),
-  title: z.string().min(3, 'Título muito curto'),
-  theme: z.string().min(3, 'Tema obrigatório'),
-  objective: z.string().min(5, 'Descreva o objetivo'),
-  scheduledAt: z.string().min(10, 'Data inválida')
-})
 
 const search = ref('')
 
@@ -565,57 +172,64 @@ async function fetchInitialData() {
     posts.forEach((post: Post) => {
       const col = columns.value.find(c => c.id === post.status)
       if (col) col.cards.push(post)
-      else columns.value[0]?.cards.push(post)
     })
 
-    try {
-      const approvalsData = await approvalService.getAll()
-      mapApprovalsByPostId(Array.isArray(approvalsData) ? approvalsData : [])
-    } catch {
-      approvalsByPostId.value = {}
-    }
+    const approvalList = await approvalService.getAll()
+    mapApprovalsByPostId(approvalList)
   } catch (error) {
-    console.error('Failed to load board data:', error)
+    console.error('Erro ao carregar dados:', error)
   }
 }
 
-const filteredColumns = computed(() => {
-  if (!search.value) return columns.value
-  const term = search.value.toLowerCase()
-  return columns.value.map(col => ({
-    ...col,
-    cards: col.cards.filter(card => {
-      const titleMatches = card.title.toLowerCase().includes(term)
-      const cid = getPostClientId(card)
-      const clientMatches = getClientName(cid || '-').toLowerCase().includes(term)
-      return titleMatches || clientMatches
-    })
-  }))
-})
-
 const paginatedColumns = computed(() => {
-  return filteredColumns.value.map(col => {
-    const isPaginatable = col.id === 'SCHEDULE' || col.id === 'FINISHED'
-    const totalCards = col.cards.length
-    
-    if (isPaginatable && !search.value) {
-      const page = columnPages.value[col.id] || 1
-      const start = (page - 1) * itemsPerPage
-      const end = start + itemsPerPage
-      return {
-        ...col,
-        cards: col.cards.slice(start, end),
-        totalCards,
-        totalPages: Math.ceil(totalCards / itemsPerPage),
-        currentPage: page
-      }
-    }
-    
-    return { ...col, totalCards, totalPages: 1, currentPage: 1 }
+  return columns.value.map((col) => {
+    const filteredCards = col.cards.filter((card) => {
+      if (!search.value) return true
+      const s = search.value.toLowerCase()
+      const clientName = getClientName(getPostClientId(card) ?? undefined).toLowerCase()
+      return card.title.toLowerCase().includes(s) || clientName.includes(s)
+    })
+
+    const totalCards = filteredCards.length
+    const totalPages = Math.ceil(totalCards / itemsPerPage)
+    const currentPage = columnPages.value[col.id] || 1
+    const start = (currentPage - 1) * itemsPerPage
+    const cards = filteredCards.slice(start, start + itemsPerPage)
+
+    return { ...col, cards, totalCards, totalPages, currentPage }
   })
 })
 
-async function handleBoardChange(evt: { added?: { element: Post } }, columnId: string) {
+function getClientName(clientId?: number) {
+  if (!clientId) return 'Cliente não encontrado'
+  return clients.value.find((c) => c.id === clientId)?.name || 'Cliente não encontrado'
+}
+
+function formatDueDate(dateStr?: string) {
+  if (!dateStr) return 'Sem prazo'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+function isOverdue(post: Post) {
+  if (!post.scheduledAt) return false
+  return new Date(post.scheduledAt) < new Date() && post.status !== 'PUBLISHED'
+}
+
+function getPriorityInfo(post: Post) {
+  if (post.isUrgent) return { label: 'URGENTE', className: 'text-red-600 bg-red-50 border-red-100' }
+  return { label: 'Normal', className: 'text-gray-600 bg-gray-50 border-gray-100' }
+}
+
+function getResponsibleLabel(post: Post) {
+  return 'Equipe North'
+}
+
+function getPostTypeLabel(post: Post) {
+  return 'Social Media'
+}
+
+async function handleBoardChange(evt: any, columnId: string) {
   if (evt.added) {
     const post = evt.added.element
     const clientId = getPostClientId(post)
@@ -627,12 +241,8 @@ async function handleBoardChange(evt: { added?: { element: Post } }, columnId: s
 
     try {
       const payload = {
-        id: post.id,
-        title: post.title,
-        theme: post.theme,
-        objective: post.objective,
+        ...post,
         status: columnId,
-        scheduledAt: post.scheduledAt,
         clientId: Number(clientId),
         userId: getUserOrFallback()
       }
@@ -655,6 +265,15 @@ function openEditModal(post: Post) {
   isModalOpen.value = true
 }
 
+const postSchema = z.object({
+  clientId: z.union([z.string(), z.number()]).refine(v => String(v).length > 0, 'Selecione um cliente'),
+  title: z.string().min(3, 'Título muito curto'),
+  theme: z.string().min(3, 'Tema obrigatório'),
+  objective: z.string().min(5, 'Descreva o objetivo'),
+  scheduledAt: z.string().min(10, 'Data inválida'),
+  isUrgent: z.boolean().optional()
+})
+
 async function handleSavePost(form: any) {
   fieldErrors.value = {}
   const result = postSchema.safeParse(form)
@@ -675,6 +294,7 @@ async function handleSavePost(form: any) {
       theme: form.theme,
       objective: form.objective,
       status: form.status,
+      isUrgent: form.isUrgent,
       scheduledAt: form.scheduledAt.length === 16 ? form.scheduledAt + ":00" : form.scheduledAt,
       clientId: Number(form.clientId),
       userId: getUserOrFallback()
@@ -715,104 +335,355 @@ async function handleDeletePost(post: Post) {
   }
 }
 
-function prevPage(colId: string) {
-  if (columnPages.value[colId] && columnPages.value[colId] > 1) {
-    columnPages.value[colId]--
+async function openArtPreviewModal(post: Post, mode: ArtPreviewMode = 'preview') {
+  const approval = getApprovalByPost(post)
+  if (!approval?.artS3Key) {
+    feedback.warning('Este post ainda não possui imagem adicionada.')
+    return
+  }
+
+  selectedPostForPreview.value = post
+  selectedApprovalForPreview.value = approval
+  selectedArtPreviewUrl.value = ''
+  artPreviewMode.value = mode
+  
+  scheduledAtForApproval.value = post.scheduledAt ? post.scheduledAt.substring(0, 16) : ''
+  internalRevisionNotes.value = approval.internalRevisionNotes || ''
+
+  isArtPreviewModalOpen.value = true
+  isLoadingArtPreview.value = true
+
+  try {
+    selectedArtPreviewUrl.value = await loadArtPreviewUrl(post)
+  } catch (err) {
+    feedback.error('Erro ao carregar imagem.')
+    isArtPreviewModalOpen.value = false
+  } finally {
+    isLoadingArtPreview.value = false
   }
 }
 
-function nextPage(colId: string, totalPages: number) {
-  if (columnPages.value[colId] && columnPages.value[colId] < totalPages) {
-    columnPages.value[colId]++
-  } else if (!columnPages.value[colId]) {
-    columnPages.value[colId] = 2
+async function loadArtPreviewUrl(post: Post) {
+  const postId = getPostId(post)
+  if (!postId) return ''
+  if (artPreviewUrlsByPostId.value[postId]) return artPreviewUrlsByPostId.value[postId]
+
+  const url = await mediaService.getArtPreviewUrl(postId)
+  artPreviewUrlsByPostId.value = { ...artPreviewUrlsByPostId.value, [postId]: url }
+  return url
+}
+
+function closeArtPreviewModal() {
+  isArtPreviewModalOpen.value = false
+  selectedArtPreviewUrl.value = ''
+  scheduledAtForApproval.value = ''
+  internalRevisionNotes.value = ''
+}
+
+async function openApprovalModal(post: Post) {
+  selectedPostForApproval.value = post
+  isApprovalModalOpen.value = true
+  approvalData.value = {
+    caption: '',
+    artS3Key: '',
+    artName: '',
+    artPreviewUrl: '',
+    isUploading: false,
+    isGenerating: false,
+    isSending: false
+  }
+
+  const existing = getApprovalByPost(post)
+  if (existing) {
+    existingApprovalId.value = existing.id ?? null
+    approvalData.value.caption = existing.caption
+    approvalData.value.artS3Key = existing.artS3Key
+    approvalData.value.artName = existing.artName
+    try {
+      approvalData.value.artPreviewUrl = await loadArtPreviewUrl(post)
+    } catch (err) {
+      console.warn('Erro ao carregar preview da arte existente:', err)
+    }
+  } else {
+    existingApprovalId.value = null
   }
 }
 
-const route = useRoute()
+async function handleFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !selectedPostForApproval.value) return
+
+  const postId = selectedPostForApproval.value.id
+  approvalData.value.isUploading = true
+  try {
+    const { uploadUrl, s3Key } = await mediaService.getUploadUrl(postId!, file.name, file.type)
+    await mediaService.uploadToS3(uploadUrl, file)
+    approvalData.value.artS3Key = s3Key
+    approvalData.value.artName = file.name
+    approvalData.value.artPreviewUrl = URL.createObjectURL(file)
+  } catch (e: unknown) {
+    feedback.error(`Erro no upload: ${getErrorMessage(e)}`)
+  } finally {
+    approvalData.value.isUploading = false
+  }
+}
+
+async function generateAICaption() {
+  if (!selectedPostForApproval.value?.id) return
+  approvalData.value.isGenerating = true
+  try {
+    const res = await postService.generateCaption(selectedPostForApproval.value.id, approvalData.value.artS3Key)
+    approvalData.value.caption = res.caption
+    feedback.success('Legenda gerada com sucesso.')
+  } catch (e: unknown) {
+    feedback.error(`Erro ao gerar legenda: ${getErrorMessage(e)}`)
+  } finally {
+    approvalData.value.isGenerating = false
+  }
+}
+
+async function saveApproval() {
+  if (!selectedPostForApproval.value) return
+  if (!approvalData.value.artS3Key) {
+    feedback.warning('Faça o upload da arte antes de salvar.')
+    return
+  }
+
+  approvalData.value.isSending = true
+  try {
+    const payload = {
+      postId: selectedPostForApproval.value.id!,
+      artS3Key: approvalData.value.artS3Key,
+      artName: approvalData.value.artName,
+      caption: approvalData.value.caption
+    }
+
+    if (existingApprovalId.value) {
+      await approvalService.update(existingApprovalId.value, payload)
+    } else {
+      await approvalService.create(payload)
+    }
+    
+    // Mover para FINISHED (não para SCHEDULE direto) para permitir envio ao cliente
+    const post = selectedPostForApproval.value
+    await postService.update(post.id!, { ...post, status: 'FINISHED' } as any)
+    
+    isApprovalModalOpen.value = false
+    await fetchInitialData()
+    feedback.success('Aprovação salva e demanda movida para Finalizado.')
+  } catch (e: unknown) {
+    feedback.error(`Erro ao salvar aprovação: ${getErrorMessage(e)}`)
+  } finally {
+    approvalData.value.isSending = false
+  }
+}
+
+async function handleSendApprovalFromInternalReview() {
+  const post = selectedPostForPreview.value
+  if (!post?.id) return
+
+  if (!scheduledAtForApproval.value) {
+    feedback.warning('Informe a data e hora programada para postagem.')
+    return
+  }
+
+  internalReviewAction.value = 'send'
+  try {
+    await approvalService.internalApprove(post.id, {
+      scheduledAt: scheduledAtForApproval.value.length === 16 ? scheduledAtForApproval.value + ":00" : scheduledAtForApproval.value,
+      internalRevisionNotes: internalRevisionNotes.value
+    })
+
+    const sent = await handleSendApprovalFromFinished(post, Boolean(selectedApprovalForPreview.value?.whatsappSentAt))
+    if (sent) {
+      closeArtPreviewModal()
+      await fetchInitialData()
+    }
+  } catch (e: unknown) {
+    feedback.error(`Erro na aprovação interna: ${getErrorMessage(e)}`)
+  } finally {
+    internalReviewAction.value = null
+  }
+}
+
+async function handleSendApprovalFromFinished(post: Post, isResend = false) {
+  const postId = getPostId(post)
+  if (!postId || !post.id) return false
+  if (sendingApprovalByPostId.value[postId]) return false
+
+  const approval = getApprovalByPost(post)
+  if (!approval?.artS3Key) {
+    feedback.warning('Esta demanda ainda não possui aprovação preparada.')
+    return false
+  }
+
+  sendingApprovalByPostId.value = { ...sendingApprovalByPostId.value, [postId]: true }
+  try {
+    const completion = await mediaService.completeUpload(post.id, approval.artS3Key, approval.artName)
+    if (completion.webhookDispatched) {
+      feedback.success(isResend ? 'Aprovação reenviada ao cliente.' : 'Aprovação enviada ao cliente.')
+    }
+    return true
+  } catch (e: unknown) {
+    feedback.error(`Erro ao enviar: ${getErrorMessage(e)}`)
+    return false
+  } finally {
+    sendingApprovalByPostId.value = { ...sendingApprovalByPostId.value, [postId]: false }
+  }
+}
+
+async function confirmInternalRejection() {
+  const post = selectedPostForPreview.value
+  if (!post?.id) return
+
+  const reason = rejectionReason.value.trim()
+  if (reason.length < 5) {
+    rejectionReasonError.value = 'Informe uma justificativa válida.'
+    return
+  }
+
+  internalReviewAction.value = 'reject'
+  try {
+    await approvalService.rejectInternalApproval(post.id, { rejectionReason: reason })
+    closeArtPreviewModal()
+    await fetchInitialData()
+    feedback.success('Post rejeitado.')
+  } catch (e: unknown) {
+    feedback.error(`Erro ao rejeitar: ${getErrorMessage(e)}`)
+  } finally {
+    internalReviewAction.value = null
+  }
+}
+
+function openReferenceUpload(post: Post) {
+  selectedPostForReference.value = post
+  referenceInput.value?.click()
+}
+
+async function handleReferenceSelect(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !selectedPostForReference.value) return
+
+  const postId = selectedPostForReference.value.id
+  feedback.loading('Fazendo upload da referência...')
+  try {
+    const { uploadUrl, s3Key } = await mediaService.getReferenceUploadUrl(postId!, file.name, file.type)
+    await mediaService.uploadToS3(uploadUrl, file)
+    await postService.updateReference(postId!, s3Key)
+    await fetchInitialData()
+    feedback.success('Imagem de referência adicionada.')
+  } catch (e: unknown) {
+    feedback.error(`Erro: ${getErrorMessage(e)}`)
+  } finally {
+    input.value = ''
+  }
+}
+
+async function viewReference(post: Post) {
+  if (!post.id || !post.referenceImageS3Key) return
+  isLoadingArtPreview.value = true
+  selectedPostForPreview.value = post
+  selectedApprovalForPreview.value = {
+    artS3Key: post.referenceImageS3Key,
+    artName: 'Referência',
+    caption: 'Imagem de referência da demanda.',
+    status: 'PENDING'
+  } as any
+  artPreviewMode.value = 'preview'
+  isArtPreviewModalOpen.value = true
+  try {
+    selectedArtPreviewUrl.value = await mediaService.getReferencePreviewUrl(post.id)
+  } catch (e) {
+    feedback.error('Erro ao carregar referência.')
+    closeArtPreviewModal()
+  } finally {
+    isLoadingArtPreview.value = false
+  }
+}
+
+function isCardExpanded(post: Post) {
+  const postId = getPostId(post)
+  return Boolean(postId && expandedCardsByPostId.value[postId])
+}
+
+function toggleCardExpanded(post: Post) {
+  const postId = getPostId(post)
+  if (!postId) return
+  expandedCardsByPostId.value = { ...expandedCardsByPostId.value, [postId]: !expandedCardsByPostId.value[postId] }
+}
+
+function mapApprovalsByPostId(list: PostApproval[]) {
+  const entries = list.filter(a => a.post?.id).map(a => [String(a.post!.id), a] as const)
+  approvalsByPostId.value = Object.fromEntries(entries)
+}
+
+function getApprovalByPost(post: Post) {
+  const postId = getPostId(post)
+  return postId ? approvalsByPostId.value[postId] : null
+}
+
+function getApprovalStatusLabel(post: Post) {
+  const approval = getApprovalByPost(post)
+  if (!approval) return { text: 'Não preparada', className: 'text-amber-700' }
+  if (post.status === 'REJECTED' || approval.status === 'REJECT') return { text: 'Rejeitado', className: 'text-red-700' }
+  if (approval.whatsappSentAt) return { text: 'Enviada', className: 'text-emerald-700' }
+  return { text: 'Pronta para envio', className: 'text-blue-700' }
+}
+
+function getRejectionMessage(post: Post) {
+  return getApprovalByPost(post)?.rejectionReason || 'Rejeitado.'
+}
+
+function isSendingApproval(post: Post) {
+  const postId = getPostId(post)
+  return Boolean(postId && sendingApprovalByPostId.value[postId])
+}
 
 function getUserOrFallback(): number {
   const id = getCurrentUserId()
-  if (id) return id
-  const stored = localStorage.getItem('userId') || sessionStorage.getItem('userId')
-  return stored ? Number(stored) : 1
+  return id ? Number(id) : 1
 }
 
-function getQueryString(value: unknown) {
-  if (Array.isArray(value)) return value[0] ? String(value[0]) : ''
-  return typeof value === 'string' ? value : ''
-}
+function prevPage(colId: string) { if (columnPages.value[colId] > 1) columnPages.value[colId]-- }
+function nextPage(colId: string, total: number) { if ((columnPages.value[colId] || 1) < total) columnPages.value[colId] = (columnPages.value[colId] || 1) + 1 }
 
-function openModalFromRoute() {
-  if (isModalOpen.value) return
-  const clientId = getQueryString(route.query.clientId)
-  if (clientId && clients.value.length > 0) {
-    const clientExists = clients.value.some(c => String(c.id) === clientId)
-    if (clientExists) {
-      postToEdit.value = null
-      isModalOpen.value = true
-      return
-    }
-  }
-  if (route.query.new) openAddModal('DEMAND')
-}
-
-watch(() => [route.query.clientId, route.query.new], () => openModalFromRoute())
 onMounted(async () => {
   await fetchInitialData()
-  openModalFromRoute()
 })
 </script>
 
 <template>
-  <AppLayout v-model:search="search" topbar-placeholder="Buscar demandas por título ou cliente...">
+  <AppLayout v-model:search="search" topbar-placeholder="Buscar demandas...">
     <div class="flex items-start justify-between mb-6">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Board de Produção</h1>
-        <p class="text-gray-500 mt-1">Gerencie o fluxo criativo do ateliê em tempo real.</p>
+        <p class="text-gray-500 mt-1">Fluxo operacional North Produções.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <Button class="gap-2" @click="openAddModal()">
-          <Plus class="w-4 h-4" />
-          Nova Demanda
-        </Button>
-      </div>
+      <Button class="gap-2" @click="openAddModal()">
+        <Plus class="w-4 h-4" /> Nova Demanda
+      </Button>
     </div>
 
-    <div class="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-220px)]">
-      <div
-        v-for="(col, colIdx) in paginatedColumns"
-        :key="col.id"
-        class="flex flex-col w-[308px] shrink-0 bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden h-full max-h-full"
-      >
-        <div :class="['h-1.5 w-full shrink-0', col.color]" />
+    <div class="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-220px)]">
+      <div v-for="(col, colIdx) in paginatedColumns" :key="col.id" class="flex flex-col w-[308px] shrink-0 bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden h-full">
+        <div :class="['h-1.5 w-full', col.color]" />
         <div class="p-3 flex flex-col flex-1 overflow-hidden">
           <div class="flex items-center justify-between mb-4 px-1 shrink-0">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-bold text-gray-700 uppercase tracking-wider">{{ col.label }}</span>
-              <span class="text-xs font-bold bg-white text-gray-400 border border-gray-100 rounded-full px-2 py-0.5 shadow-sm">
-                {{ col.totalCards }}
-              </span>
+              <span class="text-sm font-bold text-gray-700 uppercase">{{ col.label }}</span>
+              <span class="text-xs font-bold bg-white text-gray-400 border border-gray-100 rounded-full px-2 py-0.5">{{ col.totalCards }}</span>
             </div>
-            <button class="p-1 hover:bg-white rounded-lg transition-colors"><MoreHorizontal class="w-4 h-4 text-gray-400" /></button>
+            <button class="p-1 hover:bg-white rounded-lg"><MoreHorizontal class="w-4 h-4 text-gray-400" /></button>
           </div>
 
-          <draggable
-            v-if="columns[colIdx]"
-            v-model="columns[colIdx].cards"
-            group="posts"
-            item-key="id"
-            :disabled="!!search || col.totalPages > 1"
-            @change="(evt: { added?: { element: Post } }) => handleBoardChange(evt, col.id)"
-            class="flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar min-h-0"
-            ghost-class="opacity-50"
-            drag-class="rotate-2"
-          >
+          <draggable v-model="columns[colIdx].cards" group="posts" item-key="id" class="flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar min-h-0" @change="(evt: any) => handleBoardChange(evt, col.id)">
             <template #item="{ element: card }">
               <BoardCard
                 :card="card"
-                :column-id="col.id"
-                :column-theme="getColumnTheme(col.id)"
+                :column-id="String(col.id)"
+                :column-theme="getColumnTheme(String(col.id))"
                 :is-expanded="isCardExpanded(card)"
                 :approval="getApprovalByPost(card)"
                 :client-name="getClientName(getPostClientId(card) ?? undefined)"
@@ -829,74 +700,23 @@ onMounted(async () => {
                 @edit="openEditModal(card)"
                 @prepare-approval="openApprovalModal(card)"
                 @internal-review="openArtPreviewModal(card, 'internal-review')"
+                @add-reference="openReferenceUpload(card)"
+                @view-reference="viewReference(card)"
               />
             </template>
           </draggable>
 
-          <div v-if="col.totalPages > 1" class="flex items-center justify-between px-1 py-2 border-t border-gray-100 bg-white/50 shrink-0 mt-2 rounded-lg">
-            <button @click="prevPage(col.id)" :disabled="col.currentPage === 1" class="p-1 rounded hover:bg-white disabled:opacity-30 transition-colors">
-              <ChevronDown class="w-4 h-4 text-gray-400 rotate-90" />
-            </button>
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Página {{ col.currentPage }} de {{ col.totalPages }}</span>
-            <button @click="nextPage(col.id, col.totalPages)" :disabled="col.currentPage === col.totalPages" class="p-1 rounded hover:bg-white disabled:opacity-30 transition-colors">
-              <ChevronDown class="w-4 h-4 text-gray-400 -rotate-90" />
-            </button>
-          </div>
-
-          <button
-            @click="openAddModal(col.id)"
-            class="w-full mt-3 py-2 text-xs font-semibold text-gray-400 border border-dashed border-gray-200 rounded-xl hover:border-primary/30 hover:text-primary hover:bg-white transition-all flex items-center justify-center gap-1 shrink-0"
-          >
-            <Plus class="w-3.5 h-3.5" />
-            Adicionar na coluna
+          <button @click="openAddModal(String(col.id))" class="w-full mt-3 py-2 text-xs font-semibold text-gray-400 border border-dashed border-gray-200 rounded-xl hover:bg-white transition-all flex items-center justify-center gap-1">
+            <Plus class="w-3.5 h-3.5" /> Adicionar na coluna
           </button>
         </div>
       </div>
     </div>
 
-    <PostModal
-      :is-open="isModalOpen"
-      :post-to-edit="postToEdit"
-      :clients="clients"
-      :is-submitting="isSubmitting"
-      :field-errors="fieldErrors"
-      @close="isModalOpen = false"
-      @save="handleSavePost"
-      @delete="handleDeletePost"
-    />
-
-    <ApprovalModal
-      :is-open="isApprovalModalOpen"
-      :post="selectedPostForApproval"
-      :existing-approval-id="existingApprovalId"
-      :data="approvalData"
-      @close="isApprovalModalOpen = false"
-      @file-select="handleFileSelect"
-      @generate-caption="generateAICaption"
-      @save="saveApproval"
-      @update:caption="approvalData.caption = $event"
-    />
-
-    <ArtPreviewModal
-      :is-open="isArtPreviewModalOpen"
-      :mode="artPreviewMode"
-      :post="selectedPostForPreview"
-      :approval="selectedApprovalForPreview"
-      :art-url="selectedArtPreviewUrl"
-      :is-loading="isLoadingArtPreview"
-      :internal-review-action="internalReviewAction"
-      :rejection-reason="rejectionReason"
-      :rejection-reason-error="rejectionReasonError"
-      :is-reject-reason-modal-open="isRejectReasonModalOpen"
-      :client-name="getClientName(getPostClientId(selectedPostForPreview || {} as Post) ?? undefined)"
-      v-model:scheduled-at="scheduledAtForApproval"
-      v-model:internal-revision-notes="internalRevisionNotes"
-      @close="closeArtPreviewModal"
-      @send-to-client="handleSendApprovalFromInternalReview"
-      @open-reject-modal="isRejectReasonModalOpen = true"
-      @close-reject-modal="isRejectReasonModalOpen = false"
-      @confirm-rejection="confirmInternalRejection"
-      @update:rejection-reason="rejectionReason = $event"
-    />
+    <PostModal :is-open="isModalOpen" :post-to-edit="postToEdit" :clients="clients" :is-submitting="isSubmitting" :field-errors="fieldErrors" @close="isModalOpen = false" @save="handleSavePost" @delete="handleDeletePost" />
+    <ApprovalModal :is-open="isApprovalModalOpen" :post="selectedPostForApproval" :existing-approval-id="existingApprovalId" :data="approvalData" @close="isApprovalModalOpen = false" @file-select="handleFileSelect" @generate-caption="generateAICaption" @save="saveApproval" @update:caption="approvalData.caption = $event" />
+    <ArtPreviewModal :is-open="isArtPreviewModalOpen" :mode="artPreviewMode" :post="selectedPostForPreview" :approval="selectedApprovalForPreview" :art-url="selectedArtPreviewUrl" :is-loading="isLoadingArtPreview" :internal-review-action="internalReviewAction" :rejection-reason="rejectionReason" :rejection-reason-error="rejectionReasonError" :is-reject-reason-modal-open="isRejectReasonModalOpen" :client-name="getClientName(getPostClientId(selectedPostForPreview || {} as Post) ?? undefined)" v-model:scheduled-at="scheduledAtForApproval" v-model:internal-revision-notes="internalRevisionNotes" @close="closeArtPreviewModal" @send-to-client="handleSendApprovalFromInternalReview" @open-reject-modal="isRejectReasonModalOpen = true" @close-reject-modal="isRejectReasonModalOpen = false" @confirm-rejection="confirmInternalRejection" @update:rejection-reason="rejectionReason = $event" />
+    
+    <input type="file" ref="referenceInput" class="hidden" accept="image/*,video/*" @change="handleReferenceSelect" />
   </AppLayout>
 </template>

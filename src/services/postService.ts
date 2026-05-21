@@ -17,6 +17,8 @@ export type Post = {
   theme: string // Backend usa 'theme' e 'objective'
   objective: string
   status: PostStatus | string
+  isUrgent?: boolean
+  referenceImageS3Key?: string
   scheduledAt: string
 }
 
@@ -75,6 +77,12 @@ export const postService = {
   async delete(id: string | number): Promise<void> {
     return apiFetch<void>(`/api/posts/delete/${id}`, {
       method: 'DELETE',
+    })
+  },
+
+  async updateReference(id: string | number, s3Key: string): Promise<Post> {
+    return apiFetch<Post>(`/api/posts/update-reference/${id}?s3Key=${encodeURIComponent(s3Key)}`, {
+      method: 'PATCH',
     })
   },
 

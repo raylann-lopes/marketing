@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Eye, ChevronDown, Pencil, Sparkles } from 'lucide-vue-next'
+import { Eye, ChevronDown, Pencil, Sparkles, Image, AlertTriangle } from 'lucide-vue-next'
 import Avatar from '@/components/ui/Avatar.vue'
 import { type Post, getPostId, getPostClientId } from '@/services/postService'
 import type { PostApproval } from '@/services/approvalService'
@@ -30,16 +30,26 @@ defineEmits<{
   (e: 'edit'): void
   (e: 'prepareApproval'): void
   (e: 'internalReview'): void
+  (e: 'addReference'): void
+  (e: 'viewReference'): void
 }>()
 </script>
 
 <template>
   <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group">
+    <div v-if="card.isUrgent" class="mb-2 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-red-50 border border-red-100 animate-pulse">
+      <AlertTriangle class="w-3 h-3 text-red-500" />
+      <span class="text-[9px] font-bold text-red-600 uppercase tracking-wider">URGENTE</span>
+    </div>
+
     <div class="flex items-start justify-between gap-2 mb-3">
       <div class="flex flex-wrap items-center gap-1.5 min-w-0">
         <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full uppercase leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis', columnTheme.clientBadge]">
           {{ clientName }}
         </span>
+        <div v-if="card.referenceImageS3Key" @click.stop="$emit('viewReference')" class="cursor-pointer p-1 rounded-md bg-amber-50 border border-amber-100" title="Ver imagem de referência">
+          <Image class="w-3 h-3 text-amber-600" />
+        </div>
       </div>
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
@@ -117,6 +127,15 @@ defineEmits<{
         </p>
       </div>
     </div>
+
+    <button 
+      v-if="columnId === 'DEMAND'"
+      @click.stop="$emit('addReference')"
+      :class="['mt-3 w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
+    >
+      <Image class="w-3 h-3" />
+      {{ card.referenceImageS3Key ? 'ALTERAR REFERÊNCIA' : 'ADD REFERÊNCIA' }}
+    </button>
 
     <button 
       v-if="columnId === 'IN_PRODUCTION'"
