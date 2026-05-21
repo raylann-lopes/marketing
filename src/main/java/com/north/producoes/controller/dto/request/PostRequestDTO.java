@@ -28,9 +28,7 @@ public record PostRequestDTO(
         @NotNull(message = "Usuário é obrigatório")
         @Positive(message = "UserId deve ser maior que zero")
         Long userId,
-        String whatsapp_stanza_id,
-
-        LocalDateTime whatsapp_sent_at,
-        String whatsapp_response_text
+        Boolean isUrgent,
+        String referenceImageS3Key
 ) {
 }

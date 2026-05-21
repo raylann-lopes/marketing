@@ -12,6 +12,8 @@ public record PostResponseDTO(
         String theme,
         String objective,
         PostStatusEnum status,
+        Boolean isUrgent,
+        String referenceImageS3Key,
         LocalDateTime scheduledAt
 ) {
     public static PostResponseDTO from(PostEntity entity) {
@@ -22,6 +24,8 @@ public record PostResponseDTO(
                 entity.getTheme(),
                 entity.getObjective(),
                 entity.getStatus(),
+                entity.getIsUrgent(),
+                entity.getReferenceImageS3Key(),
                 entity.getScheduledAt()
         );
     }

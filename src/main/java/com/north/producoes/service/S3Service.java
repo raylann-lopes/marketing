@@ -19,6 +19,7 @@ import java.util.Locale;
 public class S3Service {
 
     private static final String DEFAULT_PUBLIC_PREFIX = "public/posts";
+    private static final String DEFAULT_REFERENCE_PREFIX = "public/references";
 
     private final S3Presigner presigner;
     private final String bucket;
@@ -40,15 +41,6 @@ public class S3Service {
         this.publicBaseUrl = normalizeBaseUrl(publicBaseUrl);
     }
 
-    /**
-     * Gera uma URL presigned para upload direto do frontend para o S3.
-     * O frontend faz PUT para essa URL com o arquivo; o backend nunca toca o binário.
-     * Expira em 15 minutos.
-     * Inclui CORS headers para que o navegador consiga fazer o preflight OPTIONS.
-     *
-     * @param s3Key       chave do objeto, ex.: "public/posts/42/101/arte.png"
-     * @param contentType MIME type do arquivo
-     */
     public String generateUploadUrl(String s3Key, String contentType) {
         PutObjectRequest putRequest = PutObjectRequest.builder()
                 .bucket(bucket)
@@ -64,16 +56,18 @@ public class S3Service {
         return presigner.presignPutObject(presignRequest).url().toString();
     }
 
-    /**
-     * Para uploads novos, o arquivo já deve nascer em prefixo público.
-     * Assim o PUT continua protegido por URL presigned, mas o GET pode ser público/estável.
-     */
     public String buildPublicUploadKey(Long clientId, Long postId, String filename) {
         return String.format("%s/%d/%d/%s", publicPrefix, clientId, postId, sanitizeFilename(filename));
     }
 
+    public String buildReferenceKey(Long clientId, Long postId, String filename) {
+        return String.format("%s/%d/%d/%s", DEFAULT_REFERENCE_PREFIX, clientId, postId, sanitizeFilename(filename));
+    }
+
     public boolean isPublicKey(String s3Key) {
-        return StringUtils.hasText(s3Key) && normalizeKey(s3Key).startsWith(publicPrefix + "/");
+        if (!StringUtils.hasText(s3Key)) return false;
+        String key = normalizeKey(s3Key);
+        return key.startsWith(publicPrefix + "/") || key.startsWith(DEFAULT_REFERENCE_PREFIX + "/");
     }
 
     public String buildPublicUrl(String s3Key) {
@@ -91,6 +85,10 @@ public class S3Service {
 
     public String resolveReadUrl(String s3Key) {
         return buildPublicUrl(s3Key);
+    }
+
+    public String getPublicPrefix() {
+        return publicPrefix;
     }
 
     private String normalizePrefix(String configuredPrefix) {

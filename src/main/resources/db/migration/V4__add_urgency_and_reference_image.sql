@@ -1,0 +1,2 @@
+ALTER TABLE tb_posts ADD COLUMN is_urgent BOOLEAN DEFAULT FALSE;
+ALTER TABLE tb_posts ADD COLUMN reference_image_s3_key VARCHAR(1000);

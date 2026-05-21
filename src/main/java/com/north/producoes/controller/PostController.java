@@ -89,6 +89,14 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
+    @PatchMapping("/update-reference/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<PostResponseDTO> updateReferenceImage(
+            @PathVariable Long id,
+            @RequestParam String s3Key) {
+        return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, s3Key)));
+    }
+
     @PostMapping("/{id}/generate-caption")
     public ResponseEntity<ApproveResponseDTO> generateCaption(
             @PathVariable Long id,

@@ -101,11 +101,21 @@ public class PostService {
         postExisting.setTheme(dto.theme());
         postExisting.setObjective(dto.objective());
         postExisting.setStatus(dto.status());
+        postExisting.setIsUrgent(dto.isUrgent() != null ? dto.isUrgent() : false);
+        postExisting.setReferenceImageS3Key(dto.referenceImageS3Key());
         postExisting.setScheduledAt(dto.scheduledAt());
         postExisting.setClient(client);
         postExisting.setUser(user);
 
         return postRepository.save(postExisting);
+    }
+
+    @Transactional
+    public PostEntity updateReferenceImage(Long id, String s3Key) {
+        PostEntity post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + id));
+        post.setReferenceImageS3Key(s3Key);
+        return postRepository.save(post);
     }
 
     @Transactional

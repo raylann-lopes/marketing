@@ -74,9 +74,6 @@ CREATE TABLE tb_post_approvals (
     whatsapp_stanza_id TEXT UNIQUE,
     whatsapp_sent_at TEXT,
     whatsapp_response_text TEXT,
-    rejection_reason TEXT,
-    rejected_at TIMESTAMP WITHOUT TIME ZONE,
-    rejected_by TEXT,
     CONSTRAINT uq_tb_post_approvals_post UNIQUE (post_id),
     CONSTRAINT fk_tb_post_approvals_post FOREIGN KEY (post_id) REFERENCES tb_posts (id),
     CONSTRAINT ck_tb_post_approvals_status_enum CHECK (status IN ('APPROVE', 'REJECTED', 'PENDING'))

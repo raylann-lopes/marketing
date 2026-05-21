@@ -39,6 +39,10 @@ public class N8nWebhookService {
         return dispatch(publishUrl, payload);
     }
 
+    public boolean dispatchPostRejected(Map<String, Object> payload) {
+        return dispatch(uploadCompleteUrl, payload); // Usando a mesma URL de eventos por enquanto
+    }
+
     private boolean dispatch(String url, Map<String, Object> payload) {
         if (!StringUtils.hasText(url)) {
             log.warn("Webhook n8n não configurado para URL: {}. Payload não enviado.", url);

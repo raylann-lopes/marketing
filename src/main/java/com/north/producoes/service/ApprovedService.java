@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -26,6 +28,7 @@ public class ApprovedService {
     private final ApproveRepository approveRepository;
     private final PostRepository postRepository;
     private final S3Service s3Service;
+    private final N8nWebhookService n8nWebhookService;
 
     public Optional<ApproveEntity> findById(Long id) {
         if (!approveRepository.existsById(id)) {
@@ -122,6 +125,18 @@ public class ApprovedService {
                 post.setStatus(PostStatusEnum.SCHEDULE);
                 postRepository.save(post);
             }
+        } else if (dto.status() == ApproveStatusEnum.REJECTED) {
+            existing.setApprovedAt(null);
+            existing.setApprovedUser("");
+            
+            // Notificar rejeição no grupo (via n8n)
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("event", "POST_REJECTED_BY_CLIENT");
+            payload.put("postId", existing.getPost().getId());
+            payload.put("postTitle", existing.getPost().getTitle());
+            payload.put("clientName", existing.getPost().getClient().getName());
+            payload.put("rejectionReason", existing.getWhatsappResponseText());
+            n8nWebhookService.dispatchPostRejected(payload);
         } else {
             existing.setApprovedAt(null);
             existing.setApprovedUser("");
@@ -145,7 +160,7 @@ public class ApprovedService {
             PostEntity post = existing.getPost();
             if (dto.scheduledAt() != null) {
                 post.setScheduledAt(dto.scheduledAt());
-                post.setStatus(PostStatusEnum.SCHEDULE); // Muda para AGENDADO
+                post.setStatus(PostStatusEnum.FINISHED); // Mudar para FINISHED para que o admin envie ao cliente
                 postRepository.save(post);
             }
             existing.setInternalRevisionNotes(dto.internalRevisionNotes());

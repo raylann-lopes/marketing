@@ -46,6 +46,41 @@ public class PostSchedulerService {
         }
     }
 
+    /**
+     * Verifica a cada 1 hora se existem posts aguardando aprovação há mais de 48h.
+     */
+    @Scheduled(fixedRate = 3600000)
+    public void autoApproveStalePosts() {
+        log.info("Iniciando verificação de aprovações automáticas (48h) em {}", LocalDateTime.now());
+
+        List<PostEntity> stalePosts = postRepository.findByStatus(PostStatusEnum.WAITING_APPROVAL);
+
+        for (PostEntity post : stalePosts) {
+            List<ApproveEntity> approvals = approveRepository.findByPostId(post.getId());
+            if (approvals.isEmpty()) continue;
+            
+            ApproveEntity approve = approvals.getFirst();
+            // Verifica se a mensagem foi enviada há mais de 48h
+            if (approve.getWhatsappSentAt() != null) {
+                try {
+                    LocalDateTime sentAt = LocalDateTime.parse(approve.getWhatsappSentAt());
+                    if (sentAt.isBefore(LocalDateTime.now().minusHours(48))) {
+                        log.info("Auto-aprovando post ID: {} por decurso de prazo (48h)", post.getId());
+                        approve.setStatus(ApproveStatusEnum.APPROVE);
+                        approve.setApprovedAt(LocalDateTime.now());
+                        approve.setApprovedUser("system-auto-approve");
+                        approveRepository.save(approve);
+
+                        post.setStatus(PostStatusEnum.SCHEDULE);
+                        postRepository.save(post);
+                    }
+                } catch (Exception e) {
+                    log.error("Erro ao processar data de envio do WhatsApp para post ID: {}", post.getId());
+                }
+            }
+        }
+    }
+
     private void dispatchPost(PostEntity post) {
         try {
             List<ApproveEntity> approvals = approveRepository.findByPostId(post.getId());

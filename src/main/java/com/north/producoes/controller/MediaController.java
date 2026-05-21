@@ -13,20 +13,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import lombok.AllArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
 @RestController
+@RequestMapping("/api/media")
 @AllArgsConstructor
 public class MediaController {
 
     private final MediaService mediaService;
 
-    @PostMapping("/api/media/upload-url")
-    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/upload-url")
     public ResponseEntity<PresignedUploadResponseDTO> generateUploadUrl(
             @RequestParam Long postId,
             @RequestParam String filename,
@@ -35,7 +29,16 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.generateUploadUrl(postId, filename, contentType, user));
     }
 
-    @PostMapping("/api/media/upload-complete")
+    @GetMapping("/reference-url")
+    public ResponseEntity<PresignedUploadResponseDTO> generateReferenceUploadUrl(
+            @RequestParam Long postId,
+            @RequestParam String filename,
+            @RequestParam String contentType,
+            @AuthenticationPrincipal UserEntity user) {
+        return ResponseEntity.ok(mediaService.generateReferenceUploadUrl(postId, filename, contentType, user));
+    }
+
+    @PostMapping("/upload-complete")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MediaUploadCompleteResponseDTO> markUploadComplete(
             @Valid @RequestBody MediaUploadCompleteRequestDTO request,
@@ -43,13 +46,21 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.markUploadComplete(request, user));
     }
 
-    @GetMapping("/api/media/art-url")
-    public ResponseEntity<MediaUrlResponseDTO> getArtPreviewUrl(@RequestParam Long postId,
-                                                                @AuthenticationPrincipal UserEntity user) {
+    @GetMapping("/preview/{postId}")
+    public ResponseEntity<MediaUrlResponseDTO> getArtPreviewUrl(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserEntity user) {
         return ResponseEntity.ok(mediaService.getArtPreviewUrl(postId, user));
     }
 
-    @GetMapping("/api/internal/media-url/{postId}")
+    @GetMapping("/reference-preview/{postId}")
+    public ResponseEntity<MediaUrlResponseDTO> getReferencePreviewUrl(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserEntity user) {
+        return ResponseEntity.ok(mediaService.getReferencePreviewUrl(postId, user));
+    }
+
+    @GetMapping("/internal/media-url/{postId}")
     public ResponseEntity<MediaUrlResponseDTO> getMediaUrlForN8n(@PathVariable Long postId) {
         return ResponseEntity.ok(mediaService.getMediaUrlForN8n(postId));
     }

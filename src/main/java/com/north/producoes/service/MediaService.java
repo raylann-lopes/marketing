@@ -44,6 +44,14 @@ public class MediaService {
         return new PresignedUploadResponseDTO(uploadUrl, s3Key);
     }
 
+    public PresignedUploadResponseDTO generateReferenceUploadUrl(Long postId, String filename, String contentType, UserEntity user) {
+        PostEntity post = getAuthorizedPost(postId, user);
+        Long clientId = post.getClient().getId();
+        String s3Key = s3Service.buildReferenceKey(clientId, postId, filename);
+        String uploadUrl = s3Service.generateUploadUrl(s3Key, contentType);
+        return new PresignedUploadResponseDTO(uploadUrl, s3Key);
+    }
+
     public MediaUrlResponseDTO getArtPreviewUrl(Long postId, UserEntity user) {
         getAuthorizedPost(postId, user);
         List<ApproveEntity> approvals = approveRepository.findByPostId(postId);
@@ -53,6 +61,15 @@ public class MediaService {
         ApproveEntity approve = approvals.getFirst();
         String previewUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
         return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption(), null, null);
+    }
+
+    public MediaUrlResponseDTO getReferencePreviewUrl(Long postId, UserEntity user) {
+        PostEntity post = getAuthorizedPost(postId, user);
+        if (!StringUtils.hasText(post.getReferenceImageS3Key())) {
+            throw new ResourceNotFoundException("Nenhuma imagem de referência encontrada para o post ID: " + postId);
+        }
+        String previewUrl = s3Service.resolveReadUrl(post.getReferenceImageS3Key());
+        return new MediaUrlResponseDTO(null, postId, previewUrl, "Imagem de Referência", null, null);
     }
 
     public MediaUrlResponseDTO getMediaUrlForN8n(Long postId) {

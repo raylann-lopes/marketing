@@ -35,6 +35,12 @@ public class PostEntity {
     @Enumerated(EnumType.STRING)
     private PostStatusEnum status = PostStatusEnum.DEMAND;
 
+    @Column(name = "is_urgent")
+    private Boolean isUrgent = false;
+
+    @Column(name = "reference_image_s3_key")
+    private String referenceImageS3Key;
+
     @Column(nullable = false)
     private LocalDateTime scheduledAt;
 
