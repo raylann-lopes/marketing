@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { X, Image, Upload, Info, Check } from 'lucide-vue-next'
+import { X, Image, Upload, Info, Check, Maximize } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { type Post } from '@/services/postService'
 
@@ -55,8 +55,7 @@ function isVideo(url: string, filename?: string) {
         </div>
         <button @click="$emit('close')" class="p-3 hover:bg-white rounded-2xl text-gray-400 transition-all shadow-sm hover:shadow-md"><X class="w-6 h-6" /></button>
       </div>
-import { X, Image, Upload, Info, Check, Maximize } from 'lucide-vue-next'
-...
+      <div class="grid grid-cols-2 gap-8 p-7">
         <!-- Coluna 1: Upload da Referência -->
         <div class="space-y-4">
           <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Arquivo de Referência</label>

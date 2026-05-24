@@ -43,6 +43,7 @@ const newClient = ref<Partial<Client>>({
   niche: '',
   driveLink: '',
   voiceTone: '',
+  monthlyValue: 0,
 })
 
 const editClient = ref<Partial<Client>>({
@@ -52,6 +53,7 @@ const editClient = ref<Partial<Client>>({
   niche: '',
   driveLink: '',
   voiceTone: '',
+  monthlyValue: 0,
 })
 
 const clientSchema = z.object({
@@ -71,6 +73,7 @@ function openModal() {
     niche: '',
     driveLink: '',
     voiceTone: '',
+    monthlyValue: 0,
   }
   fieldErrors.value = {}
   isModalOpen.value = true
@@ -85,6 +88,7 @@ function openEditModal(client: Client) {
     niche: client.niche || '',
     driveLink: client.driveLink || '',
     voiceTone: client.voiceTone || '',
+    monthlyValue: client.monthlyValue ?? 0,
   }
   editFieldErrors.value = {}
   isEditModalOpen.value = true
@@ -99,7 +103,8 @@ async function handleCreateClient() {
     number: newClient.value.number?.replace(/\D/g, ''),
     driveLink: newClient.value.driveLink?.trim(),
     voiceTone: newClient.value.voiceTone?.trim() || '',
-    niche: newClient.value.niche?.trim() || ''
+    niche: newClient.value.niche?.trim() || '',
+    monthlyValue: newClient.value.monthlyValue ?? 0
   }
 
   const result = clientSchema.safeParse(payload)
@@ -137,7 +142,8 @@ async function handleEditClient() {
     number: editClient.value.number?.replace(/\D/g, ''),
     driveLink: editClient.value.driveLink?.trim(),
     voiceTone: editClient.value.voiceTone?.trim() || '',
-    niche: editClient.value.niche?.trim() || ''
+    niche: editClient.value.niche?.trim() || '',
+    monthlyValue: editClient.value.monthlyValue ?? 0
   }
 
   const result = clientSchema.safeParse(payload)
@@ -217,6 +223,35 @@ function prevPage() {
   if (currentPage.value > 1) currentPage.value--
 }
 
+const isTogglingStatus = ref(false)
+
+async function handleToggleStatus(client: Client) {
+  const newStatus = client.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+  const actionLabel = newStatus === 'INACTIVE' ? 'inativar' : 'ativar'
+  const confirmed = await feedback.confirm({
+    title: `${newStatus === 'INACTIVE' ? 'Inativar' : 'Ativar'} cliente`,
+    message: `Deseja ${actionLabel} o cliente "${client.name}"? ${newStatus === 'INACTIVE' ? 'As mensalidades futuras pendentes serão removidas.' : 'As mensalidades dos próximos 12 meses serão geradas.'}`,
+    confirmText: newStatus === 'INACTIVE' ? 'Inativar' : 'Ativar',
+    tone: newStatus === 'INACTIVE' ? 'danger' : undefined,
+  })
+  if (!confirmed) return
+
+  isTogglingStatus.value = true
+  try {
+    const updated = await clientService.updateStatus(client.id!, newStatus)
+    await fetchClients()
+    if (selectedClient.value?.id === client.id) {
+      selectedClient.value = clients.value.find(c => String(c.id) === String(client.id)) || null
+    }
+    feedback.success(`Cliente ${newStatus === 'ACTIVE' ? 'ativado' : 'inativado'} com sucesso.`)
+    return updated
+  } catch (e: unknown) {
+    feedback.error(`Erro ao alterar status: ${getErrorMessage(e)}`)
+  } finally {
+    isTogglingStatus.value = false
+  }
+}
+
 async function handleDelete(id: string | number) {
   const confirmed = await feedback.confirm({
     title: 'Excluir cliente',
@@ -234,6 +269,10 @@ async function handleDelete(id: string | number) {
   } catch (e: unknown) {
     feedback.error(`Erro ao excluir cliente: ${getErrorMessage(e)}`)
   }
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
 function openClientWorkspace(client: Client) {
@@ -292,6 +331,7 @@ function openClientWorkspace(client: Client) {
                 <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Cliente</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Nicho</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Telefone</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Mensalidade</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
               </tr>
             </thead>
@@ -318,6 +358,9 @@ function openClientWorkspace(client: Client) {
                   <Badge variant="secondary" class="text-xs">{{ client.niche || 'Sem nicho' }}</Badge>
                 </td>
                 <td class="px-5 py-4 text-sm text-gray-700">{{ client.number || '-' }}</td>
+                <td class="px-5 py-4 text-sm font-semibold text-gray-700">
+                  {{ client.monthlyValue ? formatCurrency(client.monthlyValue) : '-' }}
+                </td>
                 <td class="px-5 py-4">
                   <Badge :variant="client.status === 'ACTIVE' ? 'success' : 'warning'">{{ client.status }}</Badge>
                 </td>
@@ -365,6 +408,14 @@ function openClientWorkspace(client: Client) {
               <Pencil class="w-4 h-4" />
             </button>
             <button
+              :class="['p-1.5 rounded-lg text-xs font-semibold px-2 transition-colors', selectedClient.status === 'ACTIVE' ? 'hover:bg-yellow-50 text-yellow-600 hover:text-yellow-700' : 'hover:bg-green-50 text-green-600 hover:text-green-700']"
+              :title="selectedClient.status === 'ACTIVE' ? 'Inativar cliente' : 'Ativar cliente'"
+              :disabled="isTogglingStatus"
+              @click="handleToggleStatus(selectedClient!)"
+            >
+              {{ selectedClient.status === 'ACTIVE' ? 'Inativar' : 'Ativar' }}
+            </button>
+            <button
               class="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500"
               @click="handleDelete(selectedClient.id!)"
             >
@@ -397,6 +448,10 @@ function openClientWorkspace(client: Client) {
                   <div>
                     <p class="text-xs font-semibold text-gray-500 uppercase">Telefone</p>
                     <p class="text-sm text-gray-700 mt-1">{{ selectedClient.number || 'Não informado' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Valor Mensal</p>
+                    <p class="text-sm font-semibold text-gray-700 mt-1">{{ selectedClient.monthlyValue ? formatCurrency(selectedClient.monthlyValue) : 'Não informado' }}</p>
                   </div>
                 </div>
               </div>

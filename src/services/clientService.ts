@@ -11,6 +11,7 @@ export type Client = {
   whatsappGroupId?: string | null
   whatsappGroupName?: string | null
   status: 'ACTIVE' | 'INACTIVE' | string
+  monthlyValue?: number
   createdAt?: string
 }
 
@@ -35,15 +36,22 @@ export const clientService = {
   },
 
   async update(id: string | number, data: Partial<Client>): Promise<Client> {
-    return apiFetch<Client>(`/api/clients/update/${id}`, {
+    return apiFetch<Client>(`/api/clients/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data)
     })
   },
 
   async delete(id: string | number): Promise<void> {
-    return apiFetch<void>(`/api/clients/id/${id}`, {
+    return apiFetch<void>(`/api/clients/${id}`, {
       method: 'DELETE'
+    })
+  },
+
+  async updateStatus(id: string | number, status: 'ACTIVE' | 'INACTIVE'): Promise<Client> {
+    return apiFetch<Client>(`/api/clients/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
     })
   }
 }

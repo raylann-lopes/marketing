@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { X, Sparkles, Upload, MessageSquare, Check } from 'lucide-vue-next'
+import { X, Sparkles, Upload, MessageSquare, Check, Maximize } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { type Post } from '@/services/postService'
 
@@ -56,8 +56,7 @@ function isVideo(url: string, filename?: string) {
         </div>
         <button @click="$emit('close')" class="p-2 hover:bg-white rounded-xl text-gray-400 transition-colors shadow-sm"><X class="w-5 h-5" /></button>
       </div>
-import { X, Sparkles, Upload, MessageSquare, Check, Maximize } from 'lucide-vue-next'
-...
+      <div class="grid grid-cols-2 gap-6 p-6">
         <!-- Coluna 1: Upload da Arte -->
         <div class="space-y-4">
           <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">Arte do Post</label>

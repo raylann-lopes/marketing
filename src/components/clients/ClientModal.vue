@@ -30,7 +30,7 @@ function formatPhone(value: string) {
   return `+${d.substring(0, 2)} (${d.substring(2, 4)}) ${d.substring(4, 9)}-${d.substring(9, 13)}`
 }
 
-function updateField(key: keyof Client, value: string) {
+function updateField(key: keyof Client, value: string | number) {
   emit('update:client', { ...props.client, [key]: value })
 }
 
@@ -109,6 +109,20 @@ function handlePhoneInput(e: Event) {
             placeholder="https://drive.google.com/..."
           />
           <p v-if="fieldErrors.driveLink" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.driveLink }}</p>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-gray-500 uppercase">Valor Mensal (R$)</label>
+          <input
+            :value="client.monthlyValue"
+            @input="updateField('monthlyValue', Number(($event.target as HTMLInputElement).value))"
+            type="number"
+            min="0"
+            step="0.01"
+            :class="['w-full p-2.5 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm', fieldErrors.monthlyValue ? 'border-red-500' : 'border-gray-200']"
+            placeholder="Ex: 1500.00"
+          />
+          <p v-if="fieldErrors.monthlyValue" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.monthlyValue }}</p>
         </div>
 
         <div class="space-y-1.5">

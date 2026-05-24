@@ -18,6 +18,7 @@ export type PostApproval = {
   whatsappResponseText?: string
   rejectionReason?: string
   internalRevisionNotes?: string
+  post?: Post
 }
 
 export type CreateApprovalDTO = {
