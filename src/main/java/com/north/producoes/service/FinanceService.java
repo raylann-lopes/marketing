@@ -92,10 +92,14 @@ public class FinanceService {
         financeRepository.save(entry);
     }
 
-    // Atualiza o valor de todas as parcelas PENDING do cliente
+    // Atualiza o valor das parcelas PENDING a partir do próximo mês (não altera histórico)
     @Transactional
     public void updatePendingEntriesValue(Long clientId, Double newValue) {
-        List<FinanceEntity> pending = financeRepository.findByClientIdAndStatus(clientId, FinanceStatusEnum.PENDING);
+        LocalDateTime startOfNextMonth = LocalDateTime.now()
+                .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0)
+                .plusMonths(1);
+        List<FinanceEntity> pending = financeRepository.findByClientIdAndStatusAndExpirationDateAfter(
+                clientId, FinanceStatusEnum.PENDING, startOfNextMonth.minusSeconds(1));
         for (FinanceEntity entry : pending) {
             entry.setValue(newValue);
         }
