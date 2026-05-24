@@ -1,7 +1,9 @@
 package com.north.producoes.controller.dto.request;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record ClientRequestDTO(
@@ -22,5 +24,8 @@ public record ClientRequestDTO(
         String voiceTone,
         @NotBlank(message = "Nicho é obrigatório")
         @Size(max = 255, message = "Nicho deve ter no máximo 255 caracteres")
-        String niche
+        String niche,
+        @NotNull(message = "Valor mensal é obrigatório")
+        @DecimalMin(value = "0.0", message = "Valor mensal não pode ser negativo")
+        Double monthlyValue
 ) {}

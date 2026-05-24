@@ -16,6 +16,7 @@ public record ClientResponseDTO(
         String whatsappGroupId,
         String whatsappGroupName,
         ClientStatusEnum status,
+        Double monthlyValue,
         LocalDateTime createdAt
 ) {
     public static ClientResponseDTO from (ClientEntity entity) {
@@ -30,6 +31,7 @@ public record ClientResponseDTO(
                 entity.getWhatsappGroupId(),
                 entity.getWhatsappGroupName(),
                 entity.getStatus(),
+                entity.getMonthlyValue(),
                 entity.getCreatedAt()
         );
     }
