@@ -39,7 +39,8 @@ class InternalApproveControllerTest {
     @DisplayName("deve atualizar metadados do WhatsApp")
     void shouldUpdateWhatsappMetadata() {
         // Arrange
-        ApproveWhatsAppUpdateRequestDTO request = new ApproveWhatsAppUpdateRequestDTO("stanza", "sent");
+        ApproveWhatsAppUpdateRequestDTO request =
+                new ApproveWhatsAppUpdateRequestDTO("stanza", "sent", null, null);
         ApproveEntity approve = approval(5L);
         approve.setWhatsappStanzaId("stanza");
         when(approvedService.updateWhatsappMetadata(5L, request)).thenReturn(approve);
@@ -91,7 +92,7 @@ class InternalApproveControllerTest {
     @DisplayName("deve atualizar status de aprovação")
     void shouldUpdateApprovalStatus() {
         // Arrange
-        ApproveStatusUpdateRequestDTO request = new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.APPROVE);
+        ApproveStatusUpdateRequestDTO request = new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.APPROVE, null);
         ApproveEntity approve = approval(5L);
         approve.setStatus(ApproveStatusEnum.APPROVE);
         when(approvedService.updateApprovalStatus(5L, request)).thenReturn(approve);

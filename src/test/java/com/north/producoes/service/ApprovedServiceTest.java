@@ -139,7 +139,7 @@ class ApprovedServiceTest {
         void shouldUpdateStatusAndApprovedAt() {
             // Arrange
             ApproveEntity approve = approval(5L, post(10L));
-            ApproveStatusUpdateRequestDTO request = new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.APPROVE);
+            ApproveStatusUpdateRequestDTO request = new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.APPROVE, null);
             when(approveRepository.findById(5L)).thenReturn(Optional.of(approve));
             when(approveRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -162,7 +162,7 @@ class ApprovedServiceTest {
             // Act & Assert
             assertThatThrownBy(() -> approvedService.updateApprovalStatus(
                     5L,
-                    new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.PENDING)
+                    new ApproveStatusUpdateRequestDTO(ApproveStatusEnum.PENDING, null)
             ))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("APPROVE ou REJECTED");

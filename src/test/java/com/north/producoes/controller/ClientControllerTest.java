@@ -136,7 +136,8 @@ class ClientControllerTest {
                 "11999999999",
                 "https://drive.example",
                 "Formal",
-                "Saude"
+                "Saude",
+                500.0
         );
     }
 

@@ -4,6 +4,7 @@ import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.FinanceEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
+import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.FinanceRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,6 +29,9 @@ class FinanceServiceTest {
 
     @Mock
     private FinanceRepository financeRepository;
+
+    @Mock
+    private ClientRepository clientRepository;
 
     @InjectMocks
     private FinanceService financeService;

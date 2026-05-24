@@ -28,6 +28,9 @@ class ClientServiceTest {
     @Mock
     private ClientRepository clientRepository;
 
+    @Mock
+    private FinanceService financeService;
+
     @InjectMocks
     private ClientService clientService;
 
@@ -142,7 +145,8 @@ class ClientServiceTest {
                     "11999999999",
                     "https://drive.google.com/abc",
                     "Formal",
-                    "Saude"
+                    "Saude",
+                    500.0
             );
 
             when(clientRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
@@ -165,7 +169,8 @@ class ClientServiceTest {
                     "11999999999",
                     "https://drive.google.com/abc",
                     "Formal",
-                    "Saude"
+                    "Saude",
+                    500.0
             );
 
             when(clientRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(new ClientEntity()));
@@ -194,7 +199,8 @@ class ClientServiceTest {
                     "11999999999",
                     "https://drive.google.com/abc",
                     "Formal",
-                    "Saude"
+                    "Saude",
+                    500.0
             );
 
             when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
@@ -218,7 +224,8 @@ class ClientServiceTest {
                     "11999999999",
                     "https://drive.google.com/abc",
                     "Formal",
-                    "Saude"
+                    "Saude",
+                    500.0
             );
 
             when(clientRepository.findById(99L)).thenReturn(Optional.empty());
@@ -242,7 +249,8 @@ class ClientServiceTest {
                     "11999999999",
                     "https://drive.google.com/abc",
                     "Formal",
-                    "Saude"
+                    "Saude",
+                    500.0
             );
 
             when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
@@ -267,7 +275,8 @@ class ClientServiceTest {
                     "11888888888",
                     "https://drive.google.com/abc",
                     "Formal",
-                    "Saude"
+                    "Saude",
+                    500.0
             );
 
             when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
