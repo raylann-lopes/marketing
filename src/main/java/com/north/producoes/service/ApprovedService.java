@@ -4,6 +4,7 @@ import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.InternalApprovalRequestDTO;
+import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -106,8 +107,10 @@ public class ApprovedService {
         ApproveEntity existing = approveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
 
-        existing.setWhatsappStanzaId(dto.stanzaId());
-        existing.setWhatsappSentAt(dto.sentAt());
+        if (dto.stanzaId() != null) existing.setWhatsappStanzaId(dto.stanzaId());
+        if (dto.sentAt() != null) existing.setWhatsappSentAt(dto.sentAt());
+        if (dto.whatsappResponseText() != null) existing.setWhatsappResponseText(dto.whatsappResponseText());
+        if (dto.approvedUser() != null) existing.setApprovedUser(dto.approvedUser());
 
         return approveRepository.save(existing);
     }
@@ -123,7 +126,7 @@ public class ApprovedService {
         existing.setStatus(dto.status());
         if (dto.status() == ApproveStatusEnum.APPROVE) {
             existing.setApprovedAt(LocalDateTime.now());
-            existing.setApprovedUser("n8n-callback");
+            existing.setApprovedUser(dto.approvedUser() != null ? dto.approvedUser() : "n8n-callback");
 
             // Quando o cliente aprova, o post entra em agendamento automático
             PostEntity post = existing.getPost();
@@ -202,6 +205,31 @@ public class ApprovedService {
         }
 
         return approveRepository.save(existing);
+    }
+
+    // Métodos que retornam DTO diretamente (usados pelo ApproveController)
+    public List<ApproveResponseDTO> findAll() {
+        return approveRepository.findAll().stream().map(ApproveResponseDTO::from).toList();
+    }
+
+    public ApproveResponseDTO findByPostId(Long postId) {
+        return approveRepository.findByPostId(postId).stream()
+                .findFirst()
+                .map(ApproveResponseDTO::from)
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma aprovação encontrada para o post: " + postId));
+    }
+
+    public List<ApproveResponseDTO> findByStatus(ApproveStatusEnum status) {
+        return approveRepository.findApproveEntitiesByStatus(status).stream()
+                .map(ApproveResponseDTO::from).toList();
+    }
+
+    public ApproveResponseDTO saveApproveDTO(ApproveRequestDTO dto) {
+        return ApproveResponseDTO.from(saveApprove(dto));
+    }
+
+    public ApproveResponseDTO updateApproveDTO(Long id, ApproveRequestDTO dto) {
+        return ApproveResponseDTO.from(updateApprove(id, dto));
     }
 
     private String normalizePublicS3Key(String s3Key) {

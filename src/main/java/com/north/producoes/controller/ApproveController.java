@@ -2,9 +2,7 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
-import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
-import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.service.ApprovedService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -18,45 +16,35 @@ import java.util.List;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/api/post-approvals")
+@PreAuthorize("isAuthenticated()")
 public class ApproveController {
 
-    private final ApproveRepository approveRepository;
     private final ApprovedService approvedService;
 
     @GetMapping("/all")
     public ResponseEntity<List<ApproveResponseDTO>> findAll() {
-        List<ApproveEntity> approvals = approveRepository.findAll();
-        return ResponseEntity.ok(approvals.stream()
-                .map(ApproveResponseDTO::from)
-                .toList());
+        return ResponseEntity.ok(approvedService.findAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApproveResponseDTO> findByPostId(@PathVariable Long id) {
-        List<ApproveEntity> approvals = approveRepository.findByPostId(id);
-        if (approvals.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ApproveResponseDTO.from(approvals.getFirst()));
+        return ResponseEntity.ok(approvedService.findByPostId(id));
     }
 
     @GetMapping("/status/{status}")
     public ResponseEntity<List<ApproveResponseDTO>> findApproveByStatus(@PathVariable ApproveStatusEnum status) {
-        List<ApproveEntity> getApproveStatus = approveRepository.findApproveEntitiesByStatus(status);
-        return ResponseEntity.ok(getApproveStatus.stream()
-                .map(ApproveResponseDTO::from)
-                .toList());
+        return ResponseEntity.ok(approvedService.findByStatus(status));
     }
 
     @PostMapping("/save")
     public ResponseEntity<ApproveResponseDTO> saveApprove(@Valid @RequestBody ApproveRequestDTO approve) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApproveResponseDTO.from(approvedService.saveApprove(approve)));
+                .body(approvedService.saveApproveDTO(approve));
     }
 
     @PutMapping("/update/{id}")
     public ResponseEntity<ApproveResponseDTO> updateApprove(@PathVariable Long id, @Valid @RequestBody ApproveRequestDTO approve) {
-        return ResponseEntity.ok(ApproveResponseDTO.from(approvedService.updateApprove(id, approve)));
+        return ResponseEntity.ok(approvedService.updateApproveDTO(id, approve));
     }
 
     @DeleteMapping("/delete/{id}")
