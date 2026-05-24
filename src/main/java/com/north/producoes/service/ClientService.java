@@ -2,21 +2,29 @@ package com.north.producoes.service;
 
 import com.north.producoes.controller.dto.request.ClientRequestDTO;
 import com.north.producoes.entity.ClientEntity;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ClientRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ClientService {
     private final ClientRepository clientRepository;
+
+    @Lazy
+    @Setter(onMethod_ = @Autowired)
+    private FinanceService financeService;
 
     public List<ClientEntity> findAllClient() {
         return clientRepository.findAll();
@@ -41,7 +49,7 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientEntity saveClient(ClientRequestDTO request) {
+    public ClientEntity saveClient(ClientRequestDTO request, UserEntity currentUser) {
         if (clientRepository.findByEmail(request.email()).isPresent()) {
             throw new ResourceAlreadyExistsException("Cliente com email " + request.email() + " ja cadastrado");
         } else if (clientRepository.findByNumber(request.number()).isPresent()) {
@@ -49,7 +57,9 @@ public class ClientService {
         }
 
         ClientEntity client = new ClientEntity();
-        return getClientEntity(request, client);
+        ClientEntity saved = getClientEntity(request, client);
+        financeService.generateCurrentMonthEntry(saved, currentUser);
+        return saved;
     }
 
     @Transactional
@@ -75,6 +85,24 @@ public class ClientService {
         clientRepository.deleteById(id);
     }
 
+    @Transactional
+    public ClientEntity updateStatus(Long id, ClientStatusEnum newStatus, UserEntity currentUser) {
+        ClientEntity client = clientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado: id " + id));
+
+        ClientStatusEnum oldStatus = client.getStatus();
+        client.setStatus(newStatus);
+        clientRepository.save(client);
+
+        if (oldStatus == ClientStatusEnum.ACTIVE && newStatus == ClientStatusEnum.INACTIVE) {
+            financeService.removeUpcomingPendingEntries(id);
+        } else if (oldStatus == ClientStatusEnum.INACTIVE && newStatus == ClientStatusEnum.ACTIVE) {
+            financeService.generateCurrentMonthEntry(client, currentUser);
+        }
+
+        return client;
+    }
+
     @NotNull
     private ClientEntity getClientEntity(ClientRequestDTO request, ClientEntity client) {
         client.setName(request.name());
@@ -83,6 +111,7 @@ public class ClientService {
         client.setDriveLink(request.driveLink());
         client.setVoiceTone(request.voiceTone());
         client.setNiche(request.niche());
+        client.setMonthlyValue(request.monthlyValue());
         return clientRepository.save(client);
     }
 }

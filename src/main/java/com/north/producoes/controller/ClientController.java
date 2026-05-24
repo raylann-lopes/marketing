@@ -1,7 +1,9 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.dto.request.ClientRequestDTO;
+import com.north.producoes.controller.dto.request.ClientStatusRequestDTO;
 import com.north.producoes.controller.dto.response.ClientResponseDTO;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.service.ClientService;
 import jakarta.validation.Valid;
@@ -9,6 +11,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -50,15 +53,26 @@ public class ClientController {
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<ClientResponseDTO> saveClient(@Valid @RequestBody ClientRequestDTO request) {
+    public ResponseEntity<ClientResponseDTO> saveClient(
+            @Valid @RequestBody ClientRequestDTO request,
+            @AuthenticationPrincipal UserEntity currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ClientResponseDTO.from(clientService.saveClient(request)));
+                .body(ClientResponseDTO.from(clientService.saveClient(request, currentUser)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> updateClient(@PathVariable Long id, @Valid @RequestBody ClientRequestDTO request) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateClient(id, request)));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<ClientResponseDTO> updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody ClientStatusRequestDTO request,
+            @AuthenticationPrincipal UserEntity currentUser) {
+        return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateStatus(id, request.status(), currentUser)));
     }
 
     @DeleteMapping("/{id}")
