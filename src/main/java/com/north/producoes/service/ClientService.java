@@ -74,7 +74,14 @@ public class ClientService {
             throw new ResourceAlreadyExistsException("Cliente com numero " + request.number() + " ja cadastrado");
         }
 
-        return getClientEntity(request, existingClient);
+        Double oldValue = existingClient.getMonthlyValue();
+        ClientEntity saved = getClientEntity(request, existingClient);
+
+        if (request.monthlyValue() != null && !request.monthlyValue().equals(oldValue)) {
+            financeService.updatePendingEntriesValue(id, request.monthlyValue());
+        }
+
+        return saved;
     }
 
     @Transactional

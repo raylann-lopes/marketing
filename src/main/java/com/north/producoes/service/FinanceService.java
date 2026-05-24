@@ -92,6 +92,16 @@ public class FinanceService {
         financeRepository.save(entry);
     }
 
+    // Atualiza o valor de todas as parcelas PENDING do cliente
+    @Transactional
+    public void updatePendingEntriesValue(Long clientId, Double newValue) {
+        List<FinanceEntity> pending = financeRepository.findByClientIdAndStatus(clientId, FinanceStatusEnum.PENDING);
+        for (FinanceEntity entry : pending) {
+            entry.setValue(newValue);
+        }
+        financeRepository.saveAll(pending);
+    }
+
     // Remove entradas PENDING a partir do próximo mês (mantém o mês corrente)
     @Transactional
     public void removeUpcomingPendingEntries(Long clientId) {

@@ -13,6 +13,7 @@ import java.util.List;
 public interface FinanceRepository extends JpaRepository<FinanceEntity, Long> {
     List<FinanceEntity> findByStatus(FinanceStatusEnum status);
     List<FinanceEntity> findByClientId(Long id);
+    List<FinanceEntity> findByClientIdAndStatus(Long clientId, FinanceStatusEnum status);
     List<FinanceEntity> findByClientIdAndStatusAndExpirationDateAfter(Long clientId, FinanceStatusEnum status, LocalDateTime date);
     void deleteByClientIdAndStatusAndExpirationDateAfter(Long clientId, FinanceStatusEnum status, LocalDateTime date);
     List<FinanceEntity> findByExpirationDateBetween(LocalDateTime start, LocalDateTime end);
