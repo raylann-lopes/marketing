@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Users,
   Lightbulb,
-  Bot,
   FileText,
   CreditCard,
   PlusCircle,
@@ -39,7 +38,6 @@ const navItems: NavItem[] = [
   { label: 'Calendário Editorial', to: '/calendar', icon: CalendarDays },
   { label: 'Clientes', to: '/clients', icon: Users },
   { label: 'Ideias de Conteúdo', to: '/ideas', icon: Lightbulb },
-  { label: 'Hub de Automação', to: '/automation-hub', icon: Bot },
   { label: 'Relatórios do Cliente', to: '/client-reports', icon: FileText },
 ]
 

@@ -11,7 +11,6 @@ const routes: RouteRecordRaw[] = [
   { path: '/clients', component: () => import('@/views/ClientsView.vue') },
   { path: '/clients/:id/workspace', component: () => import('@/views/ClientWorkspaceView.vue') },
   { path: '/ideas', component: () => import('@/views/ContentIdeasView.vue') },
-  { path: '/automation-hub', component: () => import('@/views/AutomationHubView.vue') },
   {
     path: '/client-reports',
     component: () => import('@/views/UnderConstructionView.vue'),
