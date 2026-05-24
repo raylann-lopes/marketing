@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Plus, CheckCircle, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Plus, CheckCircle, Pencil, Trash2, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button.vue'
 import FinanceStats from '@/components/finance/FinanceStats.vue'
 import FinanceModal from '@/components/finance/FinanceModal.vue'
 
-import { financeService, type FinancePayload, type FinanceRecord } from '@/services/financeService'
+import { financeService, type FinancePayload, type FinanceRecord, type ForecastData } from '@/services/financeService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
@@ -26,23 +26,51 @@ const netProfit = ref(0)
 const search = ref('')
 const feedback = useFeedback()
 
+const activeTab = ref<'transactions' | 'forecast'>('transactions')
+const forecast = ref<ForecastData | null>(null)
+const loadingForecast = ref(false)
+const forecastError = ref('')
+const forecastYear = ref(new Date().getFullYear())
+const transactionFilter = ref<'open' | 'future' | 'all'>('open')
+
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-const filteredTransactions = computed(() => {
-  if (!search.value) return transactions.value
-  const term = search.value.toLowerCase()
-  return transactions.value.filter(t => {
-    const descriptionMatch = t.description.toLowerCase().includes(term)
+const baseTransactions = computed(() => {
+  const now = new Date()
+  const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
+  return transactions.value.filter(t => {
+    if (t.status === 'PAY') return false
+    const exp = new Date(t.expirationDate)
+    if (transactionFilter.value === 'open') return exp <= endOfCurrentMonth
+    if (transactionFilter.value === 'future') return exp > endOfCurrentMonth
+    return true // 'all'
+  }).sort((a, b) => {
+    // Vencidas primeiro, depois por data
+    const expA = new Date(a.expirationDate)
+    const expB = new Date(b.expirationDate)
+    const aOverdue = expA < startOfCurrentMonth
+    const bOverdue = expB < startOfCurrentMonth
+    if (aOverdue !== bOverdue) return aOverdue ? -1 : 1
+    return expA.getTime() - expB.getTime()
+  })
+})
+
+const filteredTransactions = computed(() => {
+  const base = baseTransactions.value
+  if (!search.value) return base
+  const term = search.value.toLowerCase()
+  return base.filter(t => {
+    const descriptionMatch = t.description.toLowerCase().includes(term)
     const tAny = t as Record<string, unknown>
     const clientRaw = tAny.client
     const clientId = typeof clientRaw === 'object' && clientRaw !== null
       ? (clientRaw as Record<string, unknown>)?.['id'] as string | number | undefined
       : String(t.client) as string | number | undefined
     const clientName = getClientName(clientId).toLowerCase()
-    const clientMatch = clientName.includes(term)
-    return descriptionMatch || clientMatch
+    return descriptionMatch || clientName.includes(term)
   })
 })
 
@@ -270,6 +298,70 @@ async function handleDelete(id: string | number) {
   }
 }
 
+async function fetchForecast(year?: number) {
+  loadingForecast.value = true
+  forecastError.value = ''
+  try {
+    forecast.value = await financeService.getForecast(year ?? forecastYear.value)
+  } catch (e: unknown) {
+    forecastError.value = `Erro ao carregar previsão: ${getErrorMessage(e)}`
+  } finally {
+    loadingForecast.value = false
+  }
+}
+
+function switchTab(tab: 'transactions' | 'forecast') {
+  activeTab.value = tab
+  if (tab === 'forecast' && !forecast.value) {
+    fetchForecast()
+  }
+}
+
+async function changeYear(delta: number) {
+  forecastYear.value += delta
+  await fetchForecast(forecastYear.value)
+}
+
+function cellClass(monthKey: string, client: import('@/services/financeService').ForecastClient): string {
+  const m = client.monthData?.[monthKey]
+  if (!m) return 'bg-gray-50 text-gray-300'
+  if (m.received > 0 && m.pending === 0) return 'bg-green-50 text-green-700 font-semibold'
+  if (m.pending > 0) return 'bg-yellow-50 text-yellow-700 font-semibold'
+  return 'text-gray-400'
+}
+
+function cellValue(monthKey: string, client: import('@/services/financeService').ForecastClient): string {
+  const m = client.monthData?.[monthKey]
+  if (!m) return '—'
+  const val = m.received > 0 ? m.received : m.pending > 0 ? m.pending : m.expected
+  return formatCurrencyCompact(val)
+}
+
+function formatCurrencyCompact(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
+}
+
+function clientTotal(client: import('@/services/financeService').ForecastClient): number {
+  if (!client.monthData) return 0
+  return Object.values(client.monthData).reduce((sum, m) => {
+    return sum + (m.received > 0 ? m.received : m.pending > 0 ? m.pending : m.expected)
+  }, 0)
+}
+
+function monthColTotal(monthKey: string): number {
+  if (!forecast.value) return 0
+  return forecast.value.clients.reduce((sum, c) => {
+    const m = c.monthData?.[monthKey]
+    if (!m) return sum
+    return sum + (m.received > 0 ? m.received : m.pending > 0 ? m.pending : m.expected)
+  }, 0)
+}
+
+const grandTotal = computed(() => {
+  if (!forecast.value) return 0
+  return forecast.value.clients.reduce((sum, c) => sum + clientTotal(c), 0)
+})
+
 onMounted(() => {
   fetchTransactions()
 })
@@ -278,10 +370,22 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
+function capitalizeFirst(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
 function formatDate(dateStr: string) {
   if (!dateStr) return '-'
   const d = new Date(dateStr)
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
+
+function isOverdue(t: FinanceRecord): boolean {
+  const now = new Date()
+  const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const exp = new Date(t.expirationDate)
+  return exp < startOfCurrentMonth
 }
 </script>
 
@@ -292,7 +396,7 @@ function formatDate(dateStr: string) {
         <h1 class="text-3xl font-bold text-gray-900">Financeiro</h1>
         <p class="text-gray-500 mt-1">Controle as receitas e despesas do ateliê.</p>
       </div>
-      <Button class="gap-2" @click="openFinanceModal">
+      <Button v-if="activeTab === 'transactions'" class="gap-2" @click="openFinanceModal">
         <Plus class="w-4 h-4" />
         Nova Transação
       </Button>
@@ -304,9 +408,174 @@ function formatDate(dateStr: string) {
       :net-profit="formatCurrency(netProfit)"
     />
 
-    <Card class="overflow-hidden">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="font-semibold text-gray-900">Transações Recentes</h2>
+    <!-- Tabs -->
+    <div class="flex gap-1 mb-4 border-b border-gray-100">
+      <button
+        :class="['px-4 py-2 text-sm font-semibold transition-colors border-b-2', activeTab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700']"
+        @click="switchTab('transactions')"
+      >
+        Transações
+      </button>
+      <button
+        :class="['px-4 py-2 text-sm font-semibold transition-colors border-b-2 flex items-center gap-1.5', activeTab === 'forecast' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700']"
+        @click="switchTab('forecast')"
+      >
+        <TrendingUp class="w-4 h-4" />
+        Previsibilidade
+      </button>
+    </div>
+
+    <!-- Forecast / Previsibilidade Tab -->
+    <div v-if="activeTab === 'forecast'">
+      <div v-if="loadingForecast" class="flex items-center justify-center py-16">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+      <p v-else-if="forecastError" class="text-red-500 text-sm py-4">{{ forecastError }}</p>
+      <div v-else-if="forecast">
+
+        <!-- Header: year nav + summary cards -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+          <div class="flex items-center gap-2">
+            <button
+              class="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-primary hover:border-primary/30 transition-all"
+              @click="changeYear(-1)"
+            >
+              <ChevronLeft class="w-4 h-4" />
+            </button>
+            <span class="text-lg font-bold text-gray-900 w-16 text-center">{{ forecastYear }}</span>
+            <button
+              class="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-primary hover:border-primary/30 transition-all"
+              @click="changeYear(1)"
+            >
+              <ChevronRight class="w-4 h-4" />
+            </button>
+          </div>
+          <div class="flex gap-3 flex-1">
+            <Card class="p-4 flex-1">
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Receita Mensal</p>
+              <p class="text-xl font-bold text-gray-900">{{ formatCurrency(forecast.monthlyTotal) }}</p>
+            </Card>
+            <Card class="p-4 flex-1">
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Receita Anual Prevista</p>
+              <p class="text-xl font-bold text-green-600">{{ formatCurrency(forecast.annualTotal) }}</p>
+            </Card>
+            <Card class="p-4 flex-1">
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Clientes Ativos</p>
+              <p class="text-xl font-bold text-primary">{{ forecast.clients.length }}</p>
+            </Card>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex items-center gap-4 mb-3 text-xs text-gray-500">
+          <span class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-sm bg-green-100 border border-green-300 inline-block"></span> Pago
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-300 inline-block"></span> Pendente
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-sm bg-gray-100 border border-gray-200 inline-block"></span> Previsto
+          </span>
+        </div>
+
+        <!-- Spreadsheet table -->
+        <Card class="overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse min-w-[900px]">
+              <thead>
+                <tr class="bg-[#EEF2FF]">
+                  <th class="text-left px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 sticky left-0 bg-[#EEF2FF] z-10 min-w-[160px]">Cliente</th>
+                  <th class="text-left px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[110px]">Segmento</th>
+                  <th
+                    v-for="m in forecast.months"
+                    :key="m.monthKey"
+                    class="text-center px-2 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[72px]"
+                  >
+                    {{ capitalizeFirst(m.monthLabel) }}
+                  </th>
+                  <th class="text-right px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[90px] bg-indigo-50">Total</th>
+                  <th class="text-right px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[80px] bg-indigo-50">Média</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="forecast.clients.length === 0">
+                  <td :colspan="16" class="text-center py-10 text-gray-400 italic">Nenhum cliente ativo com valor mensal.</td>
+                </tr>
+                <tr
+                  v-else
+                  v-for="c in forecast.clients"
+                  :key="c.clientId"
+                  :class="['transition-colors border-b border-gray-100', c.status === 'INACTIVE' ? 'bg-gray-50/70 opacity-70' : 'hover:bg-indigo-50/30']"
+                >
+                  <td :class="['px-3 py-2 whitespace-nowrap sticky z-10', c.status === 'INACTIVE' ? 'left-0 bg-gray-50 text-gray-400 italic' : 'left-0 bg-white font-medium text-gray-800']">
+                    {{ c.clientName }}
+                    <span v-if="c.status === 'INACTIVE'" class="ml-1.5 text-[10px] font-semibold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full uppercase not-italic">inativo</span>
+                  </td>
+                  <td :class="['px-3 py-2 whitespace-nowrap', c.status === 'INACTIVE' ? 'text-gray-400 italic' : 'text-gray-500']">{{ c.niche }}</td>
+                  <td
+                    v-for="m in forecast.months"
+                    :key="m.monthKey"
+                    :class="['px-2 py-2 text-center rounded-sm', cellClass(m.monthKey, c)]"
+                  >
+                    {{ cellValue(m.monthKey, c) }}
+                  </td>
+                  <td class="px-3 py-2 text-right font-bold text-gray-800 bg-indigo-50/50">
+                    {{ formatCurrencyCompact(clientTotal(c)) }}
+                  </td>
+                  <td class="px-3 py-2 text-right text-gray-600 bg-indigo-50/50">
+                    {{ formatCurrencyCompact(clientTotal(c) / 12) }}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="bg-[#EEF2FF] font-bold border-t-2 border-indigo-200">
+                  <td class="px-3 py-2.5 text-gray-700 uppercase text-xs sticky left-0 bg-[#EEF2FF] z-10" colspan="2">Total Receita de Clientes</td>
+                  <td
+                    v-for="m in forecast.months"
+                    :key="m.monthKey"
+                    class="px-2 py-2.5 text-center text-primary"
+                  >
+                    {{ formatCurrencyCompact(monthColTotal(m.monthKey)) }}
+                  </td>
+                  <td class="px-3 py-2.5 text-right text-primary">{{ formatCurrencyCompact(grandTotal) }}</td>
+                  <td class="px-3 py-2.5 text-right text-primary">{{ formatCurrencyCompact(grandTotal / 12) }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </Card>
+
+      </div>
+      <div v-else class="text-center py-12 text-gray-500 text-sm">Nenhum dado de previsão disponível.</div>
+    </div>
+
+    <!-- Transactions Tab -->
+    <Card v-if="activeTab === 'transactions'" class="overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-gray-900">Contas a Receber</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Mensalidades pendentes dos clientes ativos</p>
+        </div>
+        <div class="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            v-for="opt in [
+              { key: 'open', label: 'Em Aberto' },
+              { key: 'future', label: 'Futuras' },
+              { key: 'all', label: 'Todas' },
+            ]"
+            :key="opt.key"
+            :class="[
+              'px-3 py-1.5 rounded-md text-xs font-semibold transition-colors',
+              transactionFilter === opt.key
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            ]"
+            @click="transactionFilter = opt.key as 'open' | 'future' | 'all'; currentPage = 1"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
         <p v-if="error" class="text-xs text-red-500 font-medium">{{ error }}</p>
       </div>
       <table class="w-full">
@@ -324,16 +593,20 @@ function formatDate(dateStr: string) {
           <tr v-if="loading"><td colspan="6" class="text-center py-8">
             <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
           </td></tr>
-          <tr v-else-if="paginatedTransactions.length === 0"><td colspan="6" class="text-center py-8 text-gray-500 text-sm italic">Nenhuma transação encontrada.</td></tr>
-          <tr v-else v-for="t in paginatedTransactions" :key="t.id" class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+          <tr v-else-if="paginatedTransactions.length === 0"><td colspan="6" class="text-center py-8 text-gray-500 text-sm italic">
+            {{ transactionFilter === 'open' ? 'Nenhuma conta em aberto.' : transactionFilter === 'future' ? 'Nenhuma conta futura.' : 'Nenhuma transação encontrada.' }}
+          </td></tr>
+          <tr v-else v-for="t in paginatedTransactions" :key="t.id" :class="['border-b border-gray-50 transition-colors', isOverdue(t) ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-gray-50']">
             <td class="px-5 py-4 text-sm font-medium text-gray-800">{{ t.description }}</td>
             <td class="px-5 py-4 text-sm text-gray-500">
               {{ getClientName((t as unknown as { client: { id: number } }).client?.id ?? t.client) }}
             </td>
-            <td class="px-5 py-4 text-sm text-gray-500">{{ formatDate(t.expirationDate) }}</td>
+            <td :class="['px-5 py-4 text-sm', isOverdue(t) ? 'text-red-600 font-semibold' : 'text-gray-500']">
+              {{ formatDate(t.expirationDate) }}
+            </td>
             <td class="px-5 py-4">
-              <Badge :variant="t.status === 'PAY' ? 'success' : 'warning'">
-                {{ t.status === 'PAY' ? 'PAGO' : 'PENDENTE' }}
+              <Badge :variant="isOverdue(t) ? 'destructive' : 'warning'">
+                {{ isOverdue(t) ? 'VENCIDA' : 'PENDENTE' }}
               </Badge>
             </td>
             <td :class="['px-5 py-4 text-sm font-semibold text-right', t.value >= 0 ? 'text-green-600' : 'text-red-500']">
@@ -341,8 +614,7 @@ function formatDate(dateStr: string) {
             </td>
             <td class="px-5 py-4">
               <div class="flex items-center justify-center gap-2">
-                <button 
-                  v-if="t.status !== 'PAY'"
+                <button
                   class="p-1.5 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
                   title="Receber"
                   @click="handleMarkAsPaid(t)"
@@ -356,7 +628,7 @@ function formatDate(dateStr: string) {
                 >
                   <Pencil class="w-4 h-4" />
                 </button>
-                <button 
+                <button
                   class="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors"
                   title="Excluir"
                   @click="handleDelete(t.id!)"

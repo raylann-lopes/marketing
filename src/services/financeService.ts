@@ -2,6 +2,18 @@ import { apiFetch } from '@/lib/api'
 
 export type FinanceStatus = 'PENDING' | 'PAY'
 
+export type ForecastClientMonth = { expected: number; received: number; pending: number }
+export type ForecastClient = {
+  clientId: number
+  clientName: string
+  niche: string
+  monthlyValue: number
+  status: 'ACTIVE' | 'INACTIVE'
+  monthData: Record<string, ForecastClientMonth>
+}
+export type ForecastMonth = { monthKey: string; monthLabel: string; expected: number; received: number; pending: number }
+export type ForecastData = { clients: ForecastClient[]; months: ForecastMonth[]; monthlyTotal: number; annualTotal: number; year: number }
+
 export type FinanceRecord = {
   id?: string | number
   client: string | number
@@ -50,5 +62,10 @@ export const financeService = {
     return apiFetch<void>(`/api/finance/delete/${id}`, {
       method: 'DELETE'
     })
+  },
+
+  async getForecast(year?: number): Promise<ForecastData> {
+    const params = year ? `?year=${year}` : ''
+    return apiFetch<ForecastData>(`/api/finance/forecast${params}`)
   }
 }
