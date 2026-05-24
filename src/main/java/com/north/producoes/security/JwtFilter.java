@@ -10,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
@@ -73,7 +74,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
             // Passa a requisição para o próximo filtro ou controller
             filterChain.doFilter(request, response);
-        } catch (JwtException | IllegalArgumentException ex) {
+        } catch (JwtException | IllegalArgumentException | UsernameNotFoundException ex) {
             SecurityContextHolder.clearContext();
             writeUnauthorizedResponse(response);
         }

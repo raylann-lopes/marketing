@@ -54,14 +54,23 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Internal-Api-Key"));
-        config.setAllowCredentials(true);
+        // Rotas internas (n8n/automações): sem restrição de origem
+        CorsConfiguration internalConfig = new CorsConfiguration();
+        internalConfig.setAllowedOriginPatterns(List.of("*"));
+        internalConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        internalConfig.setAllowedHeaders(List.of("*"));
+        internalConfig.setAllowCredentials(false);
+
+        // Rotas da aplicação web: apenas o frontend
+        CorsConfiguration webConfig = new CorsConfiguration();
+        webConfig.setAllowedOrigins(List.of("http://localhost:5173"));
+        webConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        webConfig.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Internal-Api-Key"));
+        webConfig.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+        source.registerCorsConfiguration("/api/internal/**", internalConfig);
+        source.registerCorsConfiguration("/**", webConfig);
         return source;
     }
 

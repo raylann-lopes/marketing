@@ -98,6 +98,7 @@ public class PostController {
     }
 
     @PostMapping("/{id}/generate-caption")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApproveResponseDTO> generateCaption(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) CaptionRequestDTO request) {

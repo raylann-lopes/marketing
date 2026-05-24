@@ -47,6 +47,7 @@ public class MediaController {
     }
 
     @GetMapping("/preview/{postId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MediaUrlResponseDTO> getArtPreviewUrl(
             @PathVariable Long postId,
             @AuthenticationPrincipal UserEntity user) {
@@ -54,6 +55,7 @@ public class MediaController {
     }
 
     @GetMapping("/reference-preview/{postId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MediaUrlResponseDTO> getReferencePreviewUrl(
             @PathVariable Long postId,
             @AuthenticationPrincipal UserEntity user) {
