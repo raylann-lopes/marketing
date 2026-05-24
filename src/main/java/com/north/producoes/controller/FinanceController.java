@@ -1,6 +1,7 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.dto.response.FinanceResponseDTO;
+import com.north.producoes.controller.dto.response.ForecastResponseDTO;
 import com.north.producoes.entity.FinanceEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
 import com.north.producoes.service.FinanceService;
@@ -19,6 +20,13 @@ import java.util.List;
 public class FinanceController {
 
     private final FinanceService financeService;
+
+    @GetMapping("/forecast")
+    public ResponseEntity<ForecastResponseDTO> getForecast(
+            @RequestParam(defaultValue = "0") int year) {
+        int targetYear = year > 0 ? year : java.time.LocalDateTime.now().getYear();
+        return ResponseEntity.ok(financeService.getForecast(targetYear));
+    }
 
     @GetMapping
     public ResponseEntity<List<FinanceResponseDTO>> findAll() {
