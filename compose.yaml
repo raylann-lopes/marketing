@@ -1,10 +1,59 @@
 services:
   postgres:
-    image:
-      'postgres:latest'
+    image: 'postgres:17-alpine'
     environment:
-      - 'POSTGRES_DB=postgres'
-      - 'POSTGRES_PASSWORD=postgres'
-      - 'POSTGRES_USER=postgres'
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    ports:
+      - '8080:8080'
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_URL=jdbc:postgresql://postgres:5432/postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - JWT_KEY=${JWT_KEY:?JWT_KEY must be set}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-north-producoes-prod}
+      - AWS_S3_REGION=${AWS_S3_REGION:-sa-east-1}
+      - AWS_S3_PUBLIC_BASE_URL=${AWS_S3_PUBLIC_BASE_URL:-}
+      - N8N_INTERNAL_KEY=${N8N_INTERNAL_KEY:-}
+      - N8N_WEBHOOK_UPLOAD_COMPLETE_URL=${N8N_WEBHOOK_UPLOAD_COMPLETE_URL:-}
+      - N8N_WEBHOOK_PUBLISH_URL=${N8N_WEBHOOK_PUBLISH_URL:-}
+      - N8N_WEBHOOK_API_KEY=${N8N_WEBHOOK_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - META_GRAPH_ACCESS_TOKEN=${META_GRAPH_ACCESS_TOKEN:-}
+      - EVOLUTION_API_BASE_URL=${EVOLUTION_API_BASE_URL:-}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-}
+      - EVOLUTION_API_INSTANCE=${EVOLUTION_API_INSTANCE:-}
+      - APIFY_API_TOKEN=${APIFY_API_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

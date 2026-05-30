@@ -63,7 +63,7 @@ public class SecurityConfig {
 
         // Rotas da aplicação web: apenas o frontend
         CorsConfiguration webConfig = new CorsConfiguration();
-        webConfig.setAllowedOrigins(List.of("http://localhost:5173"));
+        webConfig.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost"));
         webConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         webConfig.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Internal-Api-Key"));
         webConfig.setAllowCredentials(true);
