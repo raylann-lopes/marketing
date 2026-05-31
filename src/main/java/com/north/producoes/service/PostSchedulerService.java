@@ -1,6 +1,5 @@
 package com.north.producoes.service;
 
-import com.north.producoes.entity.AccountConfigEntity;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -27,56 +26,17 @@ public class PostSchedulerService {
     private final PostRepository postRepository;
     private final ApproveRepository approveRepository;
     private final N8nWebhookService n8nWebhookService;
-    private final AccountConfigService accountConfigService;
     private final S3Service s3Service;
 
-    /**
-     * Verifica a cada 1 minuto se existem posts agendados para disparar.
-     */
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedDelayString = "${scheduler.post.fixed-delay-ms:1200000}")
     public void checkAndDispatchScheduledPosts() {
-        log.info("Iniciando verificação de posts agendados em {}", LocalDateTime.now());
+        log.debug("Iniciando verificação de posts agendados em {}", LocalDateTime.now());
 
         List<PostEntity> scheduledPosts = postRepository.findByStatus(PostStatusEnum.SCHEDULE);
 
         for (PostEntity post : scheduledPosts) {
             if (post.getScheduledAt() != null && post.getScheduledAt().isBefore(LocalDateTime.now())) {
                 dispatchPost(post);
-            }
-        }
-    }
-
-    /**
-     * Verifica a cada 1 hora se existem posts aguardando aprovação há mais de 48h.
-     */
-    @Scheduled(fixedRate = 3600000)
-    public void autoApproveStalePosts() {
-        log.info("Iniciando verificação de aprovações automáticas (48h) em {}", LocalDateTime.now());
-
-        List<PostEntity> stalePosts = postRepository.findByStatus(PostStatusEnum.WAITING_APPROVAL);
-
-        for (PostEntity post : stalePosts) {
-            List<ApproveEntity> approvals = approveRepository.findByPostId(post.getId());
-            if (approvals.isEmpty()) continue;
-            
-            ApproveEntity approve = approvals.getFirst();
-            // Verifica se a mensagem foi enviada há mais de 48h
-            if (approve.getWhatsappSentAt() != null) {
-                try {
-                    LocalDateTime sentAt = LocalDateTime.parse(approve.getWhatsappSentAt());
-                    if (sentAt.isBefore(LocalDateTime.now().minusHours(48))) {
-                        log.info("Auto-aprovando post ID: {} por decurso de prazo (48h)", post.getId());
-                        approve.setStatus(ApproveStatusEnum.APPROVE);
-                        approve.setApprovedAt(LocalDateTime.now());
-                        approve.setApprovedUser("system-auto-approve");
-                        approveRepository.save(approve);
-
-                        post.setStatus(PostStatusEnum.SCHEDULE);
-                        postRepository.save(post);
-                    }
-                } catch (Exception e) {
-                    log.error("Erro ao processar data de envio do WhatsApp para post ID: {}", post.getId());
-                }
             }
         }
     }
@@ -90,31 +50,33 @@ public class PostSchedulerService {
             }
             ApproveEntity approve = approvals.getFirst();
 
-            // Só dispara se tiver sido aprovado (internamente ou pelo cliente)
             if (approve.getStatus() != ApproveStatusEnum.APPROVE) {
-                log.warn("Post agendado ID: {} não possui status de aprovação APPROVE. Pulando disparo.", post.getId());
+                log.warn("Post agendado ID: {} não possui status APPROVE. Pulando disparo.", post.getId());
                 return;
             }
 
             log.info("Disparando post agendado ID: {} - Título: {}", post.getId(), post.getTitle());
 
-            AccountConfigEntity config = accountConfigService.findByClientId(post.getClient().getId());
             String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
-
-            Map<String, Object> payload = buildN8nPayload(post, approve, config, mediaUrl);
+            Map<String, Object> payload = buildN8nPayload(post, approve, mediaUrl);
 
             n8nWebhookService.dispatchPublishPost(payload);
-            
+
             post.setStatus(PostStatusEnum.PUBLISHED);
             postRepository.save(post);
-            log.info("Post ID: {} enviado para processamento no n8n e atualizado para PUBLISHED.", post.getId());
+            log.info("Post ID: {} enviado para o n8n e atualizado para PUBLISHED.", post.getId());
 
         } catch (Exception e) {
             log.error("Erro ao processar post agendado ID: {}: {}", post.getId(), e.getMessage(), e);
         }
     }
 
-    private Map<String, Object> buildN8nPayload(PostEntity post, ApproveEntity approve, AccountConfigEntity config, String mediaUrl) {
+    /**
+     * Credenciais (igUserId, accessToken) foram removidas deste payload.
+     * O n8n deve buscá-las via GET /api/internal/account-config/{client.id}
+     * com o header X-Internal-Api-Key — padrão pull é mais seguro que push de credenciais.
+     */
+    private Map<String, Object> buildN8nPayload(PostEntity post, ApproveEntity approve, String mediaUrl) {
         Map<String, Object> clientPayload = new LinkedHashMap<>();
         clientPayload.put("id", post.getClient().getId());
         clientPayload.put("name", post.getClient().getName());
@@ -134,8 +96,6 @@ public class PostSchedulerService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("event", "SCHEDULED_POST_DISPATCH");
         payload.put("dispatchedAt", LocalDateTime.now().toString());
-        payload.put("igUserId", config.getIgUserId());
-        payload.put("accessToken", config.getAccessToken());
         payload.put("client", clientPayload);
         payload.put("post", postPayload);
         payload.put("approval", approvalPayload);

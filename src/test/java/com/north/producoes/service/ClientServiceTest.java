@@ -6,6 +6,7 @@ import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ClientRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +35,11 @@ class ClientServiceTest {
 
     @InjectMocks
     private ClientService clientService;
+
+    @BeforeEach
+    void injectLazyDependencies() {
+        clientService.setFinanceService(financeService);
+    }
 
     @Nested
     @DisplayName("findAllClient()")
@@ -139,21 +146,13 @@ class ClientServiceTest {
         @Test
         @DisplayName("deve salvar e retornar o cliente quando e-mail não existe")
         void shouldSaveClientWhenEmailIsNew() {
-            ClientRequestDTO request = new ClientRequestDTO(
-                    "New Client",
-                    "new@example.com",
-                    "11999999999",
-                    "https://drive.google.com/abc",
-                    "Formal",
-                    "Saude",
-                    500.0
-            );
+            ClientRequestDTO request = request();
 
             when(clientRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
             when(clientRepository.findByNumber("11999999999")).thenReturn(Optional.empty());
             when(clientRepository.save(any(ClientEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            ClientEntity result = clientService.saveClient(request);
+            ClientEntity result = clientService.saveClient(request, null);
 
             assertThat(result.getEmail()).isEqualTo("new@example.com");
             assertThat(result.getNumber()).isEqualTo("11999999999");
@@ -164,18 +163,14 @@ class ClientServiceTest {
         @DisplayName("deve lançar ResourceAlreadyExistsException quando e-mail já cadastrado")
         void shouldThrowWhenEmailAlreadyExists() {
             ClientRequestDTO request = new ClientRequestDTO(
-                    "Existing Client",
-                    "existing@example.com",
-                    "11999999999",
-                    "https://drive.google.com/abc",
-                    "Formal",
-                    "Saude",
-                    500.0
+                    "Existing Client", "existing@example.com", "11999999999",
+                    "https://drive.google.com/abc", "Formal", "Saude",
+                    BigDecimal.valueOf(500)
             );
 
             when(clientRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(new ClientEntity()));
 
-            assertThatThrownBy(() -> clientService.saveClient(request))
+            assertThatThrownBy(() -> clientService.saveClient(request, null))
                     .isInstanceOf(ResourceAlreadyExistsException.class);
 
             verify(clientRepository, never()).save(any());
@@ -192,15 +187,12 @@ class ClientServiceTest {
             ClientEntity existingClient = new ClientEntity();
             existingClient.setId(1L);
             existingClient.setStatus(ClientStatusEnum.INACTIVE);
+            existingClient.setMonthlyValue(BigDecimal.valueOf(500));
 
             ClientRequestDTO request = new ClientRequestDTO(
-                    "Client Name",
-                    "client@example.com",
-                    "11999999999",
-                    "https://drive.google.com/abc",
-                    "Formal",
-                    "Saude",
-                    500.0
+                    "Client Name", "client@example.com", "11999999999",
+                    "https://drive.google.com/abc", "Formal", "Saude",
+                    BigDecimal.valueOf(500)
             );
 
             when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
@@ -218,16 +210,7 @@ class ClientServiceTest {
         @Test
         @DisplayName("deve lançar ResourceNotFoundException quando cliente não existe")
         void shouldThrowWhenClientNotFound() {
-            ClientRequestDTO request = new ClientRequestDTO(
-                    "Client Name",
-                    "client@example.com",
-                    "11999999999",
-                    "https://drive.google.com/abc",
-                    "Formal",
-                    "Saude",
-                    500.0
-            );
-
+            ClientRequestDTO request = request();
             when(clientRepository.findById(99L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> clientService.updateClient(99L, request))
@@ -242,15 +225,12 @@ class ClientServiceTest {
         void shouldThrowWhenEmailAlreadyUsedByAnotherClient() {
             ClientEntity existingClient = new ClientEntity();
             existingClient.setId(1L);
+            existingClient.setMonthlyValue(BigDecimal.ZERO);
 
             ClientRequestDTO request = new ClientRequestDTO(
-                    "Client Name",
-                    "duplicated@example.com",
-                    "11999999999",
-                    "https://drive.google.com/abc",
-                    "Formal",
-                    "Saude",
-                    500.0
+                    "Client Name", "duplicated@example.com", "11999999999",
+                    "https://drive.google.com/abc", "Formal", "Saude",
+                    BigDecimal.valueOf(500)
             );
 
             when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
@@ -268,15 +248,12 @@ class ClientServiceTest {
         void shouldThrowWhenNumberAlreadyUsedByAnotherClient() {
             ClientEntity existingClient = new ClientEntity();
             existingClient.setId(1L);
+            existingClient.setMonthlyValue(BigDecimal.ZERO);
 
             ClientRequestDTO request = new ClientRequestDTO(
-                    "Client Name",
-                    "client@example.com",
-                    "11888888888",
-                    "https://drive.google.com/abc",
-                    "Formal",
-                    "Saude",
-                    500.0
+                    "Client Name", "client@example.com", "11888888888",
+                    "https://drive.google.com/abc", "Formal", "Saude",
+                    BigDecimal.valueOf(500)
             );
 
             when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient));
@@ -315,5 +292,13 @@ class ClientServiceTest {
 
             verify(clientRepository, never()).deleteById(anyLong());
         }
+    }
+
+    private static ClientRequestDTO request() {
+        return new ClientRequestDTO(
+                "New Client", "new@example.com", "11999999999",
+                "https://drive.google.com/abc", "Formal", "Saude",
+                BigDecimal.valueOf(500)
+        );
     }
 }

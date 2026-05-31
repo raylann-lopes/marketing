@@ -14,6 +14,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 /**
  * Protege as rotas /api/internal/** com uma API Key estática.
@@ -54,7 +56,9 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
             }
 
             String providedKey = request.getHeader(API_KEY_HEADER);
-            if (providedKey == null || !providedKey.equals(expectedApiKey)) {
+            if (providedKey == null || !MessageDigest.isEqual(
+                    providedKey.getBytes(StandardCharsets.UTF_8),
+                    expectedApiKey.getBytes(StandardCharsets.UTF_8))) {
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\":\"API key inválida ou ausente\"}");

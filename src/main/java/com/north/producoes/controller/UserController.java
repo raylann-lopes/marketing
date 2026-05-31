@@ -13,6 +13,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 @RestController
@@ -24,12 +27,14 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<List<UserResponseDTO>> findAll() {
-        List<UserResponseDTO> user = userService.findAllUser()
-                .stream()
+    public ResponseEntity<List<UserResponseDTO>> findAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, 200));
+        List<UserResponseDTO> users = userService.findAllUser(pageable)
                 .map(UserResponseDTO::from)
                 .toList();
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(users);
     }
 
     @GetMapping("/email/{email}")

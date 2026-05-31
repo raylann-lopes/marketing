@@ -15,6 +15,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -38,10 +41,11 @@ class UserControllerTest {
     @DisplayName("deve retornar todos os usuários")
     void shouldReturnAllUsers() {
         // Arrange
-        when(userService.findAllUser()).thenReturn(List.of(user(1L)));
+        when(userService.findAllUser(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(user(1L))));
 
         // Act
-        ResponseEntity<List<UserResponseDTO>> response = userController.findAll();
+        ResponseEntity<List<UserResponseDTO>> response = userController.findAll(0, 50);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
