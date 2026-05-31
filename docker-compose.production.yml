@@ -1,0 +1,101 @@
+services:
+  postgres:
+    image: 'postgres:17-alpine'
+    container_name: producoes-db
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: producoes-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+      - wize-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.producoes-api.rule=Host(`api.agencianorth.com`)"
+      - "traefik.http.routers.producoes-api.entrypoints=websecure"
+      - "traefik.http.routers.producoes-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.producoes-api.loadbalancer.server.port=8080"
+    environment:
+      - TZ=America/Sao_Paulo
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_URL=jdbc:postgresql://postgres:5432/${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_KEY=${JWT_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_S3_REGION=${AWS_S3_REGION}
+      - AWS_S3_PUBLIC_BASE_URL=${AWS_S3_PUBLIC_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - META_GRAPH_ACCESS_TOKEN=${META_GRAPH_ACCESS_TOKEN}
+      - EVOLUTION_API_BASE_URL=${EVOLUTION_API_BASE_URL}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - EVOLUTION_API_INSTANCE=${EVOLUTION_API_INSTANCE}
+      - EVOLUTION_WEBHOOK_SECRET=${EVOLUTION_WEBHOOK_SECRET}
+      - APIFY_API_TOKEN=${APIFY_API_TOKEN}
+      - BOOTSTRAP_ADMIN_NAME=${BOOTSTRAP_ADMIN_NAME}
+      - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=https://api.agencianorth.com
+    container_name: producoes-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - default
+      - wize-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.producoes-web.rule=Host(`agencianorth.com`)"
+      - "traefik.http.routers.producoes-web.entrypoints=websecure"
+      - "traefik.http.routers.producoes-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.producoes-web.loadbalancer.server.port=80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  wize-net:
+    external: true
+
+volumes:
+  postgres_data:
