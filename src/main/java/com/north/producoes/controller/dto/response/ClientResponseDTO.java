@@ -3,6 +3,7 @@ package com.north.producoes.controller.dto.response;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record ClientResponseDTO(
@@ -16,7 +17,7 @@ public record ClientResponseDTO(
         String whatsappGroupId,
         String whatsappGroupName,
         ClientStatusEnum status,
-        Double monthlyValue,
+        BigDecimal monthlyValue,
         LocalDateTime createdAt
 ) {
     public static ClientResponseDTO from (ClientEntity entity) {

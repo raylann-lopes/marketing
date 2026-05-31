@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -46,8 +47,8 @@ public class ClientEntity {
     @Column(name = "whatsapp_group_name")
     private String whatsappGroupName;
 
-    @Column(name = "monthly_value", nullable = false)
-    private Double monthlyValue = 0.0;
+    @Column(name = "monthly_value", nullable = false, precision = 15, scale = 2)
+    private BigDecimal monthlyValue = BigDecimal.ZERO;
 
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)

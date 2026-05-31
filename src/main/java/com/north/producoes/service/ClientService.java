@@ -7,7 +7,7 @@ import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ClientRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -74,10 +75,10 @@ public class ClientService {
             throw new ResourceAlreadyExistsException("Cliente com numero " + request.number() + " ja cadastrado");
         }
 
-        Double oldValue = existingClient.getMonthlyValue();
+        BigDecimal oldValue = existingClient.getMonthlyValue();
         ClientEntity saved = getClientEntity(request, existingClient);
 
-        if (request.monthlyValue() != null && !request.monthlyValue().equals(oldValue)) {
+        if (request.monthlyValue() != null && request.monthlyValue().compareTo(oldValue) != 0) {
             financeService.updatePendingEntriesValue(id, request.monthlyValue());
         }
 

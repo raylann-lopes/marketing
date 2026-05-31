@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
+
 public record ClientRequestDTO(
         @NotBlank(message = "Nome é obrigatório")
         @Size(max = 255, message = "Nome deve ter no máximo 255 caracteres")
@@ -27,5 +29,5 @@ public record ClientRequestDTO(
         String niche,
         @NotNull(message = "Valor mensal é obrigatório")
         @DecimalMin(value = "0.0", message = "Valor mensal não pode ser negativo")
-        Double monthlyValue
+        BigDecimal monthlyValue
 ) {}

@@ -1,16 +1,21 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.dto.request.FinanceRequestDTO;
 import com.north.producoes.controller.dto.response.FinanceResponseDTO;
 import com.north.producoes.controller.dto.response.ForecastResponseDTO;
-import com.north.producoes.entity.FinanceEntity;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
+import com.north.producoes.entity.enums.FinanceTypeEnum;
 import com.north.producoes.service.FinanceService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -23,52 +28,55 @@ public class FinanceController {
 
     @GetMapping("/forecast")
     public ResponseEntity<ForecastResponseDTO> getForecast(
-            @RequestParam(defaultValue = "0") int year) {
-        int targetYear = year > 0 ? year : java.time.LocalDateTime.now().getYear();
+            @RequestParam(required = false) Integer year) {
+        int targetYear = (year != null && year > 0) ? year : LocalDateTime.now().getYear();
         return ResponseEntity.ok(financeService.getForecast(targetYear));
     }
 
     @GetMapping
     public ResponseEntity<List<FinanceResponseDTO>> findAll() {
-        List<FinanceResponseDTO> finance = financeService.findAll()
-                .stream()
-                .map(FinanceResponseDTO::from)
-                .toList();
-        return ResponseEntity.ok(finance);
+        return ResponseEntity.ok(
+                financeService.findAll().stream().map(FinanceResponseDTO::from).toList()
+        );
     }
 
     @GetMapping("/status/{status}")
     public ResponseEntity<List<FinanceResponseDTO>> findByStatus(@PathVariable FinanceStatusEnum status) {
-        if (status == null) {
-            return ResponseEntity.badRequest().build();
-        }
-        List<FinanceResponseDTO> financeStatus = financeService.findByStatus(status)
-                .stream()
-                .map(FinanceResponseDTO::from)
-                .toList();
-        return ResponseEntity.ok(financeStatus);
+        return ResponseEntity.ok(
+                financeService.findByStatus(status).stream().map(FinanceResponseDTO::from).toList()
+        );
+    }
+
+    @GetMapping("/type/{type}")
+    public ResponseEntity<List<FinanceResponseDTO>> findByType(@PathVariable FinanceTypeEnum type) {
+        return ResponseEntity.ok(
+                financeService.findByType(type).stream().map(FinanceResponseDTO::from).toList()
+        );
     }
 
     @GetMapping("/client/{id}")
-    public ResponseEntity<List<FinanceResponseDTO>> findByClient(@PathVariable Long id){
-        List<FinanceResponseDTO> financeClient = financeService.findByClientId(id)
-                .stream()
-                .map(FinanceResponseDTO::from)
-                .toList();
-        return ResponseEntity.ok(financeClient);
+    public ResponseEntity<List<FinanceResponseDTO>> findByClient(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                financeService.findByClientId(id).stream().map(FinanceResponseDTO::from).toList()
+        );
     }
 
-    @PostMapping("/create")
-    public ResponseEntity<FinanceResponseDTO> saveFinance(@Valid @RequestBody FinanceEntity finance) {
-        return ResponseEntity.ok(FinanceResponseDTO.from(financeService.saveFinance(finance)));
+    @PostMapping
+    public ResponseEntity<FinanceResponseDTO> saveFinance(
+            @Valid @RequestBody FinanceRequestDTO request,
+            @AuthenticationPrincipal UserEntity currentUser) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(FinanceResponseDTO.from(financeService.saveFinance(request, currentUser)));
     }
 
-    @PatchMapping("/update/{id}")
-    public ResponseEntity<FinanceResponseDTO> updateFinance(@PathVariable Long id, @Valid @RequestBody FinanceEntity finance) {
-        return ResponseEntity.ok(FinanceResponseDTO.from(financeService.updateFinance(id, finance)));
+    @PutMapping("/{id}")
+    public ResponseEntity<FinanceResponseDTO> updateFinance(
+            @PathVariable Long id,
+            @Valid @RequestBody FinanceRequestDTO request) {
+        return ResponseEntity.ok(FinanceResponseDTO.from(financeService.updateFinance(id, request)));
     }
 
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFinanceById(@PathVariable Long id) {
         financeService.deleteFinanceById(id);
         return ResponseEntity.noContent().build();

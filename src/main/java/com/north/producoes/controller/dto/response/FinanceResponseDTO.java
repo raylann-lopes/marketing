@@ -2,13 +2,17 @@ package com.north.producoes.controller.dto.response;
 
 import com.north.producoes.entity.FinanceEntity;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 public record FinanceResponseDTO(
         Long id,
-        Long client,
+        Long clientId,
         String description,
-        Double value,
+        BigDecimal value,
         String status,
-        String expirationDate
+        LocalDateTime expirationDate,
+        String type
 ) {
     public static FinanceResponseDTO from(FinanceEntity entity) {
         return new FinanceResponseDTO(
@@ -17,7 +21,8 @@ public record FinanceResponseDTO(
                 entity.getDescription(),
                 entity.getValue(),
                 entity.getStatus().name(),
-                entity.getExpirationDate().toString()
+                entity.getExpirationDate(),
+                entity.getType() != null ? entity.getType().name() : null
         );
     }
 }

@@ -1,8 +1,10 @@
 package com.north.producoes.service;
 
+import com.north.producoes.controller.dto.request.FinanceRequestDTO;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.FinanceEntity;
 import com.north.producoes.entity.enums.FinanceStatusEnum;
+import com.north.producoes.entity.enums.FinanceTypeEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.FinanceRepository;
@@ -14,11 +16,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,14 +49,11 @@ class FinanceServiceTest {
         @Test
         @DisplayName("deve retornar todos os registros financeiros")
         void shouldReturnAllFinances() {
-            // Arrange
             FinanceEntity finance = finance(10L, client(1L), FinanceStatusEnum.PENDING);
             when(financeRepository.findAll()).thenReturn(List.of(finance));
 
-            // Act
             List<FinanceEntity> result = financeService.findAll();
 
-            // Assert
             assertThat(result)
                     .hasSize(1)
                     .extracting(FinanceEntity::getId)
@@ -66,14 +69,11 @@ class FinanceServiceTest {
         @Test
         @DisplayName("deve retornar registros financeiros quando status existir")
         void shouldReturnFinancesWhenStatusExists() {
-            // Arrange
             FinanceEntity finance = finance(10L, client(1L), FinanceStatusEnum.PENDING);
             when(financeRepository.findByStatus(FinanceStatusEnum.PENDING)).thenReturn(List.of(finance));
 
-            // Act
             List<FinanceEntity> result = financeService.findByStatus(FinanceStatusEnum.PENDING);
 
-            // Assert
             assertThat(result)
                     .hasSize(1)
                     .extracting(FinanceEntity::getStatus)
@@ -81,15 +81,13 @@ class FinanceServiceTest {
         }
 
         @Test
-        @DisplayName("deve lançar ResourceNotFoundException quando status não tiver registros")
-        void shouldThrowWhenStatusHasNoFinances() {
-            // Arrange
+        @DisplayName("deve retornar lista vazia quando não existirem registros com o status")
+        void shouldReturnEmptyListWhenNoFinancesWithStatus() {
             when(financeRepository.findByStatus(FinanceStatusEnum.PAY)).thenReturn(List.of());
 
-            // Act & Assert
-            assertThatThrownBy(() -> financeService.findByStatus(FinanceStatusEnum.PAY))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Conta com status");
+            List<FinanceEntity> result = financeService.findByStatus(FinanceStatusEnum.PAY);
+
+            assertThat(result).isEmpty();
         }
     }
 
@@ -100,15 +98,12 @@ class FinanceServiceTest {
         @Test
         @DisplayName("deve retornar registros financeiros do cliente")
         void shouldReturnFinancesWhenClientExists() {
-            // Arrange
             ClientEntity client = client(1L);
             FinanceEntity finance = finance(10L, client, FinanceStatusEnum.PENDING);
             when(financeRepository.findByClientId(1L)).thenReturn(List.of(finance));
 
-            // Act
             List<FinanceEntity> result = financeService.findByClientId(1L);
 
-            // Assert
             assertThat(result)
                     .hasSize(1)
                     .extracting(FinanceEntity::getClient)
@@ -117,15 +112,13 @@ class FinanceServiceTest {
         }
 
         @Test
-        @DisplayName("deve lançar ResourceNotFoundException quando cliente não tiver registros")
-        void shouldThrowWhenClientHasNoFinances() {
-            // Arrange
+        @DisplayName("deve retornar lista vazia quando cliente não tiver registros")
+        void shouldReturnEmptyListWhenClientHasNoFinances() {
             when(financeRepository.findByClientId(99L)).thenReturn(List.of());
 
-            // Act & Assert
-            assertThatThrownBy(() -> financeService.findByClientId(99L))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("99");
+            List<FinanceEntity> result = financeService.findByClientId(99L);
+
+            assertThat(result).isEmpty();
         }
     }
 
@@ -134,18 +127,38 @@ class FinanceServiceTest {
     class SaveFinance {
 
         @Test
-        @DisplayName("deve salvar registro financeiro")
+        @DisplayName("deve salvar registro financeiro simples")
         void shouldSaveFinance() {
-            // Arrange
-            FinanceEntity finance = finance(10L, client(1L), FinanceStatusEnum.PENDING);
-            when(financeRepository.save(finance)).thenReturn(finance);
+            ClientEntity client = client(1L);
+            FinanceRequestDTO dto = new FinanceRequestDTO(
+                    1L, "Mensalidade", BigDecimal.valueOf(1500),
+                    FinanceStatusEnum.PENDING, null,
+                    LocalDate.of(2026, 5, 10), null
+            );
+            when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
+            when(financeRepository.save(any(FinanceEntity.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
 
-            // Act
-            FinanceEntity result = financeService.saveFinance(finance);
+            FinanceEntity result = financeService.saveFinance(dto, null);
 
-            // Assert
-            assertThat(result).isSameAs(finance);
-            verify(financeRepository).save(finance);
+            assertThat(result.getValue()).isEqualByComparingTo(BigDecimal.valueOf(1500));
+            assertThat(result.getClient()).isEqualTo(client);
+            verify(financeRepository).save(any(FinanceEntity.class));
+        }
+
+        @Test
+        @DisplayName("deve lançar ResourceNotFoundException quando cliente não existir")
+        void shouldThrowWhenClientNotFound() {
+            FinanceRequestDTO dto = new FinanceRequestDTO(
+                    99L, "Mensalidade", BigDecimal.valueOf(1500),
+                    null, null, LocalDate.of(2026, 5, 10), null
+            );
+            when(clientRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> financeService.saveFinance(dto, null))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("99");
+            verify(financeRepository, never()).save(any());
         }
     }
 
@@ -154,34 +167,40 @@ class FinanceServiceTest {
     class UpdateFinance {
 
         @Test
-        @DisplayName("deve atualizar o id e salvar quando registro existir")
+        @DisplayName("deve atualizar registro quando existir")
         void shouldUpdateFinanceWhenExists() {
-            // Arrange
-            FinanceEntity finance = finance(5L, client(1L), FinanceStatusEnum.PENDING);
-            when(financeRepository.existsById(5L)).thenReturn(true);
-            when(financeRepository.save(finance)).thenReturn(finance);
+            ClientEntity client = client(1L);
+            FinanceEntity existing = finance(10L, client, FinanceStatusEnum.PENDING);
+            FinanceRequestDTO dto = new FinanceRequestDTO(
+                    1L, "Novo descritivo", BigDecimal.valueOf(2000),
+                    FinanceStatusEnum.PENDING, null,
+                    LocalDate.of(2026, 6, 10), null
+            );
+            when(financeRepository.findById(10L)).thenReturn(Optional.of(existing));
+            when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
+            when(financeRepository.save(existing)).thenReturn(existing);
 
-            // Act
-            FinanceEntity result = financeService.updateFinance(10L, finance);
+            FinanceEntity result = financeService.updateFinance(10L, dto);
 
-            // Assert
-            assertThat(result.getId()).isEqualTo(10L);
-            verify(financeRepository).existsById(5L);
-            verify(financeRepository).save(finance);
+            assertThat(result.getValue()).isEqualByComparingTo(BigDecimal.valueOf(2000));
+            assertThat(result.getDescription()).isEqualTo("Novo descritivo");
+            verify(financeRepository).findById(10L);
+            verify(financeRepository).save(existing);
         }
 
         @Test
         @DisplayName("deve lançar ResourceNotFoundException quando registro não existir")
         void shouldThrowWhenFinanceDoesNotExist() {
-            // Arrange
-            FinanceEntity finance = finance(99L, client(1L), FinanceStatusEnum.PENDING);
-            when(financeRepository.existsById(99L)).thenReturn(false);
+            FinanceRequestDTO dto = new FinanceRequestDTO(
+                    1L, "Descritivo", BigDecimal.valueOf(1500),
+                    null, null, LocalDate.of(2026, 5, 10), null
+            );
+            when(financeRepository.findById(99L)).thenReturn(Optional.empty());
 
-            // Act & Assert
-            assertThatThrownBy(() -> financeService.updateFinance(10L, finance))
+            assertThatThrownBy(() -> financeService.updateFinance(99L, dto))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("99");
-            verify(financeRepository, never()).save(finance);
+            verify(financeRepository, never()).save(any());
         }
     }
 
@@ -192,23 +211,18 @@ class FinanceServiceTest {
         @Test
         @DisplayName("deve deletar registro financeiro quando existir")
         void shouldDeleteFinanceWhenExists() {
-            // Arrange
             when(financeRepository.existsById(10L)).thenReturn(true);
 
-            // Act
             financeService.deleteFinanceById(10L);
 
-            // Assert
             verify(financeRepository).deleteById(10L);
         }
 
         @Test
         @DisplayName("deve lançar ResourceNotFoundException quando registro não existir")
         void shouldThrowWhenFinanceDoesNotExist() {
-            // Arrange
             when(financeRepository.existsById(99L)).thenReturn(false);
 
-            // Act & Assert
             assertThatThrownBy(() -> financeService.deleteFinanceById(99L))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("99");
@@ -228,10 +242,10 @@ class FinanceServiceTest {
         finance.setId(id);
         finance.setClient(client);
         finance.setDescription("Mensalidade");
-        finance.setValue(1500.0);
+        finance.setValue(BigDecimal.valueOf(1500));
         finance.setStatus(status);
-        finance.setExpirationDate(LocalDateTime.of(2026, 5, 10, 12, 0));
-        finance.setPaymentDate(LocalDateTime.of(2026, 5, 11, 12, 0));
+        finance.setExpirationDate(LocalDateTime.of(2026, 5, 10, 0, 0));
+        finance.setPaymentDate(LocalDateTime.of(2026, 5, 10, 0, 0));
         return finance;
     }
 }

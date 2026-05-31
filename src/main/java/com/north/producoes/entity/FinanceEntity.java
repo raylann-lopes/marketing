@@ -1,6 +1,7 @@
 package com.north.producoes.entity;
 
 import com.north.producoes.entity.enums.FinanceStatusEnum;
+import com.north.producoes.entity.enums.FinanceTypeEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -32,12 +34,16 @@ public class FinanceEntity {
     @Column
     private String description;
 
-    @Column(nullable = false)
-    private Double value;
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal value;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private FinanceStatusEnum status = FinanceStatusEnum.PENDING;
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    private FinanceTypeEnum type;
 
     @Column(nullable = false)
     private LocalDateTime expirationDate;
