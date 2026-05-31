@@ -96,7 +96,10 @@ public class WhatsAppNotificationService {
             sb.append("\n*Legenda sugerida:*\n").append(approve.getCaption()).append("\n");
         }
 
-        sb.append("\n✅ Responda *SIM* para aprovar\n❌ Responda *NÃO* para rejeitar");
+        sb.append("\n↩️ *Responda ESTA mensagem* com:\n")
+          .append("✅ *SIM* para aprovar\n")
+          .append("❌ *NÃO* para rejeitar\n\n")
+          .append("_⚠️ É necessário citar esta mensagem para que o sistema reconheça sua resposta._");
         return sb.toString();
     }
 
