@@ -91,6 +91,10 @@ public class MediaService {
         approve.setStatus(ApproveStatusEnum.PENDING);
         approve.setApprovedAt(null);
         approve.setApprovedUser("");
+        // Invalida stanza ID antigo — enquetes anteriores no grupo não serão mais aceitas
+        approve.setWhatsappStanzaId(null);
+        approve.setWhatsappSentAt(null);
+        approve.setWhatsappResponseText(null);
         approve = approveRepository.save(approve);
 
         post.setStatus(PostStatusEnum.WAITING_APPROVAL);
