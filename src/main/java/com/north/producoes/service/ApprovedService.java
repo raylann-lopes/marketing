@@ -17,9 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -29,7 +27,7 @@ public class ApprovedService {
     private final ApproveRepository approveRepository;
     private final PostRepository postRepository;
     private final S3Service s3Service;
-    private final N8nWebhookService n8nWebhookService;
+    private final WhatsAppNotificationService whatsAppNotificationService;
 
     public Optional<ApproveEntity> findById(Long id) {
         if (!approveRepository.existsById(id)) {
@@ -39,27 +37,26 @@ public class ApprovedService {
     }
 
     public List<ApproveEntity> findApproveByStatus(ApproveStatusEnum status) {
-        List<ApproveEntity> approveStatus = approveRepository.findApproveEntitiesByStatus(status);
-        if (approveStatus.isEmpty()) {
+        List<ApproveEntity> result = approveRepository.findApproveEntitiesByStatus(status);
+        if (result.isEmpty()) {
             throw new ResourceNotFoundException("Nenhum post encontrado com status: " + status);
         }
-        return approveStatus;
+        return result;
     }
 
     public ApproveEntity saveApprove(ApproveRequestDTO dto) {
         PostEntity post = postRepository.findById(dto.postId())
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + dto.postId()));
 
-        // Verifica se já existe uma aprovação para este post para evitar erro de UNIQUE constraint
         ApproveEntity approve = approveRepository.findByPostId(dto.postId()).stream().findFirst()
                 .orElse(new ApproveEntity());
-        
+
         approve.setPost(post);
         approve.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
         approve.setArtName(dto.artName());
         approve.setCaption(dto.caption());
         approve.setStatus(ApproveStatusEnum.PENDING);
-        
+
         if (approve.getId() == null) {
             approve.setApprovedUser("");
         }
@@ -75,10 +72,12 @@ public class ApprovedService {
 
     public ApproveEntity updateApprove(Long id, ApproveRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Nenhum registro de aprovação encontrado com id: " + id));
 
         PostEntity post = postRepository.findById(dto.postId())
-                .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + dto.postId()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Post não encontrado com id: " + dto.postId()));
 
         existing.setPost(post);
         existing.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
@@ -105,50 +104,54 @@ public class ApprovedService {
 
     public ApproveEntity updateWhatsappMetadata(Long id, ApproveWhatsAppUpdateRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Nenhum registro de aprovação encontrado com id: " + id));
 
-        if (dto.stanzaId() != null) existing.setWhatsappStanzaId(dto.stanzaId());
-        if (dto.sentAt() != null) existing.setWhatsappSentAt(dto.sentAt());
+        if (dto.stanzaId() != null)             existing.setWhatsappStanzaId(dto.stanzaId());
+        if (dto.sentAt() != null)               existing.setWhatsappSentAt(dto.sentAt());
         if (dto.whatsappResponseText() != null) existing.setWhatsappResponseText(dto.whatsappResponseText());
-        if (dto.approvedUser() != null) existing.setApprovedUser(dto.approvedUser());
+        if (dto.approvedUser() != null)         existing.setApprovedUser(dto.approvedUser());
 
         return approveRepository.save(existing);
     }
 
+    /**
+     * Atualiza status de aprovação via callback externo (ex.: integração WhatsApp).
+     * APPROVE → muda post para SCHEDULE.
+     * REJECTED → notifica grupo WhatsApp diretamente.
+     */
     public ApproveEntity updateApprovalStatus(Long id, ApproveStatusUpdateRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Nenhum registro de aprovação encontrado com id: " + id));
 
         if (dto.status() == ApproveStatusEnum.PENDING) {
             throw new IllegalArgumentException("Endpoint interno aceita apenas status APPROVE ou REJECTED");
         }
 
         existing.setStatus(dto.status());
+
         if (dto.status() == ApproveStatusEnum.APPROVE) {
             existing.setApprovedAt(LocalDateTime.now());
-            existing.setApprovedUser(dto.approvedUser() != null ? dto.approvedUser() : "n8n-callback");
+            existing.setApprovedUser(dto.approvedUser() != null ? dto.approvedUser() : "system");
 
-            // Quando o cliente aprova, o post entra em agendamento automático
             PostEntity post = existing.getPost();
             if (post != null) {
+                rescheduleIfPastDue(post);
                 post.setStatus(PostStatusEnum.SCHEDULE);
                 postRepository.save(post);
             }
+
         } else if (dto.status() == ApproveStatusEnum.REJECTED) {
             existing.setApprovedAt(null);
             existing.setApprovedUser("");
-            
-            // Notificar rejeição no grupo (via n8n)
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("event", "POST_REJECTED_BY_CLIENT");
-            payload.put("postId", existing.getPost().getId());
-            payload.put("postTitle", existing.getPost().getTitle());
-            payload.put("clientName", existing.getPost().getClient().getName());
-            payload.put("rejectionReason", existing.getWhatsappResponseText());
-            n8nWebhookService.dispatchPostRejected(payload);
-        } else {
-            existing.setApprovedAt(null);
-            existing.setApprovedUser("");
+
+            PostEntity post = existing.getPost();
+            if (post != null) {
+                // Notifica rejeição diretamente no WhatsApp
+                whatsAppNotificationService.sendRejectionNotification(
+                        post.getClient(), post, existing.getWhatsappResponseText());
+            }
         }
 
         return approveRepository.save(existing);
@@ -169,7 +172,7 @@ public class ApprovedService {
             PostEntity post = existing.getPost();
             if (dto.scheduledAt() != null) {
                 post.setScheduledAt(dto.scheduledAt());
-                post.setStatus(PostStatusEnum.FINISHED); // Mudar para FINISHED para que o admin envie ao cliente
+                post.setStatus(PostStatusEnum.FINISHED);
                 postRepository.save(post);
             }
             existing.setInternalRevisionNotes(dto.internalRevisionNotes());
@@ -193,11 +196,9 @@ public class ApprovedService {
         existing.setRejectedAt(LocalDateTime.now());
         existing.setRejectedBy(username);
         existing.setRejectionReason(reason);
-
         existing.setApprovedAt(null);
         existing.setApprovedUser("");
 
-        // Atualiza o status do Post para REJECTED
         PostEntity post = existing.getPost();
         if (post != null) {
             post.setStatus(PostStatusEnum.REJECTED);
@@ -207,7 +208,7 @@ public class ApprovedService {
         return approveRepository.save(existing);
     }
 
-    // Métodos que retornam DTO diretamente (usados pelo ApproveController)
+    // DTO-level methods used by ApproveController
     public List<ApproveResponseDTO> findAll() {
         return approveRepository.findAll().stream().map(ApproveResponseDTO::from).toList();
     }
@@ -216,7 +217,8 @@ public class ApprovedService {
         return approveRepository.findByPostId(postId).stream()
                 .findFirst()
                 .map(ApproveResponseDTO::from)
-                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma aprovação encontrada para o post: " + postId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Nenhuma aprovação encontrada para o post: " + postId));
     }
 
     public List<ApproveResponseDTO> findByStatus(ApproveStatusEnum status) {
@@ -232,15 +234,36 @@ public class ApprovedService {
         return ApproveResponseDTO.from(updateApprove(id, dto));
     }
 
-    private String normalizePublicS3Key(String s3Key) {
-        if (!StringUtils.hasText(s3Key)) {
-            throw new IllegalArgumentException("artS3Key e obrigatoria");
+    /**
+     * Se a data agendada já passou, reagenda para HOJE no mesmo horário.
+     * Se o horário de hoje também já passou, agenda para daqui a 1 minuto.
+     */
+    private void rescheduleIfPastDue(PostEntity post) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime scheduledAt = post.getScheduledAt();
+        if (scheduledAt == null || !scheduledAt.toLocalDate().isBefore(now.toLocalDate())) return;
+
+        LocalDateTime todayAtSameTime = now
+                .withHour(scheduledAt.getHour())
+                .withMinute(scheduledAt.getMinute())
+                .withSecond(0)
+                .withNano(0);
+
+        if (todayAtSameTime.isBefore(now)) {
+            todayAtSameTime = now.plusMinutes(1);
         }
 
+        post.setScheduledAt(todayAtSameTime);
+    }
+
+    private String normalizePublicS3Key(String s3Key) {
+        if (!StringUtils.hasText(s3Key)) {
+            throw new IllegalArgumentException("artS3Key é obrigatória");
+        }
         String normalized = s3Key.trim();
         if (!s3Service.isPublicKey(normalized)) {
             throw new IllegalArgumentException(
-                    "artS3Key deve usar o prefixo publico " + s3Service.getPublicPrefix() + "/");
+                    "artS3Key deve usar o prefixo público " + s3Service.getPublicPrefix() + "/");
         }
         return normalized;
     }
