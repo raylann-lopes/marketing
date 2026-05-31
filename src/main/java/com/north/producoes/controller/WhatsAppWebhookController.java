@@ -232,7 +232,8 @@ public class WhatsAppWebhookController {
         PostEntity post = approval.getPost();
         if (post != null) {
             log.info("[Webhook] ❌ Post ID {} REJEITADO. Notificando grupo.", post.getId());
-            whatsAppNotificationService.sendRejectionNotification(post.getClient(), post, null);
+            whatsAppNotificationService.sendRejectionNotification(
+                    post.getClient().getId(), post.getId(), null);
         }
     }
 

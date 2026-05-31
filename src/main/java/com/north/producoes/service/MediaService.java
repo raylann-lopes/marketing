@@ -98,7 +98,9 @@ public class MediaService {
 
         // Dispara notificação WhatsApp diretamente — sem N8N
         String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
-        whatsAppNotificationService.sendApprovalRequest(post.getClient(), post, approve, mediaUrl);
+        // Passa IDs — a thread @Async re-busca as entidades com sessão JPA própria
+        whatsAppNotificationService.sendApprovalRequest(
+                post.getClient().getId(), post.getId(), approve.getId(), mediaUrl);
 
         return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), true);
     }

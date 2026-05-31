@@ -153,9 +153,8 @@ public class ApprovedService {
 
             PostEntity post = existing.getPost();
             if (post != null) {
-                // Notifica rejeição diretamente no WhatsApp
                 whatsAppNotificationService.sendRejectionNotification(
-                        post.getClient(), post, existing.getWhatsappResponseText());
+                        post.getClient().getId(), post.getId(), existing.getWhatsappResponseText());
             }
         }
 
