@@ -7,7 +7,7 @@ import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.AccountConfigRepository;
 import com.north.producoes.repository.ClientRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 

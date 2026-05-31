@@ -8,7 +8,7 @@ import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;

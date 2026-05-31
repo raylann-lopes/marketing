@@ -12,7 +12,7 @@ import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.PostRepository;
 import com.north.producoes.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
