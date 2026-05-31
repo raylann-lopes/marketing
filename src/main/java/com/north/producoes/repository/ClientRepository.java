@@ -17,4 +17,7 @@ public interface ClientRepository extends JpaRepository<ClientEntity, Long> {
     boolean existsByEmailAndIdNot(String email, Long id);
     boolean existsByNumberAndIdNot(String number, Long id);
     List<ClientEntity> findByStatus(ClientStatusEnum status);
+
+    /** Substitui findAll().stream().filter(monthlyValue > 0) — filtra no banco, não na JVM */
+    List<ClientEntity> findByMonthlyValueGreaterThan(java.math.BigDecimal value);
 }

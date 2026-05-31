@@ -13,10 +13,19 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * Cliente HTTP para a Meta Graph API.
+ *
+ * Segurança: o access_token é enviado exclusivamente no header
+ * "Authorization: Bearer" — NUNCA como query parameter — para evitar
+ * que apareça em logs de proxy/load balancer ou no histórico do navegador.
+ */
 @Component
 @RequiredArgsConstructor
 public class MetaGraphClient {
-    private static final String PAGE_FIELDS = "id,name,access_token,instagram_business_account{id,username,name}";
+
+    private static final String PAGE_FIELDS =
+            "id,name,access_token,instagram_business_account{id,username,name}";
 
     private final RestClient metaGraphRestClient;
 
@@ -30,13 +39,10 @@ public class MetaGraphClient {
         if (!StringUtils.hasText(accessToken)) {
             throw new MetaGraphIntegrationException("Token da Meta Graph API nao configurado.");
         }
-
         try {
             return metaGraphRestClient.get()
-                    .uri("/{apiVersion}/me/accounts?fields={fields}&access_token={accessToken}",
-                            apiVersion,
-                            PAGE_FIELDS,
-                            accessToken)
+                    .uri("/{apiVersion}/me/accounts?fields={fields}", apiVersion, PAGE_FIELDS)
+                    .header("Authorization", "Bearer " + accessToken)
                     .retrieve()
                     .body(MetaAccountsResponseDTO.class);
         } catch (RestClientException ex) {
@@ -44,20 +50,14 @@ public class MetaGraphClient {
         }
     }
 
-    public MetaContainerIdResponseDTO createContainer(String igUserId, String imageUrl, String caption, String accessToken) {
-        if (!StringUtils.hasText(accessToken)) {
-            throw new MetaGraphIntegrationException("Token da Meta Graph API nao configurado.");
-        }
-
-        MetaContainerRequestDTO request = new MetaContainerRequestDTO(imageUrl, caption, accessToken);
-
+    public MetaContainerIdResponseDTO createContainer(String igUserId, String imageUrl,
+                                                       String caption, String clientAccessToken) {
+        validateToken(clientAccessToken);
         try {
             return metaGraphRestClient.post()
-                    .uri("/{apiVersion}/{igUserId}/media?access_token={accessToken}",
-                            apiVersion,
-                            igUserId,
-                            accessToken)
-                    .body(request)
+                    .uri("/{apiVersion}/{igUserId}/media", apiVersion, igUserId)
+                    .header("Authorization", "Bearer " + clientAccessToken)
+                    .body(new MetaContainerRequestDTO(imageUrl, caption))
                     .retrieve()
                     .body(MetaContainerIdResponseDTO.class);
         } catch (RestClientException ex) {
@@ -65,42 +65,40 @@ public class MetaGraphClient {
         }
     }
 
-    public MetaContainerStatusResponseDTO checkContainerStatus(String igContainerId, String accessToken) {
-        if (!StringUtils.hasText(accessToken)) {
-            throw new MetaGraphIntegrationException("Token da Meta Graph API nao configurado");
-        }
-
+    public MetaContainerStatusResponseDTO checkContainerStatus(String igContainerId,
+                                                                String clientAccessToken) {
+        validateToken(clientAccessToken);
         try {
             return metaGraphRestClient.get()
-                    .uri("/{apiVersion}/{igContainerId}?fields=status_code&access_token={accessToken}",
-                            apiVersion,
-                            igContainerId,
-                            accessToken)
+                    .uri("/{apiVersion}/{igContainerId}?fields=status_code", apiVersion, igContainerId)
+                    .header("Authorization", "Bearer " + clientAccessToken)
                     .retrieve()
                     .body(MetaContainerStatusResponseDTO.class);
         } catch (RestClientException ex) {
-            throw new MetaGraphIntegrationException("Falha ao consultar status do container na Meta Graph API.", ex);
+            throw new MetaGraphIntegrationException(
+                    "Falha ao consultar status do container na Meta Graph API.", ex);
         }
     }
 
-    public MetaContainerIdResponseDTO publish(String igUserId, String creationId, String accessToken){
-        if (!StringUtils.hasText(accessToken)) {
-            throw new MetaGraphIntegrationException("Token da Meta Graph API nao configurado");
-        }
-
-        MetaPublishRequestDTO request = new MetaPublishRequestDTO(creationId, accessToken);
-
+    public MetaContainerIdResponseDTO publish(String igUserId, String creationId,
+                                               String clientAccessToken) {
+        validateToken(clientAccessToken);
         try {
             return metaGraphRestClient.post()
-                    .uri("/{apiVersion}/{igUserId}/media_publish?access_token={accessToken}",
-                            apiVersion,
-                            igUserId,
-                            accessToken)
-                    .body(request)
+                    .uri("/{apiVersion}/{igUserId}/media_publish", apiVersion, igUserId)
+                    .header("Authorization", "Bearer " + clientAccessToken)
+                    .body(new MetaPublishRequestDTO(creationId))
                     .retrieve()
                     .body(MetaContainerIdResponseDTO.class);
         } catch (RestClientException ex) {
-            throw new MetaGraphIntegrationException("Falha ao publicar container na Meta Graph API.", ex);
+            throw new MetaGraphIntegrationException(
+                    "Falha ao publicar container na Meta Graph API.", ex);
+        }
+    }
+
+    private void validateToken(String token) {
+        if (!StringUtils.hasText(token)) {
+            throw new MetaGraphIntegrationException("Token da Meta Graph API nao configurado.");
         }
     }
 }

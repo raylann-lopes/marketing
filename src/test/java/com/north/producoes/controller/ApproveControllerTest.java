@@ -5,9 +5,10 @@ import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.PostEntity;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import com.north.producoes.entity.enums.PostStatusEnum;
-import com.north.producoes.repository.ApproveRepository;
+import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.service.ApprovedService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,24 +31,18 @@ import static org.mockito.Mockito.when;
 class ApproveControllerTest {
 
     @Mock
-    private ApproveRepository approveRepository;
-
-    @Mock
     private ApprovedService approvedService;
 
     @InjectMocks
     private ApproveController approveController;
 
     @Test
-    @DisplayName("deve retornar todas as aprovações")
+    @DisplayName("deve retornar todas as aprovações (ADMIN)")
     void shouldReturnAllApprovals() {
-        // Arrange
-        when(approveRepository.findAll()).thenReturn(List.of(approval(5L)));
+        when(approvedService.findAll()).thenReturn(List.of(ApproveResponseDTO.from(approval(5L))));
 
-        // Act
         ResponseEntity<List<ApproveResponseDTO>> response = approveController.findAll();
 
-        // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
                 .hasSize(1)
@@ -56,29 +51,27 @@ class ApproveControllerTest {
     }
 
     @Test
-    @DisplayName("deve retornar 404 quando aprovação por post não existir")
-    void shouldReturnNotFoundWhenApprovalByPostDoesNotExist() {
-        // Arrange
-        when(approveRepository.findByPostId(10L)).thenReturn(List.of());
+    @DisplayName("deve retornar aprovação por postId com usuário autenticado")
+    void shouldReturnApprovalByPostId() {
+        UserEntity admin = user(1L, UserRoleEnum.ADMIN);
+        ApproveResponseDTO dto = ApproveResponseDTO.from(approval(5L));
+        when(approvedService.findByPostId(10L, admin)).thenReturn(dto);
 
-        // Act
-        ResponseEntity<ApproveResponseDTO> response = approveController.findByPostId(10L);
+        ResponseEntity<ApproveResponseDTO> response = approveController.findByPostId(10L, admin);
 
-        // Assert
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().id()).isEqualTo(5L);
     }
 
     @Test
     @DisplayName("deve criar aprovação com status 201")
     void shouldCreateApprovalWithCreatedStatus() {
-        // Arrange
         ApproveRequestDTO request = new ApproveRequestDTO(10L, "public/posts/1/10/art.png", "art.png", "Legenda");
-        when(approvedService.saveApprove(request)).thenReturn(approval(5L));
+        when(approvedService.saveApproveDTO(request)).thenReturn(ApproveResponseDTO.from(approval(5L)));
 
-        // Act
         ResponseEntity<ApproveResponseDTO> response = approveController.saveApprove(request);
 
-        // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().id()).isEqualTo(5L);
@@ -87,10 +80,8 @@ class ApproveControllerTest {
     @Test
     @DisplayName("deve deletar aprovação com status 204")
     void shouldDeleteApprovalWithNoContentStatus() {
-        // Act
         ResponseEntity<Void> response = approveController.deleteApproveById(5L);
 
-        // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         verify(approvedService).deleteApproveById(5L);
     }
@@ -110,7 +101,6 @@ class ApproveControllerTest {
     private static PostEntity post(Long id) {
         ClientEntity client = new ClientEntity();
         client.setId(1L);
-
         PostEntity post = new PostEntity();
         post.setId(id);
         post.setTitle("Titulo");
@@ -120,5 +110,12 @@ class ApproveControllerTest {
         post.setScheduledAt(LocalDateTime.of(2026, 5, 10, 10, 0));
         post.setClient(client);
         return post;
+    }
+
+    private static UserEntity user(Long id, UserRoleEnum role) {
+        UserEntity user = new UserEntity();
+        user.setId(id);
+        user.setRole(role);
+        return user;
     }
 }

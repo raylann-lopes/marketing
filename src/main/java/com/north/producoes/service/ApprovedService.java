@@ -7,12 +7,17 @@ import com.north.producoes.controller.dto.request.InternalApprovalRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import com.north.producoes.entity.enums.PostStatusEnum;
+import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.PostRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -213,6 +218,26 @@ public class ApprovedService {
         return approveRepository.findAll().stream().map(ApproveResponseDTO::from).toList();
     }
 
+    /**
+     * Busca aprovação por postId com verificação de ownership.
+     * ADMIN vê qualquer aprovação; USER só vê aprovações de posts próprios.
+     */
+    public ApproveResponseDTO findByPostId(Long postId, UserEntity currentUser) {
+        ApproveEntity approve = approveRepository.findByPostId(postId).stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Nenhuma aprovação encontrada para o post: " + postId));
+
+        if (currentUser.getRole() != UserRoleEnum.ADMIN) {
+            boolean owns = postRepository.existsByIdAndUserId(postId, currentUser.getId());
+            if (!owns) {
+                throw new AccessDeniedException("Sem permissão para acessar esta aprovação.");
+            }
+        }
+        return ApproveResponseDTO.from(approve);
+    }
+
+    /** @deprecated Usar findByPostId(postId, currentUser) com verificação de ownership */
     public ApproveResponseDTO findByPostId(Long postId) {
         return approveRepository.findByPostId(postId).stream()
                 .findFirst()

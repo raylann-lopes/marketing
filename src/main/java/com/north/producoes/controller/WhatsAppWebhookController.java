@@ -20,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -76,13 +79,16 @@ public class WhatsAppWebhookController {
                       "Defina a variável de ambiente e reinicie a aplicação.");
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
-        if (!webhookSecret.equals(secret)) {
-            log.warn("[Webhook] Secret inválido. Verifique a URL configurada na Evolution API.");
+        // Comparação constant-time — previne timing attack para deduzir o secret
+        if (!MessageDigest.isEqual(
+                secret.getBytes(StandardCharsets.UTF_8),
+                webhookSecret.getBytes(StandardCharsets.UTF_8))) {
+            log.warn("[Webhook] Secret inválido recebido.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        // 2. Loga payload cru para diagnóstico
-        log.info("[Webhook] ← Payload: {}", rawBody);
+        // Loga apenas metadados — nunca o payload cru (PII: número, nome, texto do grupo)
+        log.info("[Webhook] ← Requisição recebida | tamanho: {} bytes", rawBody.length());
 
         // 3. Deserializa
         EvolutionWebhookEventDTO event;

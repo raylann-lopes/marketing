@@ -153,9 +153,8 @@ public class FinanceService {
     }
 
     public ForecastResponseDTO getForecast(int year) {
-        List<ClientEntity> allClients = clientRepository.findAll().stream()
-                .filter(c -> c.getMonthlyValue() != null && c.getMonthlyValue().compareTo(BigDecimal.ZERO) > 0)
-                .toList();
+        // Filtra no banco — não carrega a tabela inteira de clientes na JVM
+        List<ClientEntity> allClients = clientRepository.findByMonthlyValueGreaterThan(BigDecimal.ZERO);
 
         List<ClientEntity> activeClients = allClients.stream()
                 .filter(c -> c.getStatus() == ClientStatusEnum.ACTIVE)
