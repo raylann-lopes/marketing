@@ -41,6 +41,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
                         // Rotas internas protegidas pelo InternalApiKeyFilter, não por JWT
                         .requestMatchers("/api/internal/**").permitAll()
+                        // Webhook da Evolution API — autenticação via secret na URL
+                        .requestMatchers("/api/webhooks/whatsapp/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
 
@@ -68,8 +70,16 @@ public class SecurityConfig {
         webConfig.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Internal-Api-Key"));
         webConfig.setAllowCredentials(true);
 
+        // Webhook Evolution API: server-to-server, sem restrição de origem
+        CorsConfiguration webhookConfig = new CorsConfiguration();
+        webhookConfig.setAllowedOriginPatterns(List.of("*"));
+        webhookConfig.setAllowedMethods(List.of("POST", "OPTIONS"));
+        webhookConfig.setAllowedHeaders(List.of("*"));
+        webhookConfig.setAllowCredentials(false);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/internal/**", internalConfig);
+        source.registerCorsConfiguration("/api/webhooks/**", webhookConfig);
         source.registerCorsConfiguration("/**", webConfig);
         return source;
     }
