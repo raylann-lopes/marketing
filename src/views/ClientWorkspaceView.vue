@@ -267,7 +267,7 @@ watch(clientId, () => {
 
   detailsDraft.value = {
     ...defaultDetailsFromClient(client.value),
-    ...(detailsByClient.value[clientId.value] || {}),
+    ...detailsByClient.value[clientId.value],
   }
 }, { immediate: true })
 

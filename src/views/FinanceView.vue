@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { Plus, CheckCircle, Pencil, Trash2, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { Plus, CheckCircle, Pencil, Trash2, ChevronLeft, ChevronRight, TrendingUp, ChevronDown } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button.vue'
 import FinanceStats from '@/components/finance/FinanceStats.vue'
 import FinanceModal from '@/components/finance/FinanceModal.vue'
 
-import { financeService, type FinancePayload, type FinanceRecord, type ForecastData } from '@/services/financeService'
+import { financeService, type FinancePayload, type FinanceRecord, type ForecastData, type FinanceType } from '@/services/financeService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
@@ -26,12 +26,41 @@ const netProfit = ref(0)
 const search = ref('')
 const feedback = useFeedback()
 
+const periodDropdownRef = ref<HTMLElement | null>(null)
+const typeDropdownRef = ref<HTMLElement | null>(null)
+const showPeriodDropdown = ref(false)
+const showTypeDropdown = ref(false)
+
+const periodOptions = [
+  { key: 'open',   label: 'Em Aberto' },
+  { key: 'future', label: 'Futuras' },
+  { key: 'all',    label: 'Todas' },
+] as const
+
+const typeOptions = [
+  { key: 'all',              label: 'Todos os Tipos' },
+  { key: 'FIXED_REVENUE',    label: 'Receita Fixa' },
+  { key: 'VARIABLE_REVENUE', label: 'Receita Variável' },
+  { key: 'FIXED_EXPENSE',    label: 'Despesa Fixa' },
+  { key: 'VARIABLE_EXPENSE', label: 'Despesa Variável' },
+] as const
+
+function handleClickOutside(event: MouseEvent) {
+  if (periodDropdownRef.value && !periodDropdownRef.value.contains(event.target as Node)) {
+    showPeriodDropdown.value = false
+  }
+  if (typeDropdownRef.value && !typeDropdownRef.value.contains(event.target as Node)) {
+    showTypeDropdown.value = false
+  }
+}
+
 const activeTab = ref<'transactions' | 'forecast'>('transactions')
 const forecast = ref<ForecastData | null>(null)
 const loadingForecast = ref(false)
 const forecastError = ref('')
 const forecastYear = ref(new Date().getFullYear())
 const transactionFilter = ref<'open' | 'future' | 'all'>('open')
+const typeFilter = ref<FinanceType | 'all'>('all')
 
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -44,9 +73,13 @@ const baseTransactions = computed(() => {
   return transactions.value.filter(t => {
     if (t.status === 'PAY') return false
     const exp = new Date(t.expirationDate)
-    if (transactionFilter.value === 'open') return exp <= endOfCurrentMonth
-    if (transactionFilter.value === 'future') return exp > endOfCurrentMonth
-    return true // 'all'
+    const periodOk = transactionFilter.value === 'open'
+      ? exp <= endOfCurrentMonth
+      : transactionFilter.value === 'future'
+        ? exp > endOfCurrentMonth
+        : true
+    const typeOk = typeFilter.value === 'all' || t.type === typeFilter.value
+    return periodOk && typeOk
   }).sort((a, b) => {
     // Vencidas primeiro, depois por data
     const expA = new Date(a.expirationDate)
@@ -120,7 +153,8 @@ const newTransaction = ref({
   description: '',
   value: 0,
   status: 'PENDING',
-  expirationDate: new Date().toISOString().split('T')[0] || ''
+  expirationDate: new Date().toISOString().split('T')[0] || '',
+  type: '' as FinanceType | ''
 })
 
 const editTransaction = ref({
@@ -128,7 +162,8 @@ const editTransaction = ref({
   description: '',
   value: 0,
   status: 'PENDING',
-  expirationDate: new Date().toISOString().split('T')[0] || ''
+  expirationDate: new Date().toISOString().split('T')[0] || '',
+  type: '' as FinanceType | ''
 })
 
 const financeSchema = z.object({
@@ -144,7 +179,8 @@ function openFinanceModal() {
     description: '',
     value: 0,
     status: 'PENDING',
-    expirationDate: new Date().toISOString().split('T')[0] || ''
+    expirationDate: new Date().toISOString().split('T')[0] || '',
+    type: ''
   }
   fieldErrors.value = {}
   isModalOpen.value = true
@@ -158,7 +194,8 @@ function openEditTransactionModal(t: FinanceRecord) {
     description: t.description,
     value: t.value,
     status: t.status,
-    expirationDate: t.expirationDate?.split('T')[0] ?? new Date().toISOString().split('T')[0] ?? ''
+    expirationDate: t.expirationDate?.split('T')[0] ?? new Date().toISOString().split('T')[0] ?? '',
+    type: (t.type as FinanceType | '') ?? ''
   }
   editFieldErrors.value = {}
   isEditModalOpen.value = true
@@ -209,7 +246,8 @@ async function handleCreateTransaction() {
       value: newTransaction.value.value,
       status: newTransaction.value.status,
       expirationDate: newTransaction.value.expirationDate + "T00:00:00",
-      paymentDate: newTransaction.value.expirationDate + "T00:00:00"
+      paymentDate: newTransaction.value.expirationDate + "T00:00:00",
+      type: newTransaction.value.type || null
     }
     await financeService.create(payload as FinancePayload)
     await fetchTransactions()
@@ -244,7 +282,8 @@ async function handleEditTransaction() {
       value: editTransaction.value.value,
       status: editTransaction.value.status,
       expirationDate: editTransaction.value.expirationDate + "T00:00:00",
-      paymentDate: editTransaction.value.expirationDate + "T00:00:00"
+      paymentDate: editTransaction.value.expirationDate + "T00:00:00",
+      type: editTransaction.value.type || null
     }
     await financeService.update(transactionToEdit.value!.id!, payload as FinancePayload)
     await fetchTransactions()
@@ -364,6 +403,11 @@ const grandTotal = computed(() => {
 
 onMounted(() => {
   fetchTransactions()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 
 function formatCurrency(value: number): string {
@@ -379,6 +423,17 @@ function formatDate(dateStr: string) {
   if (!dateStr) return '-'
   const d = new Date(dateStr)
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
+
+const TYPE_LABELS: Record<string, { label: string; class: string }> = {
+  FIXED_REVENUE:    { label: 'Receita Fixa',     class: 'bg-green-100 text-green-700' },
+  VARIABLE_REVENUE: { label: 'Receita Variável', class: 'bg-emerald-100 text-emerald-700' },
+  FIXED_EXPENSE:    { label: 'Despesa Fixa',     class: 'bg-red-100 text-red-700' },
+  VARIABLE_EXPENSE: { label: 'Despesa Variável', class: 'bg-orange-100 text-orange-700' },
+}
+
+function getTypeLabel(type?: string | null) {
+  return type ? TYPE_LABELS[type] : null
 }
 
 function isOverdue(t: FinanceRecord): boolean {
@@ -557,24 +612,54 @@ function isOverdue(t: FinanceRecord): boolean {
           <h2 class="font-semibold text-gray-900">Contas a Receber</h2>
           <p class="text-xs text-gray-400 mt-0.5">Mensalidades pendentes dos clientes ativos</p>
         </div>
-        <div class="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            v-for="opt in [
-              { key: 'open', label: 'Em Aberto' },
-              { key: 'future', label: 'Futuras' },
-              { key: 'all', label: 'Todas' },
-            ]"
-            :key="opt.key"
-            :class="[
-              'px-3 py-1.5 rounded-md text-xs font-semibold transition-colors',
-              transactionFilter === opt.key
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            ]"
-            @click="transactionFilter = opt.key as 'open' | 'future' | 'all'; currentPage = 1"
-          >
-            {{ opt.label }}
-          </button>
+        <div class="flex items-center gap-2">
+          <!-- Filtro de período -->
+          <div class="relative" ref="periodDropdownRef">
+            <button
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              @click.stop="showPeriodDropdown = !showPeriodDropdown; showTypeDropdown = false"
+            >
+              {{ periodOptions.find(o => o.key === transactionFilter)?.label }}
+              <ChevronDown class="w-3 h-3" />
+            </button>
+            <div
+              v-if="showPeriodDropdown"
+              class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[140px] py-1"
+            >
+              <button
+                v-for="opt in periodOptions"
+                :key="opt.key"
+                :class="['w-full text-left px-4 py-2 text-xs font-semibold transition-colors', transactionFilter === opt.key ? 'text-primary bg-indigo-50' : 'text-gray-600 hover:bg-gray-50']"
+                @click="transactionFilter = opt.key as 'open' | 'future' | 'all'; showPeriodDropdown = false; currentPage = 1"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Filtro de tipo -->
+          <div class="relative" ref="typeDropdownRef">
+            <button
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              @click.stop="showTypeDropdown = !showTypeDropdown; showPeriodDropdown = false"
+            >
+              {{ typeOptions.find(o => o.key === typeFilter)?.label }}
+              <ChevronDown class="w-3 h-3" />
+            </button>
+            <div
+              v-if="showTypeDropdown"
+              class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[160px] py-1"
+            >
+              <button
+                v-for="opt in typeOptions"
+                :key="opt.key"
+                :class="['w-full text-left px-4 py-2 text-xs font-semibold transition-colors', typeFilter === opt.key ? 'text-primary bg-indigo-50' : 'text-gray-600 hover:bg-gray-50']"
+                @click="typeFilter = opt.key as FinanceType | 'all'; showTypeDropdown = false; currentPage = 1"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
         </div>
         <p v-if="error" class="text-xs text-red-500 font-medium">{{ error }}</p>
       </div>
@@ -583,6 +668,7 @@ function isOverdue(t: FinanceRecord): boolean {
           <tr class="border-b border-gray-100">
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Descrição</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Cliente</th>
+            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Tipo</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Vencimento</th>
             <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
             <th class="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Valor</th>
@@ -590,16 +676,25 @@ function isOverdue(t: FinanceRecord): boolean {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="6" class="text-center py-8">
+          <tr v-if="loading"><td colspan="7" class="text-center py-8">
             <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
           </td></tr>
-          <tr v-else-if="paginatedTransactions.length === 0"><td colspan="6" class="text-center py-8 text-gray-500 text-sm italic">
+          <tr v-else-if="paginatedTransactions.length === 0"><td colspan="7" class="text-center py-8 text-gray-500 text-sm italic">
             {{ transactionFilter === 'open' ? 'Nenhuma conta em aberto.' : transactionFilter === 'future' ? 'Nenhuma conta futura.' : 'Nenhuma transação encontrada.' }}
           </td></tr>
           <tr v-else v-for="t in paginatedTransactions" :key="t.id" :class="['border-b border-gray-50 transition-colors', isOverdue(t) ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-gray-50']">
             <td class="px-5 py-4 text-sm font-medium text-gray-800">{{ t.description }}</td>
             <td class="px-5 py-4 text-sm text-gray-500">
               {{ getClientName((t as unknown as { client: { id: number } }).client?.id ?? t.client) }}
+            </td>
+            <td class="px-5 py-4">
+              <span
+                v-if="getTypeLabel(t.type)"
+                :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full', getTypeLabel(t.type)!.class]"
+              >
+                {{ getTypeLabel(t.type)!.label }}
+              </span>
+              <span v-else class="text-xs text-gray-300">—</span>
             </td>
             <td :class="['px-5 py-4 text-sm', isOverdue(t) ? 'text-red-600 font-semibold' : 'text-gray-500']">
               {{ formatDate(t.expirationDate) }}

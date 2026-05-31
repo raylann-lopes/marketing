@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Eye, ChevronDown, Pencil, Sparkles, Image, AlertTriangle, Send, Clock } from 'lucide-vue-next'
+import {
+  Eye,
+  ChevronDown,
+  Pencil,
+  Sparkles,
+  Image,
+  AlertTriangle,
+  Send,
+  Clock,
+} from 'lucide-vue-next'
 import Avatar from '@/components/ui/Avatar.vue'
-import { type Post, getPostId, getPostClientId } from '@/services/postService'
+import { type Post } from '@/services/postService'
 import type { PostApproval } from '@/services/approvalService'
 
 interface Props {
@@ -39,28 +48,50 @@ function formatSentAt(dateStr?: string) {
   if (!dateStr) return ''
   try {
     const date = new Date(dateStr)
-    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   } catch (e) {
     return dateStr
   }
 }
 
-const canShowReference = computed(() => ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].includes(props.columnId))
+const canShowReference = computed(() =>
+  ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].includes(props.columnId),
+)
 </script>
 
 <template>
-  <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group">
-    <div v-if="card.isUrgent" class="mb-2 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-red-50 border border-red-100 animate-pulse">
+  <div
+    class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group"
+  >
+    <div
+      v-if="card.isUrgent"
+      class="mb-2 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-red-50 border border-red-100 animate-pulse"
+    >
       <AlertTriangle class="w-3 h-3 text-red-500" />
       <span class="text-[9px] font-bold text-red-600 uppercase tracking-wider">URGENTE</span>
     </div>
 
     <div class="flex items-start justify-between gap-2 mb-3">
       <div class="flex flex-wrap items-center gap-1.5 min-w-0">
-        <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full uppercase leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis', columnTheme.clientBadge]">
+        <span
+          :class="[
+            'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis',
+            columnTheme.clientBadge,
+          ]"
+        >
           {{ clientName }}
         </span>
-        <div v-if="canShowReference && card.referenceImageS3Key" @click.stop="$emit('viewReference')" class="cursor-pointer p-1 rounded-md bg-amber-50 border border-amber-100" title="Ver imagem de referência">
+        <div
+          v-if="canShowReference && card.referenceImageS3Key"
+          @click.stop="$emit('viewReference')"
+          class="cursor-pointer p-1 rounded-md bg-amber-50 border border-amber-100"
+          title="Ver imagem de referência"
+        >
           <Image class="w-3 h-3 text-amber-600" />
         </div>
       </div>
@@ -77,7 +108,9 @@ const canShowReference = computed(() => ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].
           class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
           :title="isExpanded ? 'Ocultar dados' : 'Expandir dados'"
         >
-          <ChevronDown :class="['w-3.5 h-3.5 transition-transform', isExpanded ? 'rotate-180' : '']" />
+          <ChevronDown
+            :class="['w-3.5 h-3.5 transition-transform', isExpanded ? 'rotate-180' : '']"
+          />
         </button>
         <button
           @click.stop="$emit('edit')"
@@ -157,8 +190,18 @@ const canShowReference = computed(() => ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].
             <p class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Tipo</p>
             <p class="mt-0.5 font-semibold text-gray-700 truncate">{{ postTypeLabel }}</p>
           </div>
-          <Avatar v-if="card.userId" :name="'U' + card.userId" size="sm" class="w-6 h-6 shrink-0 text-[10px]" />
-          <div v-else class="w-6 h-6 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 border border-gray-200">-</div>
+          <Avatar
+            v-if="card.userId"
+            :name="'U' + card.userId"
+            size="sm"
+            class="w-6 h-6 shrink-0 text-[10px]"
+          />
+          <div
+            v-else
+            class="w-6 h-6 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 border border-gray-200"
+          >
+            -
+          </div>
         </div>
       </div>
       <div class="col-span-2 rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
@@ -171,29 +214,38 @@ const canShowReference = computed(() => ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].
 
     <!-- Botões de ação na Demanda -->
     <div v-if="columnId === 'DEMAND'" class="mt-3">
-      <button 
+      <button
         v-if="!card.referenceImageS3Key"
         @click.stop="$emit('addReference')"
-        :class="['w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
+        :class="[
+          'w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all',
+          columnTheme.primaryButton,
+        ]"
       >
         <Image class="w-3 h-3" />
         ADD REFERÊNCIA
       </button>
 
-      <button 
+      <button
         v-else
         @click.stop="$emit('addReference')"
-        :class="['w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
+        :class="[
+          'w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all',
+          columnTheme.primaryButton,
+        ]"
       >
         <Pencil class="w-3 h-3" />
         ALTERAR REFERÊNCIA
       </button>
     </div>
 
-    <button 
+    <button
       v-if="columnId === 'IN_PRODUCTION'"
       @click.stop="$emit('prepareApproval')"
-      :class="['mt-3 w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
+      :class="[
+        'mt-3 w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all',
+        columnTheme.primaryButton,
+      ]"
     >
       <Sparkles class="w-3 h-3" />
       {{ approval ? 'EDITAR APROVAÇÃO' : 'PREPARAR APROVAÇÃO' }}
@@ -203,7 +255,10 @@ const canShowReference = computed(() => ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].
       <button
         v-if="!approval"
         @click.stop="$emit('prepareApproval')"
-        :class="['w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all', columnTheme.primaryButton]"
+        :class="[
+          'w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all',
+          columnTheme.primaryButton,
+        ]"
       >
         <Sparkles class="w-3 h-3" />
         PREPARAR APROVAÇÃO
@@ -213,7 +268,10 @@ const canShowReference = computed(() => ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].
         v-else
         @click.stop="$emit('internalReview')"
         :disabled="isSendingApproval"
-        :class="['w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed', columnTheme.primaryButton]"
+        :class="[
+          'w-full py-1.5 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed',
+          columnTheme.primaryButton,
+        ]"
       >
         <Eye class="w-3 h-3" />
         APROVAÇÃO INTERNA

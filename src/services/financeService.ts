@@ -1,6 +1,7 @@
 import { apiFetch } from '@/lib/api'
 
 export type FinanceStatus = 'PENDING' | 'PAY'
+export type FinanceType = 'FIXED_EXPENSE' | 'VARIABLE_EXPENSE' | 'FIXED_REVENUE' | 'VARIABLE_REVENUE'
 
 export type ForecastClientMonth = { expected: number; received: number; pending: number }
 export type ForecastClient = {
@@ -21,6 +22,7 @@ export type FinanceRecord = {
   value: number
   status: FinanceStatus | string
   expirationDate: string
+  type?: FinanceType | string | null
 }
 
 export type FinancePayload = {
@@ -32,6 +34,7 @@ export type FinancePayload = {
   status: FinanceStatus | string
   expirationDate: string
   paymentDate: string
+  type?: FinanceType | string | null
 }
 
 export const financeService = {
@@ -67,5 +70,9 @@ export const financeService = {
   async getForecast(year?: number): Promise<ForecastData> {
     const params = year ? `?year=${year}` : ''
     return apiFetch<ForecastData>(`/api/finance/forecast${params}`)
+  },
+
+  async getByType(type: FinanceType): Promise<FinanceRecord[]> {
+    return apiFetch<FinanceRecord[]>(`/api/finance/type/${type}`)
   }
 }
