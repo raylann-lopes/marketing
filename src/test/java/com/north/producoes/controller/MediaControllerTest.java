@@ -70,7 +70,7 @@ class MediaControllerTest {
     void shouldReturnPreviewUrl() {
         // Arrange
         UserEntity user = user();
-        MediaUrlResponseDTO serviceResponse = new MediaUrlResponseDTO(5L, 10L, "https://cdn.example/art.png", "Legenda", null, null);
+        MediaUrlResponseDTO serviceResponse = new MediaUrlResponseDTO(5L, 10L, "https://cdn.example/art.png", "Legenda");
         when(mediaService.getArtPreviewUrl(10L, user)).thenReturn(serviceResponse);
 
         // Act
@@ -86,7 +86,7 @@ class MediaControllerTest {
     void shouldGetReferencePreviewUrl() {
         // Arrange
         UserEntity user = user();
-        MediaUrlResponseDTO response = new MediaUrlResponseDTO(null, 10L, "url", "caption", null, null);
+        MediaUrlResponseDTO response = new MediaUrlResponseDTO(null, 10L, "url", "caption");
         when(mediaService.getReferencePreviewUrl(10L, user)).thenReturn(response);
 
         // Act

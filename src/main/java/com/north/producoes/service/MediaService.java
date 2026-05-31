@@ -54,7 +54,7 @@ public class MediaService {
         }
         ApproveEntity approve = approvals.getFirst();
         String previewUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
-        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption(), null, null);
+        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption());
     }
 
     public MediaUrlResponseDTO getReferencePreviewUrl(Long postId, UserEntity user) {
@@ -63,7 +63,7 @@ public class MediaService {
             throw new ResourceNotFoundException("Nenhuma imagem de referência para o post ID: " + postId);
         }
         String previewUrl = s3Service.resolveReadUrl(post.getReferenceImageS3Key());
-        return new MediaUrlResponseDTO(null, postId, previewUrl, "Imagem de Referência", null, null);
+        return new MediaUrlResponseDTO(null, postId, previewUrl, "Imagem de Referência");
     }
 
     /**

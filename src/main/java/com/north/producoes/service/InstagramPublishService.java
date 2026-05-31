@@ -61,7 +61,7 @@ public class InstagramPublishService {
         String igUserId    = config.getIgUserId();
         String accessToken = config.getAccessToken(); // NUNCA logar
 
-        log.info("[Instagram] Iniciando publicação | cliente: {} | ig_user_id: {}", clientId, igUserId);
+        log.info("[Instagram] Iniciando publicação | cliente: {}", clientId);
 
         MetaContainerIdResponseDTO container =
                 metaGraphClient.createContainer(igUserId, imageUrl, caption, accessToken);

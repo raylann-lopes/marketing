@@ -144,7 +144,8 @@ class MediaServiceTest {
             assertThat(post.getStatus()).isEqualTo(PostStatusEnum.WAITING_APPROVAL);
 
             // Verifica que WhatsApp é acionado diretamente (sem N8N)
-            verify(whatsAppNotificationService).sendApprovalRequest(any(), any(), any(), any());
+            verify(whatsAppNotificationService).sendApprovalRequest(
+                    any(Long.class), any(Long.class), any(Long.class), any(String.class));
         }
 
         @Test
