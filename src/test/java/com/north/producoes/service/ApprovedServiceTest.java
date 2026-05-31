@@ -43,6 +43,9 @@ class ApprovedServiceTest {
     @Mock
     private S3Service s3Service;
 
+    @Mock
+    private WhatsAppNotificationService whatsAppNotificationService;
+
     @InjectMocks
     private ApprovedService approvedService;
 
@@ -149,7 +152,7 @@ class ApprovedServiceTest {
             // Assert
             assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.APPROVE);
             assertThat(result.getApprovedAt()).isNotNull();
-            assertThat(result.getApprovedUser()).isEqualTo("n8n-callback");
+            assertThat(result.getApprovedUser()).isEqualTo("system");
         }
 
         @Test
