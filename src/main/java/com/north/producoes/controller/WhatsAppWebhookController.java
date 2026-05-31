@@ -151,16 +151,15 @@ public class WhatsAppWebhookController {
             return;
         }
 
-        // Identifica a opção votada
-        List<EvolutionWebhookEventDTO.PollOption> selected =
-                poll.vote() != null ? poll.vote().selectedOptions() : List.of();
+        // selectedOptions é List<String> — Evolution API envia strings diretas
+        List<String> selected = poll.vote() != null ? poll.vote().selectedOptions() : List.of();
 
         if (selected == null || selected.isEmpty()) {
             log.info("[Webhook] Voto cancelado/removido na enquete. Ignorando.");
             return;
         }
 
-        String votedOption = selected.getFirst().name();
+        String votedOption = selected.getFirst();
         log.info("[Webhook] Voto recebido | aprovação ID={} | opção='{}'", approval.getId(), votedOption);
 
         if (WhatsAppNotificationService.OPTION_APPROVE.equals(votedOption)) {

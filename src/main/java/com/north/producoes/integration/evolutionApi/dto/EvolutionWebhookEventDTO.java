@@ -51,9 +51,7 @@ public record EvolutionWebhookEventDTO(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PollCreationKey(String remoteJid, Boolean fromMe, String id) {}
 
+    // Evolution API envia selectedOptions como array de strings: ["✅ Aprovar"]
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record PollVote(List<PollOption> selectedOptions) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record PollOption(String name) {}
+    public record PollVote(List<String> selectedOptions) {}
 }
