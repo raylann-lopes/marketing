@@ -3,6 +3,7 @@ package com.north.producoes.integration.evolutionApi;
 import com.north.producoes.exception.EvolutionApiIntegrationException;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionGroupApiResponseDTO;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionSendMediaDTO;
+import com.north.producoes.integration.evolutionApi.dto.EvolutionSendPollDTO;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionSendTextDTO;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionSentMessageDTO;
 import lombok.RequiredArgsConstructor;
@@ -86,6 +87,32 @@ public class EvolutionApiClient {
             return response != null && response.key() != null ? response.key().id() : null;
         } catch (RestClientException ex) {
             throw new EvolutionApiIntegrationException("Falha ao enviar mídia na Evolution API.", ex);
+        }
+    }
+
+    /**
+     * Envia uma enquete (poll) para um grupo WhatsApp.
+     * O cliente vota tocando em uma opção — não precisa digitar nada.
+     *
+     * @param groupId         ID do grupo (ex.: 120363...@g.us)
+     * @param question        Título/pergunta da enquete
+     * @param options         Opções disponíveis (máx. recomendado: 12)
+     * @param selectableCount Quantidade de opções que o usuário pode selecionar (1 = escolha única)
+     * @return stanza ID da enquete enviada (salvar para matching no webhook)
+     */
+    public String sendPollToGroup(String groupId, String question, List<String> options, int selectableCount) {
+        validate();
+        try {
+            EvolutionSentMessageDTO response = evolutionApiRestClient.post()
+                    .uri("/message/sendPoll/{instance}", instance)
+                    .header("apikey", apiKey)
+                    .body(new EvolutionSendPollDTO(groupId, question, selectableCount, options))
+                    .retrieve()
+                    .body(EvolutionSentMessageDTO.class);
+
+            return response != null && response.key() != null ? response.key().id() : null;
+        } catch (RestClientException ex) {
+            throw new EvolutionApiIntegrationException("Falha ao enviar enquete na Evolution API.", ex);
         }
     }
 

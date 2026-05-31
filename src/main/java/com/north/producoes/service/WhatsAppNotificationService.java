@@ -13,25 +13,34 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * Envia notificações WhatsApp diretamente via Evolution API.
- * Todos os métodos são @Async — não bloqueiam o fluxo principal.
+ * Todos os métodos públicos são @Async — não bloqueiam o fluxo principal.
  *
- * O groupId é SEMPRE obtido do cliente do post — nunca de parâmetro externo,
- * garantindo que a mensagem vá para o grupo correto.
+ * Fluxo de aprovação:
+ *   1. Envia imagem da arte com descrição do post
+ *   2. Envia enquete com opções "✅ Aprovar" e "❌ Rejeitar"
+ *   3. Salva o stanza ID da enquete → usado no webhook para matching preciso
+ *
+ * O cliente vota tocando em uma opção — sem risco de falsos positivos
+ * por conversas normais no grupo.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class WhatsAppNotificationService {
 
+    public static final String OPTION_APPROVE = "✅ Aprovar";
+    public static final String OPTION_REJECT  = "❌ Rejeitar";
+
     private final EvolutionApiClient evolutionApiClient;
-    private final ApproveRepository approveRepository;
+    private final ApproveRepository  approveRepository;
 
     /**
-     * Envia imagem + mensagem de aprovação para o grupo WhatsApp do cliente.
-     * Registra o stanza ID para rastrear a resposta.
+     * Envia a arte + enquete de aprovação para o grupo do cliente.
+     * O stanza ID da enquete é salvo no ApproveEntity para matching no webhook.
      */
     @Async
     public void sendApprovalRequest(ClientEntity client, PostEntity post,
@@ -42,13 +51,27 @@ public class WhatsAppNotificationService {
             return;
         }
 
-        String caption = buildApprovalMessage(post, approve);
-
         try {
-            String stanzaId = evolutionApiClient.sendMediaToGroup(groupId, mediaUrl, caption);
-            saveStanzaId(approve, stanzaId);
-            log.info("[WhatsApp] Aprovação enviada para grupo '{}' | Post ID: {} | Stanza: {}",
-                    client.getWhatsappGroupName(), post.getId(), stanzaId);
+            // Passo 1: envia a imagem da arte com descrição
+            String imageCaption = buildImageCaption(post, approve);
+            evolutionApiClient.sendMediaToGroup(groupId, mediaUrl, imageCaption);
+            log.info("[WhatsApp] Arte enviada | grupo: '{}' | Post ID: {}",
+                    client.getWhatsappGroupName(), post.getId());
+
+            // Passo 2: envia a enquete logo em seguida
+            String pollQuestion = buildPollQuestion(post);
+            String pollStanzaId = evolutionApiClient.sendPollToGroup(
+                    groupId,
+                    pollQuestion,
+                    List.of(OPTION_APPROVE, OPTION_REJECT),
+                    1 // seleção única
+            );
+
+            // Salva o stanza ID da enquete para identificar o voto no webhook
+            savePollStanzaId(approve, pollStanzaId);
+            log.info("[WhatsApp] Enquete enviada | Post ID: {} | Stanza: {}",
+                    post.getId(), pollStanzaId);
+
         } catch (Exception e) {
             log.error("[WhatsApp] Falha ao enviar aprovação para cliente '{}': {}",
                     client.getName(), e.getMessage(), e);
@@ -56,7 +79,7 @@ public class WhatsAppNotificationService {
     }
 
     /**
-     * Envia notificação de rejeição de post para o grupo WhatsApp do cliente.
+     * Envia notificação de rejeição de post para o grupo do cliente.
      */
     @Async
     public void sendRejectionNotification(ClientEntity client, PostEntity post, String rejectionReason) {
@@ -66,11 +89,9 @@ public class WhatsAppNotificationService {
             return;
         }
 
-        String message = buildRejectionMessage(post, rejectionReason);
-
         try {
-            evolutionApiClient.sendTextToGroup(groupId, message);
-            log.info("[WhatsApp] Rejeição notificada para grupo '{}' | Post ID: {}",
+            evolutionApiClient.sendTextToGroup(groupId, buildRejectionMessage(post, rejectionReason));
+            log.info("[WhatsApp] Rejeição notificada | grupo: '{}' | Post ID: {}",
                     client.getWhatsappGroupName(), post.getId());
         } catch (Exception e) {
             log.error("[WhatsApp] Falha ao notificar rejeição para cliente '{}': {}",
@@ -78,29 +99,29 @@ public class WhatsAppNotificationService {
         }
     }
 
-    private void saveStanzaId(ApproveEntity approve, String stanzaId) {
+    private void savePollStanzaId(ApproveEntity approve, String stanzaId) {
         if (!StringUtils.hasText(stanzaId) || approve.getId() == null) return;
         approve.setWhatsappStanzaId(stanzaId);
         approve.setWhatsappSentAt(LocalDateTime.now().toString());
         approveRepository.save(approve);
     }
 
-    private String buildApprovalMessage(PostEntity post, ApproveEntity approve) {
+    private String buildImageCaption(PostEntity post, ApproveEntity approve) {
         StringBuilder sb = new StringBuilder();
-        sb.append("📸 *Aprovação de Arte*\n\n");
+        sb.append("📸 *Nova arte para aprovação*\n\n");
         sb.append("*Post:* ").append(post.getTitle()).append("\n");
         sb.append("*Temática:* ").append(post.getTheme()).append("\n");
         sb.append("*Agendado para:* ").append(formatDate(post.getScheduledAt())).append("\n");
 
         if (StringUtils.hasText(approve.getCaption())) {
-            sb.append("\n*Legenda sugerida:*\n").append(approve.getCaption()).append("\n");
+            sb.append("\n*Legenda sugerida:*\n").append(approve.getCaption());
         }
 
-        sb.append("\n↩️ *Responda ESTA mensagem* com:\n")
-          .append("✅ *SIM* para aprovar\n")
-          .append("❌ *NÃO* para rejeitar\n\n")
-          .append("_⚠️ É necessário citar esta mensagem para que o sistema reconheça sua resposta._");
         return sb.toString();
+    }
+
+    private String buildPollQuestion(PostEntity post) {
+        return "📊 Aprovar arte do post: " + post.getTitle() + "?";
     }
 
     private String buildRejectionMessage(PostEntity post, String rejectionReason) {
