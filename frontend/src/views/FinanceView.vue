@@ -209,7 +209,7 @@ async function fetchTransactions() {
       financeService.getAll(),
       clientService.getAll()
     ])
-    
+
     interface ApiResponse<T> { data?: T[] }
     const list = Array.isArray(financeData) ? financeData : (((financeData as unknown) as ApiResponse<FinanceRecord>).data || [])
     transactions.value = list
@@ -228,7 +228,7 @@ async function fetchTransactions() {
 async function handleCreateTransaction() {
   fieldErrors.value = {}
   const result = financeSchema.safeParse(newTransaction.value)
-  
+
   if (!result.success) {
     result.error.issues.forEach(issue => {
       const key = issue.path[0] as string
@@ -539,63 +539,63 @@ function isOverdue(t: FinanceRecord): boolean {
           <div class="overflow-x-auto">
             <table class="w-full text-xs border-collapse min-w-[900px]">
               <thead>
-                <tr class="bg-[#EEF2FF]">
-                  <th class="text-left px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 sticky left-0 bg-[#EEF2FF] z-10 min-w-[160px]">Cliente</th>
-                  <th class="text-left px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[110px]">Segmento</th>
-                  <th
-                    v-for="m in forecast.months"
-                    :key="m.monthKey"
-                    class="text-center px-2 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[72px]"
-                  >
-                    {{ capitalizeFirst(m.monthLabel) }}
-                  </th>
-                  <th class="text-right px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[90px] bg-indigo-50">Total</th>
-                  <th class="text-right px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[80px] bg-indigo-50">Média</th>
-                </tr>
+              <tr class="bg-[#EEF2FF]">
+                <th class="text-left px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 sticky left-0 bg-[#EEF2FF] z-10 min-w-[160px]">Cliente</th>
+                <th class="text-left px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[110px]">Segmento</th>
+                <th
+                  v-for="m in forecast.months"
+                  :key="m.monthKey"
+                  class="text-center px-2 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[72px]"
+                >
+                  {{ capitalizeFirst(m.monthLabel) }}
+                </th>
+                <th class="text-right px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[90px] bg-indigo-50">Total</th>
+                <th class="text-right px-3 py-2.5 font-semibold text-gray-600 whitespace-nowrap border-b border-indigo-100 min-w-[80px] bg-indigo-50">Média</th>
+              </tr>
               </thead>
               <tbody>
-                <tr v-if="forecast.clients.length === 0">
-                  <td :colspan="16" class="text-center py-10 text-gray-400 italic">Nenhum cliente ativo com valor mensal.</td>
-                </tr>
-                <tr
-                  v-else
-                  v-for="c in forecast.clients"
-                  :key="c.clientId"
-                  :class="['transition-colors border-b border-gray-100', c.status === 'INACTIVE' ? 'bg-gray-50/70 opacity-70' : 'hover:bg-indigo-50/30']"
+              <tr v-if="forecast.clients.length === 0">
+                <td :colspan="16" class="text-center py-10 text-gray-400 italic">Nenhum cliente ativo com valor mensal.</td>
+              </tr>
+              <tr
+                v-else
+                v-for="c in forecast.clients"
+                :key="c.clientId"
+                :class="['transition-colors border-b border-gray-100', c.status === 'INACTIVE' ? 'bg-gray-50/70 opacity-70' : 'hover:bg-indigo-50/30']"
+              >
+                <td :class="['px-3 py-2 whitespace-nowrap sticky z-10', c.status === 'INACTIVE' ? 'left-0 bg-gray-50 text-gray-400 italic' : 'left-0 bg-white font-medium text-gray-800']">
+                  {{ c.clientName }}
+                  <span v-if="c.status === 'INACTIVE'" class="ml-1.5 text-[10px] font-semibold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full uppercase not-italic">inativo</span>
+                </td>
+                <td :class="['px-3 py-2 whitespace-nowrap', c.status === 'INACTIVE' ? 'text-gray-400 italic' : 'text-gray-500']">{{ c.niche }}</td>
+                <td
+                  v-for="m in forecast.months"
+                  :key="m.monthKey"
+                  :class="['px-2 py-2 text-center rounded-sm', cellClass(m.monthKey, c)]"
                 >
-                  <td :class="['px-3 py-2 whitespace-nowrap sticky z-10', c.status === 'INACTIVE' ? 'left-0 bg-gray-50 text-gray-400 italic' : 'left-0 bg-white font-medium text-gray-800']">
-                    {{ c.clientName }}
-                    <span v-if="c.status === 'INACTIVE'" class="ml-1.5 text-[10px] font-semibold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full uppercase not-italic">inativo</span>
-                  </td>
-                  <td :class="['px-3 py-2 whitespace-nowrap', c.status === 'INACTIVE' ? 'text-gray-400 italic' : 'text-gray-500']">{{ c.niche }}</td>
-                  <td
-                    v-for="m in forecast.months"
-                    :key="m.monthKey"
-                    :class="['px-2 py-2 text-center rounded-sm', cellClass(m.monthKey, c)]"
-                  >
-                    {{ cellValue(m.monthKey, c) }}
-                  </td>
-                  <td class="px-3 py-2 text-right font-bold text-gray-800 bg-indigo-50/50">
-                    {{ formatCurrencyCompact(clientTotal(c)) }}
-                  </td>
-                  <td class="px-3 py-2 text-right text-gray-600 bg-indigo-50/50">
-                    {{ formatCurrencyCompact(clientTotal(c) / 12) }}
-                  </td>
-                </tr>
+                  {{ cellValue(m.monthKey, c) }}
+                </td>
+                <td class="px-3 py-2 text-right font-bold text-gray-800 bg-indigo-50/50">
+                  {{ formatCurrencyCompact(clientTotal(c)) }}
+                </td>
+                <td class="px-3 py-2 text-right text-gray-600 bg-indigo-50/50">
+                  {{ formatCurrencyCompact(clientTotal(c) / 12) }}
+                </td>
+              </tr>
               </tbody>
               <tfoot>
-                <tr class="bg-[#EEF2FF] font-bold border-t-2 border-indigo-200">
-                  <td class="px-3 py-2.5 text-gray-700 uppercase text-xs sticky left-0 bg-[#EEF2FF] z-10" colspan="2">Total Receita de Clientes</td>
-                  <td
-                    v-for="m in forecast.months"
-                    :key="m.monthKey"
-                    class="px-2 py-2.5 text-center text-primary"
-                  >
-                    {{ formatCurrencyCompact(monthColTotal(m.monthKey)) }}
-                  </td>
-                  <td class="px-3 py-2.5 text-right text-primary">{{ formatCurrencyCompact(grandTotal) }}</td>
-                  <td class="px-3 py-2.5 text-right text-primary">{{ formatCurrencyCompact(grandTotal / 12) }}</td>
-                </tr>
+              <tr class="bg-[#EEF2FF] font-bold border-t-2 border-indigo-200">
+                <td class="px-3 py-2.5 text-gray-700 uppercase text-xs sticky left-0 bg-[#EEF2FF] z-10" colspan="2">Total Receita de Clientes</td>
+                <td
+                  v-for="m in forecast.months"
+                  :key="m.monthKey"
+                  class="px-2 py-2.5 text-center text-primary"
+                >
+                  {{ formatCurrencyCompact(monthColTotal(m.monthKey)) }}
+                </td>
+                <td class="px-3 py-2.5 text-right text-primary">{{ formatCurrencyCompact(grandTotal) }}</td>
+                <td class="px-3 py-2.5 text-right text-primary">{{ formatCurrencyCompact(grandTotal / 12) }}</td>
+              </tr>
               </tfoot>
             </table>
           </div>
@@ -665,93 +665,93 @@ function isOverdue(t: FinanceRecord): boolean {
       </div>
       <table class="w-full">
         <thead>
-          <tr class="border-b border-gray-100">
-            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Descrição</th>
-            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Cliente</th>
-            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Tipo</th>
-            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Vencimento</th>
-            <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
-            <th class="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Valor</th>
-            <th class="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Ações</th>
-          </tr>
+        <tr class="border-b border-gray-100">
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Descrição</th>
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Cliente</th>
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Tipo</th>
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Vencimento</th>
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
+          <th class="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Valor</th>
+          <th class="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Ações</th>
+        </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="text-center py-8">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-          </td></tr>
-          <tr v-else-if="paginatedTransactions.length === 0"><td colspan="7" class="text-center py-8 text-gray-500 text-sm italic">
-            {{ transactionFilter === 'open' ? 'Nenhuma conta em aberto.' : transactionFilter === 'future' ? 'Nenhuma conta futura.' : 'Nenhuma transação encontrada.' }}
-          </td></tr>
-          <tr v-else v-for="t in paginatedTransactions" :key="t.id" :class="['border-b border-gray-50 transition-colors', isOverdue(t) ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-gray-50']">
-            <td class="px-5 py-4 text-sm font-medium text-gray-800">{{ t.description }}</td>
-            <td class="px-5 py-4 text-sm text-gray-500">
-              {{ getClientName((t as unknown as { client: { id: number } }).client?.id ?? t.client) }}
-            </td>
-            <td class="px-5 py-4">
+        <tr v-if="loading"><td colspan="7" class="text-center py-8">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+        </td></tr>
+        <tr v-else-if="paginatedTransactions.length === 0"><td colspan="7" class="text-center py-8 text-gray-500 text-sm italic">
+          {{ transactionFilter === 'open' ? 'Nenhuma conta em aberto.' : transactionFilter === 'future' ? 'Nenhuma conta futura.' : 'Nenhuma transação encontrada.' }}
+        </td></tr>
+        <tr v-else v-for="t in paginatedTransactions" :key="t.id" :class="['border-b border-gray-50 transition-colors', isOverdue(t) ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-gray-50']">
+          <td class="px-5 py-4 text-sm font-medium text-gray-800">{{ t.description }}</td>
+          <td class="px-5 py-4 text-sm text-gray-500">
+            {{ getClientName((t as unknown as { client: { id: number } }).client?.id ?? t.client) }}
+          </td>
+          <td class="px-5 py-4">
               <span
                 v-if="getTypeLabel(t.type)"
                 :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full', getTypeLabel(t.type)!.class]"
               >
                 {{ getTypeLabel(t.type)!.label }}
               </span>
-              <span v-else class="text-xs text-gray-300">—</span>
-            </td>
-            <td :class="['px-5 py-4 text-sm', isOverdue(t) ? 'text-red-600 font-semibold' : 'text-gray-500']">
-              {{ formatDate(t.expirationDate) }}
-            </td>
-            <td class="px-5 py-4">
-              <Badge :variant="isOverdue(t) ? 'destructive' : 'warning'">
-                {{ isOverdue(t) ? 'VENCIDA' : 'PENDENTE' }}
-              </Badge>
-            </td>
-            <td :class="['px-5 py-4 text-sm font-semibold text-right', t.value >= 0 ? 'text-green-600' : 'text-red-500']">
-              {{ t.value >= 0 ? '+' : '' }}{{ formatCurrency(t.value) }}
-            </td>
-            <td class="px-5 py-4">
-              <div class="flex items-center justify-center gap-2">
-                <button
-                  class="p-1.5 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
-                  title="Receber"
-                  @click="handleMarkAsPaid(t)"
-                >
-                  <CheckCircle class="w-4 h-4" />
-                </button>
-                <button
-                  class="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
-                  title="Editar"
-                  @click="openEditTransactionModal(t)"
-                >
-                  <Pencil class="w-4 h-4" />
-                </button>
-                <button
-                  class="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors"
-                  title="Excluir"
-                  @click="handleDelete(t.id!)"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </button>
-              </div>
-            </td>
-          </tr>
+            <span v-else class="text-xs text-gray-300">—</span>
+          </td>
+          <td :class="['px-5 py-4 text-sm', isOverdue(t) ? 'text-red-600 font-semibold' : 'text-gray-500']">
+            {{ formatDate(t.expirationDate) }}
+          </td>
+          <td class="px-5 py-4">
+            <Badge :variant="isOverdue(t) ? 'destructive' : 'warning'">
+              {{ isOverdue(t) ? 'VENCIDA' : 'PENDENTE' }}
+            </Badge>
+          </td>
+          <td :class="['px-5 py-4 text-sm font-semibold text-right', t.value >= 0 ? 'text-green-600' : 'text-red-500']">
+            {{ t.value >= 0 ? '+' : '' }}{{ formatCurrency(t.value) }}
+          </td>
+          <td class="px-5 py-4">
+            <div class="flex items-center justify-center gap-2">
+              <button
+                class="p-1.5 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
+                title="Receber"
+                @click="handleMarkAsPaid(t)"
+              >
+                <CheckCircle class="w-4 h-4" />
+              </button>
+              <button
+                class="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
+                title="Editar"
+                @click="openEditTransactionModal(t)"
+              >
+                <Pencil class="w-4 h-4" />
+              </button>
+              <button
+                class="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors"
+                title="Excluir"
+                @click="handleDelete(t.id!)"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
+          </td>
+        </tr>
         </tbody>
       </table>
       <div v-if="filteredTransactions.length > itemsPerPage" class="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
         <p class="text-xs text-gray-500">
-          Mostrando <span class="font-semibold">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> a 
-          <span class="font-semibold">{{ Math.min(currentPage * itemsPerPage, filteredTransactions.length) }}</span> de 
+          Mostrando <span class="font-semibold">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> a
+          <span class="font-semibold">{{ Math.min(currentPage * itemsPerPage, filteredTransactions.length) }}</span> de
           <span class="font-semibold">{{ filteredTransactions.length }}</span> transações
         </p>
         <div class="flex items-center gap-2">
-          <button 
-            @click="prevPage" 
+          <button
+            @click="prevPage"
             :disabled="currentPage === 1"
             class="p-1 rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-primary hover:border-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <ChevronLeft class="w-4 h-4" />
           </button>
           <span class="text-xs font-bold text-gray-700 mx-2">Página {{ currentPage }} de {{ totalPages }}</span>
-          <button 
-            @click="nextPage" 
+          <button
+            @click="nextPage"
             :disabled="currentPage === totalPages"
             class="p-1 rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-primary hover:border-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
