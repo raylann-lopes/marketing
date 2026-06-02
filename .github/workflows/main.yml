@@ -85,8 +85,8 @@ jobs:
         with:
           context: ./frontend
           push: true
+          no-cache: true
           build-args: |
             VITE_API_BASE_URL=https://${{ vars.API_DOMAIN }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:latest
-          cache-from: type=gha
           cache-to: type=gha,mode=max
