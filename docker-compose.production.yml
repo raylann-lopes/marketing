@@ -65,7 +65,7 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.producoes-api.rule=Host(`api.agencianorth.com`)"
         - "traefik.http.routers.producoes-api.entrypoints=websecure"
-        - "traefik.http.routers.producoes-api.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.producoes-api.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.producoes-api.loadbalancer.server.port=8080"
 
   frontend:
@@ -87,7 +87,7 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.producoes-web.rule=Host(`agencianorth.com`)"
         - "traefik.http.routers.producoes-web.entrypoints=websecure"
-        - "traefik.http.routers.producoes-web.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.producoes-web.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.producoes-web.loadbalancer.server.port=80"
 
 networks:
