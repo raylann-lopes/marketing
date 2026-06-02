@@ -14,6 +14,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  ShieldCheck,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 import { ref } from 'vue'
@@ -54,6 +55,7 @@ function logout() {
 
 if (isAdmin) {
   navItems.push({ label: 'Financeiro', to: '/finance', icon: CreditCard })
+  navItems.push({ label: 'Usuários', to: '/admin/users', icon: ShieldCheck })
 }
 
 function toggleSidebar() {

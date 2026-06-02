@@ -18,6 +18,12 @@ export interface ChangePasswordPayload {
   newPassword: string
 }
 
+export interface CreateUserPayload {
+  name: string
+  email: string
+  password: string
+}
+
 export const userService = {
   async getMe(): Promise<UserProfile> {
     return apiFetch<UserProfile>('/api/users/me')
@@ -35,5 +41,27 @@ export const userService = {
       method: 'PUT',
       body: JSON.stringify(data)
     })
+  },
+
+  async listAll(page = 0, size = 50): Promise<UserProfile[]> {
+    return apiFetch<UserProfile[]>(`/api/users?page=${page}&size=${size}`)
+  },
+
+  async create(data: CreateUserPayload): Promise<UserProfile> {
+    return apiFetch<UserProfile>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  },
+
+  async updateRole(id: number, role: 'ADMIN' | 'USER'): Promise<UserProfile> {
+    return apiFetch<UserProfile>(`/api/users/id/${id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role })
+    })
+  },
+
+  async deleteById(id: number): Promise<void> {
+    return apiFetch<void>(`/api/users/id/${id}`, { method: 'DELETE' })
   }
 }

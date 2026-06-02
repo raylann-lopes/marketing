@@ -86,7 +86,5 @@ jobs:
           context: ./frontend
           push: true
           no-cache: true
-          build-args: |
-            VITE_API_BASE_URL=https://api.agencianorth.com
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:latest
           cache-to: type=gha,mode=max

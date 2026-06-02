@@ -20,6 +20,7 @@ const routes: RouteRecordRaw[] = [
     },
   },
   { path: '/finance', component: () => import('@/views/FinanceView.vue'), meta: { requiresAdmin: true } },
+  { path: '/admin/users', component: () => import('@/views/AdminUsersView.vue'), meta: { requiresAdmin: true } },
   { path: '/approvals', component: () => import('@/views/ApprovalsView.vue') },
   { path: '/settings', component: () => import('@/views/SettingsView.vue') },
 ]

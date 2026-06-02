@@ -1,6 +1,7 @@
 package com.north.producoes.controller;
 
 import com.north.producoes.controller.dto.request.ChangePasswordRequestDTO;
+import com.north.producoes.controller.dto.request.UpdateRoleRequestDTO;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.controller.dto.request.UserRequestDTO;
 import com.north.producoes.controller.dto.response.UserResponseDTO;
@@ -52,6 +53,17 @@ public class UserController {
         user.setPassword(request.password());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(UserResponseDTO.from(userService.saveUser(user)));
+    }
+
+    @PatchMapping("/id/{id}/role")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<UserResponseDTO> updateRole(@PathVariable Long id,
+                                                      @Valid @RequestBody UpdateRoleRequestDTO request,
+                                                      @AuthenticationPrincipal UserEntity currentUser) {
+        if (currentUser.getId().equals(id)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(UserResponseDTO.from(userService.updateRole(id, request.role())));
     }
 
     @DeleteMapping("/id/{id}")

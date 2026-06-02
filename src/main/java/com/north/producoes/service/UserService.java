@@ -89,6 +89,14 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
+    public UserEntity updateRole(Long userId, UserRoleEnum role) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + userId));
+        user.setRole(role);
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public void changePassword(Long userId, ChangePasswordRequestDTO dto) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + userId));
