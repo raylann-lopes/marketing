@@ -30,12 +30,6 @@ services:
     networks:
       - default
       - wize-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.producoes-api.rule=Host(`api.agencianorth.com`)"
-      - "traefik.http.routers.producoes-api.entrypoints=websecure"
-      - "traefik.http.routers.producoes-api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.producoes-api.loadbalancer.server.port=8080"
     environment:
       - TZ=America/Sao_Paulo
       - SPRING_PROFILES_ACTIVE=prod
@@ -67,6 +61,12 @@ services:
     deploy:
       restart_policy:
         condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.producoes-api.rule=Host(`api.agencianorth.com`)"
+        - "traefik.http.routers.producoes-api.entrypoints=websecure"
+        - "traefik.http.routers.producoes-api.tls.certresolver=letsencrypt"
+        - "traefik.http.services.producoes-api.loadbalancer.server.port=8080"
 
   frontend:
     image: ghcr.io/raylann-lopes/producoes-web:latest
@@ -75,12 +75,6 @@ services:
     networks:
       - default
       - wize-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.producoes-web.rule=Host(`agencianorth.com`)"
-      - "traefik.http.routers.producoes-web.entrypoints=websecure"
-      - "traefik.http.routers.producoes-web.tls.certresolver=letsencrypt"
-      - "traefik.http.services.producoes-web.loadbalancer.server.port=80"
     logging:
       driver: "json-file"
       options:
@@ -89,6 +83,12 @@ services:
     deploy:
       restart_policy:
         condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.producoes-web.rule=Host(`agencianorth.com`)"
+        - "traefik.http.routers.producoes-web.entrypoints=websecure"
+        - "traefik.http.routers.producoes-web.tls.certresolver=letsencrypt"
+        - "traefik.http.services.producoes-web.loadbalancer.server.port=80"
 
 networks:
   wize-net:
