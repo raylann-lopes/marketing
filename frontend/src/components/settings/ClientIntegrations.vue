@@ -23,7 +23,8 @@ interface Props {
 }
 
 defineProps<Props>()
-const emit = defineEmits<{
+
+defineEmits<{
   (e: 'fetchMetaAccounts'): void
   (e: 'fetchEvolutionGroups'): void
   (e: 'linkIntegrations'): void
@@ -43,7 +44,10 @@ function metaAccountTitle(account: MetaInstagramAccount) {
 
 function metaAccountOptionLabel(account: MetaInstagramAccount) {
   const title = metaAccountTitle(account)
-  const status = account.alreadyLinked && account.linkedClientName ? ` - vinculado a ${account.linkedClientName}` : ''
+  const status =
+    account.alreadyLinked && account.linkedClientName
+      ? ` - vinculado a ${account.linkedClientName}`
+      : ''
   return `${title} - ${account.pageName}${status}`
 }
 
@@ -53,8 +57,10 @@ function isGroupLinkedToAnotherClient(group: EvolutionGroup, clientId: string) {
 }
 
 function evolutionGroupOptionLabel(group: EvolutionGroup) {
-  const participants = typeof group.participantsCount === 'number' ? ` - ${group.participantsCount} participantes` : ''
-  const status = group.alreadyLinked && group.linkedClientName ? ` - vinculado a ${group.linkedClientName}` : ''
+  const participants =
+    typeof group.participantsCount === 'number' ? ` - ${group.participantsCount} participantes` : ''
+  const status =
+    group.alreadyLinked && group.linkedClientName ? ` - vinculado a ${group.linkedClientName}` : ''
   return `${group.groupName}${participants}${status}`
 }
 </script>
@@ -67,14 +73,26 @@ function evolutionGroupOptionLabel(group: EvolutionGroup) {
           <Link2 class="w-5 h-5 text-gray-500" />
           Integrações do cliente
         </h2>
-        <p class="text-sm text-gray-500 mt-1">Configure Instagram e grupo de envio no mesmo cliente.</p>
+        <p class="text-sm text-gray-500 mt-1">
+          Configure Instagram e grupo de envio no mesmo cliente.
+        </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" :disabled="loadingMetaAccounts" @click="$emit('fetchMetaAccounts')">
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="loadingMetaAccounts"
+          @click="$emit('fetchMetaAccounts')"
+        >
           <RefreshCw :class="['w-4 h-4', loadingMetaAccounts ? 'animate-spin' : '']" />
           {{ loadingMetaAccounts ? 'Buscando...' : 'Buscar Meta' }}
         </Button>
-        <Button variant="outline" size="sm" :disabled="loadingEvolutionGroups" @click="$emit('fetchEvolutionGroups')">
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="loadingEvolutionGroups"
+          @click="$emit('fetchEvolutionGroups')"
+        >
           <RefreshCw :class="['w-4 h-4', loadingEvolutionGroups ? 'animate-spin' : '']" />
           {{ loadingEvolutionGroups ? 'Buscando...' : 'Buscar grupos' }}
         </Button>
@@ -102,10 +120,14 @@ function evolutionGroupOptionLabel(group: EvolutionGroup) {
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-gray-500 uppercase">Conta encontrada na Meta</label>
+          <label class="text-xs font-semibold text-gray-500 uppercase"
+            >Conta encontrada na Meta</label
+          >
           <select
             :value="selectedMetaAccountKey"
-            @change="$emit('update:selectedMetaAccountKey', ($event.target as HTMLSelectElement).value)"
+            @change="
+              $emit('update:selectedMetaAccountKey', ($event.target as HTMLSelectElement).value)
+            "
             required
             class="w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
             :disabled="loadingMetaAccounts"
@@ -125,8 +147,12 @@ function evolutionGroupOptionLabel(group: EvolutionGroup) {
           </p>
         </div>
 
-        <div v-if="selectedMetaAccount" class="rounded-lg border border-pink-100 bg-pink-50 px-3 py-2 text-sm text-pink-800">
-          {{ metaAccountTitle(selectedMetaAccount) }} será vinculada usando a página {{ selectedMetaAccount.pageName }}.
+        <div
+          v-if="selectedMetaAccount"
+          class="rounded-lg border border-pink-100 bg-pink-50 px-3 py-2 text-sm text-pink-800"
+        >
+          {{ metaAccountTitle(selectedMetaAccount) }} será vinculada usando a página
+          {{ selectedMetaAccount.pageName }}.
         </div>
       </div>
 
@@ -140,7 +166,9 @@ function evolutionGroupOptionLabel(group: EvolutionGroup) {
           <label class="text-xs font-semibold text-gray-500 uppercase">Grupo do WhatsApp</label>
           <select
             :value="selectedEvolutionGroupId"
-            @change="$emit('update:selectedEvolutionGroupId', ($event.target as HTMLSelectElement).value)"
+            @change="
+              $emit('update:selectedEvolutionGroupId', ($event.target as HTMLSelectElement).value)
+            "
             required
             class="w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
             :disabled="loadingEvolutionGroups"
@@ -168,7 +196,19 @@ function evolutionGroupOptionLabel(group: EvolutionGroup) {
 
       <Button
         class="w-full"
-        :disabled="savingIntegrations || loadingMetaAccounts || loadingEvolutionGroups || !selectedClientId || !selectedMetaAccount || !selectedEvolutionGroup || !!selectedClientConfig || selectedMetaAccount?.alreadyLinked || (selectedEvolutionGroup ? isGroupLinkedToAnotherClient(selectedEvolutionGroup, selectedClientId) : false)"
+        :disabled="
+          savingIntegrations ||
+          loadingMetaAccounts ||
+          loadingEvolutionGroups ||
+          !selectedClientId ||
+          !selectedMetaAccount ||
+          !selectedEvolutionGroup ||
+          !!selectedClientConfig ||
+          selectedMetaAccount?.alreadyLinked ||
+          (selectedEvolutionGroup
+            ? isGroupLinkedToAnotherClient(selectedEvolutionGroup, selectedClientId)
+            : false)
+        "
         @click="$emit('linkIntegrations')"
       >
         <Link2 class="w-4 h-4" />

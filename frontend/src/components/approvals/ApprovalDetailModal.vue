@@ -15,7 +15,7 @@ interface Props {
 
 defineProps<Props>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void
   (e: 'approve'): void
   (e: 'reject'): void

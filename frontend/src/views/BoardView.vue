@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Button from '@/components/ui/Button.vue'
-import { postService, type Post, type PostStatus, getPostId, getPostClientId } from '@/services/postService'
+import { postService, type Post, type PostStatus, getPostClientId, type PostFormData } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
 import { approvalService, type PostApproval } from '@/services/approvalService'
 import { mediaService } from '@/services/mediaService'
@@ -17,6 +17,12 @@ import PostModal from '@/components/board/PostModal.vue'
 import ApprovalModal from '@/components/board/ApprovalModal.vue'
 import ArtPreviewModal from '@/components/board/ArtPreviewModal.vue'
 import ReferenceModal from '@/components/board/ReferenceModal.vue'
+
+type DraggableChangeEvent<T> = {
+  added?: { element: T; newIndex: number }
+  removed?: { element: T; oldIndex: number }
+  moved?: { element: T; newIndex: number; oldIndex: number }
+}
 
 type BoardColumn = {
   id: PostStatus | string
@@ -49,7 +55,6 @@ const columns = ref<BoardColumn[]>([
 const clients = ref<Client[]>([])
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
-const fieldErrors = ref<Record<string, string>>({})
 const postToEdit = ref<Post | null>(null)
 
 // Modal States
@@ -63,7 +68,7 @@ const approvalData = ref({
   artPreviewUrl: '',
   isUploading: false,
   isGenerating: false,
-  isSending: false
+  isSending: false,
 })
 
 const isReferenceModalOpen = ref(false)
@@ -73,14 +78,12 @@ const referenceData = ref({
   referenceName: '',
   referencePreviewUrl: '',
   isUploading: false,
-  isSaving: false
+  isSaving: false,
 })
 
 const feedback = useFeedback()
 const approvalsByPostId = ref<Record<string, PostApproval>>({})
-const sendingApprovalByPostId = ref<Record<string, boolean>>({})
 const expandedCardsByPostId = ref<Record<string, boolean>>({})
-const artPreviewUrlsByPostId = ref<Record<string, string>>({})
 
 const isArtPreviewModalOpen = ref(false)
 const artPreviewMode = ref<ArtPreviewMode>('preview')
@@ -160,15 +163,24 @@ function getColumnTheme(columnId: string): ColumnTheme {
 
 async function fetchInitialData() {
   try {
-    const [postsData, clientsData] = await Promise.all([postService.getAll(), clientService.getAll()])
+    const [postsData, clientsData] = await Promise.all([
+      postService.getAll(),
+      clientService.getAll(),
+    ])
 
-    interface ApiResponse<T> { data?: T[] }
-    const posts = Array.isArray(postsData) ? postsData : ((postsData as unknown as ApiResponse<Post>).data || [])
-    clients.value = Array.isArray(clientsData) ? clientsData : ((clientsData as unknown as ApiResponse<Client>).data || [])
+    interface ApiResponse<T> {
+      data?: T[]
+    }
+    const posts = Array.isArray(postsData)
+      ? postsData
+      : (postsData as unknown as ApiResponse<Post>).data || []
+    clients.value = Array.isArray(clientsData)
+      ? clientsData
+      : (clientsData as unknown as ApiResponse<Client>).data || []
 
-    columns.value.forEach(col => col.cards = [])
+    columns.value.forEach((col) => (col.cards = []))
     posts.forEach((post: Post) => {
-      const col = columns.value.find(c => c.id === post.status)
+      const col = columns.value.find((c) => c.id === post.status)
       if (col) col.cards.push(post)
     })
 
@@ -206,14 +218,19 @@ function getPriorityInfo(post: Post) {
   return { label: 'Normal', className: 'text-gray-600 bg-gray-50 border-gray-100' }
 }
 
-async function handleBoardChange(evt: any, columnId: string) {
+async function handleBoardChange(evt: DraggableChangeEvent<Post>, columnId: string) {
   if (evt.added) {
     const post = evt.added.element
     try {
-      const payload = { ...post, status: columnId, clientId: Number(getPostClientId(post)), userId: Number(getUserOrFallback()) }
+      const payload = {
+        ...post,
+        status: columnId,
+        clientId: Number(getPostClientId(post)),
+        userId: Number(getUserOrFallback()),
+      }
       await postService.update(post.id!, payload as unknown as Post)
       post.status = columnId
-    } catch (error) {
+    } catch {
       fetchInitialData()
     }
   }
@@ -226,26 +243,26 @@ async function handleDeletePost(post: Post) {
     isModalOpen.value = false
     await fetchInitialData()
     feedback.success('Demanda removida.')
-  } catch (e) {
+  } catch {
     feedback.error('Erro ao remover demanda.')
   }
 }
 
-async function handleSavePost(form: any) {
+async function handleSavePost(form: PostFormData) {
   isSubmitting.value = true
   try {
     const payload = {
       ...form,
-      scheduledAt: form.scheduledAt.length === 16 ? form.scheduledAt + ":00" : form.scheduledAt,
+      scheduledAt: form.scheduledAt.length === 16 ? form.scheduledAt + ':00' : form.scheduledAt,
       clientId: Number(form.clientId),
-      userId: Number(getUserOrFallback())
+      userId: Number(getUserOrFallback()),
     }
     if (postToEdit.value) await postService.update(postToEdit.value.id!, payload)
     else await postService.create(payload)
     await fetchInitialData()
     isModalOpen.value = false
     feedback.success('Post salvo com sucesso.')
-  } catch (e: unknown) {
+  } catch {
     feedback.error('Erro ao salvar post.')
   } finally {
     isSubmitting.value = false
@@ -270,7 +287,7 @@ async function openArtPreviewModal(post: Post, mode: ArtPreviewMode = 'preview')
 
   try {
     selectedArtPreviewUrl.value = await mediaService.getArtPreviewUrl(post.id!)
-  } catch (err) {
+  } catch {
     feedback.error('Erro ao carregar imagem.')
     isArtPreviewModalOpen.value = false
   } finally {
@@ -285,15 +302,27 @@ function closeArtPreviewModal() {
 async function openApprovalModal(post: Post) {
   selectedPostForApproval.value = post
   isApprovalModalOpen.value = true
-  approvalData.value = { caption: '', artS3Key: '', artName: '', artPreviewUrl: '', isUploading: false, isGenerating: false, isSending: false }
+  approvalData.value = {
+    caption: '',
+    artS3Key: '',
+    artName: '',
+    artPreviewUrl: '',
+    isUploading: false,
+    isGenerating: false,
+    isSending: false,
+  }
   const existing = getApprovalByPost(post)
   if (existing) {
     existingApprovalId.value = existing.id ?? null
     approvalData.value.caption = existing.caption
     approvalData.value.artS3Key = existing.artS3Key
     approvalData.value.artName = existing.artName
-    try { approvalData.value.artPreviewUrl = await mediaService.getArtPreviewUrl(post.id!) } catch (err) {}
-  } else { existingApprovalId.value = null }
+    try {
+      approvalData.value.artPreviewUrl = await mediaService.getArtPreviewUrl(post.id!)
+    } catch {}
+  } else {
+    existingApprovalId.value = null
+  }
 }
 
 async function handleFileSelect(event: Event) {
@@ -301,48 +330,85 @@ async function handleFileSelect(event: Event) {
   if (!file || !selectedPostForApproval.value) return
   approvalData.value.isUploading = true
   try {
-    const { uploadUrl, s3Key } = await mediaService.getUploadUrl(selectedPostForApproval.value.id!, file.name, file.type)
+    const { uploadUrl, s3Key } = await mediaService.getUploadUrl(
+      selectedPostForApproval.value.id!,
+      file.name,
+      file.type,
+    )
     await mediaService.uploadToS3(uploadUrl, file)
     approvalData.value.artS3Key = s3Key
     approvalData.value.artName = file.name
     approvalData.value.artPreviewUrl = URL.createObjectURL(file)
-  } catch (e) { feedback.error('Erro no upload.') } finally { approvalData.value.isUploading = false }
+  } catch {
+    feedback.error('Erro no upload.')
+  } finally {
+    approvalData.value.isUploading = false
+  }
 }
 
 async function saveApproval() {
   if (!selectedPostForApproval.value || !approvalData.value.artS3Key) return
   approvalData.value.isSending = true
   try {
-    const payload = { postId: selectedPostForApproval.value.id!, artS3Key: approvalData.value.artS3Key, artName: approvalData.value.artName, caption: approvalData.value.caption }
+    const payload = {
+      postId: selectedPostForApproval.value.id!,
+      artS3Key: approvalData.value.artS3Key,
+      artName: approvalData.value.artName,
+      caption: approvalData.value.caption,
+    }
     if (existingApprovalId.value) await approvalService.update(existingApprovalId.value, payload)
     else await approvalService.create(payload)
-    await postService.update(selectedPostForApproval.value.id!, { ...selectedPostForApproval.value, status: 'FINISHED' } as any)
+    await postService.update(selectedPostForApproval.value.id!, {
+      ...selectedPostForApproval.value,
+      status: 'FINISHED',
+    } as Partial<Post>)
     isApprovalModalOpen.value = false
     await fetchInitialData()
     feedback.success('Aprovação preparada.')
-  } catch (e) { feedback.error('Erro ao salvar aprovação.') } finally { approvalData.value.isSending = false }
+  } catch {
+    feedback.error('Erro ao salvar aprovação.')
+  } finally {
+    approvalData.value.isSending = false
+  }
 }
 
 async function handleSendApprovalFromInternalReview() {
   const post = selectedPostForPreview.value
-  if (!post?.id || !scheduledAtForApproval.value) { feedback.warning('Informe a data programada.'); return }
+  if (!post?.id || !scheduledAtForApproval.value) {
+    feedback.warning('Informe a data programada.')
+    return
+  }
   internalReviewAction.value = 'send'
   try {
-    await approvalService.internalApprove(post.id, { scheduledAt: scheduledAtForApproval.value, internalRevisionNotes: internalRevisionNotes.value })
+    await approvalService.internalApprove(post.id, {
+      scheduledAt: scheduledAtForApproval.value,
+      internalRevisionNotes: internalRevisionNotes.value,
+    })
     await handleSendApprovalFromFinished(post, false)
     closeArtPreviewModal()
     await fetchInitialData()
-  } catch (e) { feedback.error('Erro na aprovação interna.') } finally { internalReviewAction.value = null }
+  } catch {
+    feedback.error('Erro na aprovação interna.')
+  } finally {
+    internalReviewAction.value = null
+  }
 }
 
-async function handleSendApprovalFromFinished(post: Post, isResend = false) {
+async function handleSendApprovalFromFinished(post: Post, _isResend = false) {
   const approval = getApprovalByPost(post)
   if (!approval?.artS3Key) return false
   try {
-    const completion = await mediaService.completeUpload(post.id!, approval.artS3Key, approval.artName)
+    const completion = await mediaService.completeUpload(
+      post.id!,
+      approval.artS3Key,
+      approval.artName,
+    )
     if (completion.webhookDispatched) feedback.success('Enviado ao cliente.')
     return true
-  } catch (e) { feedback.error('Erro ao enviar.'); return false }
+  } catch {
+    feedback.error('Erro ao enviar.')
+    return false
+  }
 }
 
 async function confirmInternalRejection() {
@@ -350,19 +416,36 @@ async function confirmInternalRejection() {
   if (!post?.id || rejectionReason.value.length < 5) return
   internalReviewAction.value = 'reject'
   try {
-    await approvalService.rejectInternalApproval(post.id, { rejectionReason: rejectionReason.value })
+    await approvalService.rejectInternalApproval(post.id, {
+      rejectionReason: rejectionReason.value,
+    })
     closeArtPreviewModal()
     await fetchInitialData()
     feedback.success('Post rejeitado.')
-  } catch (e) { feedback.error('Erro ao rejeitar.') } finally { internalReviewAction.value = null }
+  } catch {
+    feedback.error('Erro ao rejeitar.')
+  } finally {
+    internalReviewAction.value = null
+  }
 }
 
 // Reference Modal Logic
 function openReferenceUpload(post: Post) {
   selectedPostForReference.value = post
-  referenceData.value = { referenceS3Key: post.referenceImageS3Key || '', referenceName: post.referenceImageS3Key ? 'Referência Atual' : '', referencePreviewUrl: '', isUploading: false, isSaving: false }
+  referenceData.value = {
+    referenceS3Key: post.referenceImageS3Key || '',
+    referenceName: post.referenceImageS3Key ? 'Referência Atual' : '',
+    referencePreviewUrl: '',
+    isUploading: false,
+    isSaving: false,
+  }
   if (post.id && post.referenceImageS3Key) {
-    mediaService.getReferencePreviewUrl(post.id).then(url => { referenceData.value.referencePreviewUrl = url }).catch(() => {})
+    mediaService
+      .getReferencePreviewUrl(post.id)
+      .then((url) => {
+        referenceData.value.referencePreviewUrl = url
+      })
+      .catch(() => {})
   }
   isReferenceModalOpen.value = true
 }
@@ -372,49 +455,88 @@ async function handleReferenceFileSelect(event: Event) {
   if (!file || !selectedPostForReference.value) return
   referenceData.value.isUploading = true
   try {
-    const { uploadUrl, s3Key } = await mediaService.getReferenceUploadUrl(selectedPostForReference.value.id!, file.name, file.type)
+    const { uploadUrl, s3Key } = await mediaService.getReferenceUploadUrl(
+      selectedPostForReference.value.id!,
+      file.name,
+      file.type,
+    )
     await mediaService.uploadToS3(uploadUrl, file)
     referenceData.value.referenceS3Key = s3Key
     referenceData.value.referenceName = file.name
     referenceData.value.referencePreviewUrl = URL.createObjectURL(file)
-  } catch (e) { feedback.error('Erro no upload.') } finally { referenceData.value.isUploading = false }
+  } catch {
+    feedback.error('Erro no upload.')
+  } finally {
+    referenceData.value.isUploading = false
+  }
 }
 
 async function saveReference() {
   if (!selectedPostForReference.value?.id || !referenceData.value.referenceS3Key) return
   referenceData.value.isSaving = true
   try {
-    await postService.updateReference(selectedPostForReference.value.id, referenceData.value.referenceS3Key)
+    await postService.updateReference(
+      selectedPostForReference.value.id,
+      referenceData.value.referenceS3Key,
+    )
     await fetchInitialData()
     isReferenceModalOpen.value = false
     feedback.success('Referência salva.')
-  } catch (e) { feedback.error('Erro ao salvar.') } finally { referenceData.value.isSaving = false }
+  } catch {
+    feedback.error('Erro ao salvar.')
+  } finally {
+    referenceData.value.isSaving = false
+  }
 }
 
 async function viewReference(post: Post) {
   if (!post.id || !post.referenceImageS3Key) return
   isLoadingArtPreview.value = true
   selectedPostForPreview.value = post
-  selectedApprovalForPreview.value = { postId: post.id, artS3Key: post.referenceImageS3Key, artName: 'Referencia.jpg', caption: 'Referência visual.', status: 'PENDING' } as any
+  selectedApprovalForPreview.value = {
+    postId: post.id,
+    artS3Key: post.referenceImageS3Key,
+    artName: 'Referencia.jpg',
+    caption: 'Referência visual.',
+    status: 'PENDING',
+  } as PostApproval
   artPreviewMode.value = 'preview'
   isArtPreviewModalOpen.value = true
-  try { selectedArtPreviewUrl.value = await mediaService.getReferencePreviewUrl(post.id) }
-  catch (e) { feedback.error('Erro ao carregar referência.'); closeArtPreviewModal() }
-  finally { isLoadingArtPreview.value = false }
+  try {
+    selectedArtPreviewUrl.value = await mediaService.getReferencePreviewUrl(post.id)
+  } catch {
+    feedback.error('Erro ao carregar referência.')
+    closeArtPreviewModal()
+  } finally {
+    isLoadingArtPreview.value = false
+  }
 }
 
-function isCardExpanded(post: Post) { return Boolean(post.id && expandedCardsByPostId.value[post.id]) }
-function toggleCardExpanded(post: Post) { if (post.id) expandedCardsByPostId.value[post.id] = !expandedCardsByPostId.value[post.id] }
-function mapApprovalsByPostId(list: PostApproval[]) { approvalsByPostId.value = Object.fromEntries(list.filter(a => a.postId).map(a => [String(a.postId), a])) }
-function getApprovalByPost(post: Post) { return post.id ? approvalsByPostId.value[post.id] : null }
+function isCardExpanded(post: Post) {
+  return Boolean(post.id && expandedCardsByPostId.value[post.id])
+}
+function toggleCardExpanded(post: Post) {
+  if (post.id) expandedCardsByPostId.value[post.id] = !expandedCardsByPostId.value[post.id]
+}
+function mapApprovalsByPostId(list: PostApproval[]) {
+  approvalsByPostId.value = Object.fromEntries(
+    list.filter((a) => a.postId).map((a) => [String(a.postId), a]),
+  )
+}
+function getApprovalByPost(post: Post) {
+  return post.id ? approvalsByPostId.value[post.id] : null
+}
 function getApprovalStatusLabel(post: Post) {
   const app = getApprovalByPost(post)
   if (!app) return { text: 'Não preparada', className: 'text-amber-700' }
-  if (post.status === 'REJECTED' || app.status === 'REJECT') return { text: 'Rejeitado', className: 'text-red-700' }
+  if (post.status === 'REJECTED' || app.status === 'REJECT')
+    return { text: 'Rejeitado', className: 'text-red-700' }
   if (app.whatsappSentAt) return { text: 'Enviada', className: 'text-emerald-700' }
   return { text: 'Pronta', className: 'text-blue-700' }
 }
-function getUserOrFallback(): number { return Number(getCurrentUserId()) || 1 }
+function getUserOrFallback(): number {
+  return Number(getCurrentUserId()) || 1
+}
 
 const search = ref('')
 
@@ -423,16 +545,21 @@ async function generateAICaption() {
   if (!post?.id) return
   approvalData.value.isGenerating = true
   try {
-    const result = await postService.generateCaption(post.id, approvalData.value.artS3Key || undefined)
+    const result = await postService.generateCaption(
+      post.id,
+      approvalData.value.artS3Key || undefined,
+    )
     approvalData.value.caption = result.caption
-  } catch (e) {
+  } catch {
     feedback.error('Erro ao gerar legenda com IA.')
   } finally {
     approvalData.value.isGenerating = false
   }
 }
 
-onMounted(() => { fetchInitialData() })
+onMounted(() => {
+  fetchInitialData()
+})
 </script>
 
 <template>
@@ -442,26 +569,113 @@ onMounted(() => { fetchInitialData() })
         <h1 class="text-3xl font-bold text-gray-900">Board de Produção</h1>
         <p class="text-gray-500 mt-1">Fluxo operacional North Produções.</p>
       </div>
-      <Button class="gap-2" @click="isModalOpen = true, postToEdit = null"><Plus class="w-4 h-4" /> Nova Demanda</Button>
+      <Button class="gap-2" @click="((isModalOpen = true), (postToEdit = null))"
+        ><Plus class="w-4 h-4" /> Nova Demanda</Button
+      >
     </div>
 
     <div class="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-220px)]">
-      <div v-for="(col, colIdx) in paginatedColumns" :key="col.id" class="flex flex-col w-[308px] shrink-0 bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden h-full">
+      <div
+        v-for="(col, colIdx) in paginatedColumns"
+        :key="col.id"
+        class="flex flex-col w-[308px] shrink-0 bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden h-full"
+      >
         <div :class="['h-1.5 w-full', col.color]" />
         <div class="p-3 flex flex-col flex-1 overflow-hidden">
-          <div class="flex items-center gap-2 mb-4 px-1"><span class="text-sm font-bold text-gray-700 uppercase">{{ col.label }}</span><span class="text-xs font-bold bg-white text-gray-400 border border-gray-100 rounded-full px-2 py-0.5">{{ col.totalCards }}</span></div>
-          <draggable v-model="columns[colIdx]!.cards" group="posts" item-key="id" class="flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar min-h-0" @change="(evt: any) => handleBoardChange(evt, col.id)">
+          <div class="flex items-center gap-2 mb-4 px-1">
+            <span class="text-sm font-bold text-gray-700 uppercase">{{ col.label }}</span
+            ><span
+              class="text-xs font-bold bg-white text-gray-400 border border-gray-100 rounded-full px-2 py-0.5"
+              >{{ col.totalCards }}</span
+            >
+          </div>
+          <draggable
+            v-model="columns[colIdx]!.cards"
+            group="posts"
+            item-key="id"
+            class="flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar min-h-0"
+            @change="(evt: any) => handleBoardChange(evt, col.id)"
+          >
             <template #item="{ element: card }">
-              <BoardCard :card="card" :column-id="String(col.id)" :column-theme="getColumnTheme(String(col.id))" :is-expanded="isCardExpanded(card)" :approval="getApprovalByPost(card)" :client-name="getClientName(Number(getPostClientId(card)))" :overdue="isOverdue(card)" :priority-info="getPriorityInfo(card)" :due-date-label="formatDueDate(card.scheduledAt)" :responsible-label="'Equipe North'" :post-type-label="'Social Media'" :approval-status="getApprovalStatusLabel(card)" :rejection-message="getApprovalByPost(card)?.rejectionReason || 'Rejeitado'" :is-sending-approval="false" @preview="openArtPreviewModal(card)" @toggle-expand="toggleCardExpanded(card)" @edit="postToEdit = card, isModalOpen = true" @prepare-approval="openApprovalModal(card)" @internal-review="openArtPreviewModal(card, 'internal-review')" @add-reference="openReferenceUpload(card)" @view-reference="viewReference(card)" @resend="handleSendApprovalFromFinished(card, true)" />
+              <BoardCard
+                :card="card"
+                :column-id="String(col.id)"
+                :column-theme="getColumnTheme(String(col.id))"
+                :is-expanded="isCardExpanded(card)"
+                :approval="getApprovalByPost(card)"
+                :client-name="getClientName(Number(getPostClientId(card)))"
+                :overdue="isOverdue(card)"
+                :priority-info="getPriorityInfo(card)"
+                :due-date-label="formatDueDate(card.scheduledAt)"
+                :responsible-label="'Equipe North'"
+                :post-type-label="'Social Media'"
+                :approval-status="getApprovalStatusLabel(card)"
+                :rejection-message="getApprovalByPost(card)?.rejectionReason || 'Rejeitado'"
+                :is-sending-approval="false"
+                @preview="openArtPreviewModal(card)"
+                @toggle-expand="toggleCardExpanded(card)"
+                @edit="((postToEdit = card), (isModalOpen = true))"
+                @prepare-approval="openApprovalModal(card)"
+                @internal-review="openArtPreviewModal(card, 'internal-review')"
+                @add-reference="openReferenceUpload(card)"
+                @view-reference="viewReference(card)"
+                @resend="handleSendApprovalFromFinished(card, true)"
+              />
             </template>
           </draggable>
         </div>
       </div>
     </div>
 
-    <PostModal :is-open="isModalOpen" :post-to-edit="postToEdit" :clients="clients" :is-submitting="isSubmitting" :field-errors="{}" @close="isModalOpen = false" @save="handleSavePost" @delete="handleDeletePost" />
-    <ApprovalModal :is-open="isApprovalModalOpen" :post="selectedPostForApproval" :existing-approval-id="existingApprovalId" :data="approvalData" @close="isApprovalModalOpen = false" @file-select="handleFileSelect" @generate-caption="generateAICaption" @save="saveApproval" @update:caption="approvalData.caption = $event" />
-    <ArtPreviewModal :is-open="isArtPreviewModalOpen" :mode="artPreviewMode" :post="selectedPostForPreview" :approval="selectedApprovalForPreview" :art-url="selectedArtPreviewUrl" :is-loading="isLoadingArtPreview" :internal-review-action="internalReviewAction" :rejection-reason="rejectionReason" :rejection-reason-error="rejectionReasonError" :is-reject-reason-modal-open="isRejectReasonModalOpen" :client-name="getClientName(Number(getPostClientId(selectedPostForPreview || {} as Post)))" v-model:scheduled-at="scheduledAtForApproval" v-model:internal-revision-notes="internalRevisionNotes" @close="closeArtPreviewModal" @send-to-client="handleSendApprovalFromInternalReview" @open-reject-modal="isRejectReasonModalOpen = true" @close-reject-modal="isRejectReasonModalOpen = false" @confirm-rejection="confirmInternalRejection" @update:rejection-reason="rejectionReason = $event" />
-    <ReferenceModal :is-open="isReferenceModalOpen" :post="selectedPostForReference" :data="referenceData" @close="isReferenceModalOpen = false" @file-select="handleReferenceFileSelect" @save="saveReference" />
+    <PostModal
+      :is-open="isModalOpen"
+      :post-to-edit="postToEdit"
+      :clients="clients"
+      :is-submitting="isSubmitting"
+      :field-errors="{}"
+      @close="isModalOpen = false"
+      @save="handleSavePost"
+      @delete="handleDeletePost"
+    />
+    <ApprovalModal
+      :is-open="isApprovalModalOpen"
+      :post="selectedPostForApproval"
+      :existing-approval-id="existingApprovalId"
+      :data="approvalData"
+      @close="isApprovalModalOpen = false"
+      @file-select="handleFileSelect"
+      @generate-caption="generateAICaption"
+      @save="saveApproval"
+      @update:caption="approvalData.caption = $event"
+    />
+    <ArtPreviewModal
+      :is-open="isArtPreviewModalOpen"
+      :mode="artPreviewMode"
+      :post="selectedPostForPreview"
+      :approval="selectedApprovalForPreview"
+      :art-url="selectedArtPreviewUrl"
+      :is-loading="isLoadingArtPreview"
+      :internal-review-action="internalReviewAction"
+      :rejection-reason="rejectionReason"
+      :rejection-reason-error="rejectionReasonError"
+      :is-reject-reason-modal-open="isRejectReasonModalOpen"
+      :client-name="getClientName(Number(getPostClientId(selectedPostForPreview || ({} as Post))))"
+      v-model:scheduled-at="scheduledAtForApproval"
+      v-model:internal-revision-notes="internalRevisionNotes"
+      @close="closeArtPreviewModal"
+      @send-to-client="handleSendApprovalFromInternalReview"
+      @open-reject-modal="isRejectReasonModalOpen = true"
+      @close-reject-modal="isRejectReasonModalOpen = false"
+      @confirm-rejection="confirmInternalRejection"
+      @update:rejection-reason="rejectionReason = $event"
+    />
+    <ReferenceModal
+      :is-open="isReferenceModalOpen"
+      :post="selectedPostForReference"
+      :data="referenceData"
+      @close="isReferenceModalOpen = false"
+      @file-select="handleReferenceFileSelect"
+      @save="saveReference"
+    />
   </AppLayout>
 </template>

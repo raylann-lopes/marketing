@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { X, ChevronDown, Trash2 } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
-import { type Post } from '@/services/postService'
+import { type Post, type PostFormData } from '@/services/postService'
 import { type Client } from '@/services/clientService'
 
 interface Props {
@@ -17,7 +17,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'save', data: any): void
+  (e: 'save', data: PostFormData): void
   (e: 'delete', post: Post): void
 }>()
 
@@ -35,7 +35,7 @@ watch(() => props.isOpen, (newVal) => {
   if (newVal) {
     if (props.postToEdit) {
       const p = props.postToEdit
-      const cid = (p as any).client?.id || p.clientId
+      const cid = (p as Post & { client?: { id?: string | number } }).client?.id || p.clientId
       form.value = {
         clientId: String(cid || ''),
         title: p.title,

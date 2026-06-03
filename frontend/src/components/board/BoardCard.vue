@@ -14,10 +14,19 @@ import Avatar from '@/components/ui/Avatar.vue'
 import { type Post } from '@/services/postService'
 import type { PostApproval } from '@/services/approvalService'
 
+interface ColumnTheme {
+  clientBadge: string
+  primaryButton: string
+  filledButton: string
+  softContainer: string
+  softText: string
+  ghostButton: string
+}
+
 interface Props {
   card: Post
   columnId: string
-  columnTheme: any
+  columnTheme: ColumnTheme
   isExpanded: boolean
   approval?: PostApproval | null
   clientName: string
@@ -54,7 +63,7 @@ function formatSentAt(dateStr?: string) {
       hour: '2-digit',
       minute: '2-digit',
     })
-  } catch (e) {
+  } catch {
     return dateStr
   }
 }

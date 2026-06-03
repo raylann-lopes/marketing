@@ -22,6 +22,16 @@ export type Post = {
   scheduledAt: string
 }
 
+export type PostFormData = {
+  clientId: string | number
+  title: string
+  theme: string
+  objective: string
+  status: string
+  scheduledAt: string
+  isUrgent: boolean
+}
+
 export type CaptionResponse = {
   caption: string
   [key: string]: unknown

@@ -12,7 +12,7 @@ interface Props {
 
 defineProps<Props>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'click'): void
   (e: 'approve'): void
   (e: 'reject'): void
@@ -36,7 +36,9 @@ function statusLabel(s: string) {
 }
 
 function statusVariant(s: string): 'warning' | 'success' | 'destructive' | 'secondary' {
-  return ({ PENDING: 'warning', APPROVE: 'success', REJECT: 'destructive' } as const)[s] ?? 'secondary'
+  return (
+    ({ PENDING: 'warning', APPROVE: 'success', REJECT: 'destructive' } as const)[s] ?? 'secondary'
+  )
 }
 </script>
 
@@ -73,7 +75,9 @@ function statusVariant(s: string): 'warning' | 'success' | 'destructive' | 'seco
         <ImageOff class="w-8 h-8" />
         <span class="text-[11px] font-medium">Arte indisponível</span>
       </div>
-      <div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+      <div
+        class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+      >
         <div class="bg-white rounded-full p-2 shadow-sm">
           <Eye class="w-5 h-5 text-primary" />
         </div>
@@ -86,9 +90,18 @@ function statusVariant(s: string): 'warning' | 'success' | 'destructive' | 'seco
 
     <div :class="approval.status === 'APPROVE' ? 'p-3' : 'p-4'">
       <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Demanda</p>
-      <p class="text-sm font-semibold text-gray-800 truncate mt-0.5">{{ getDemandTitle(approval) }}</p>
-      <p v-if="approval.post?.theme" class="text-xs text-gray-400 mt-1 truncate">{{ approval.post.theme }}</p>
-      <p :class="['mt-1 text-xs text-gray-400', approval.status === 'APPROVE' ? 'line-clamp-1' : 'line-clamp-2']">
+      <p class="text-sm font-semibold text-gray-800 truncate mt-0.5">
+        {{ getDemandTitle(approval) }}
+      </p>
+      <p v-if="approval.post?.theme" class="text-xs text-gray-400 mt-1 truncate">
+        {{ approval.post.theme }}
+      </p>
+      <p
+        :class="[
+          'mt-1 text-xs text-gray-400',
+          approval.status === 'APPROVE' ? 'line-clamp-1' : 'line-clamp-2',
+        ]"
+      >
         {{ approval.caption }}
       </p>
 

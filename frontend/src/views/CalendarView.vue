@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import { postService, type Post } from '@/services/postService'
+import { postService, type Post, type PostFormData } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
@@ -82,7 +82,7 @@ function openPostModal(day?: number | null) {
   isModalOpen.value = true
 }
 
-async function handleCreatePost(form: any) {
+async function handleCreatePost(form: PostFormData) {
   fieldErrors.value = {}
   const result = postSchema.safeParse(form)
   

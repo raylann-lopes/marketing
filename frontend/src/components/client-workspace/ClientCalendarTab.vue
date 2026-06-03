@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { CalendarDays, ChevronLeft, ChevronRight, CheckCircle2, Trash2, Plus } from 'lucide-vue-next'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  Trash2,
+  Plus,
+} from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 
@@ -25,7 +32,8 @@ interface Props {
 }
 
 defineProps<Props>()
-const emit = defineEmits<{
+
+defineEmits<{
   (e: 'prevMonth'): void
   (e: 'nextMonth'): void
   (e: 'today'): void
@@ -36,7 +44,20 @@ const emit = defineEmits<{
 }>()
 
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
-const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+const monthNames = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+]
 
 function statusVariant(status: UploadStatus): 'secondary' | 'warning' | 'success' {
   if (status === 'PLANNED') return 'secondary'
@@ -57,25 +78,31 @@ function statusLabel(status: UploadStatus) {
       <div class="mb-5 flex items-center justify-between">
         <h2 class="text-xl font-bold text-gray-900">{{ currentMonthLabel }}</h2>
         <div class="flex items-center gap-2">
-          <Button variant="outline" class="h-9 px-3" @click="$emit('today')">
-            Hoje
-          </Button>
-          <button class="rounded-lg p-1.5 hover:bg-gray-100" @click="$emit('prevMonth')"><ChevronLeft class="h-4 w-4" /></button>
-          <button class="rounded-lg p-1.5 hover:bg-gray-100" @click="$emit('nextMonth')"><ChevronRight class="h-4 w-4" /></button>
+          <Button variant="outline" class="h-9 px-3" @click="$emit('today')"> Hoje </Button>
+          <button class="rounded-lg p-1.5 hover:bg-gray-100" @click="$emit('prevMonth')">
+            <ChevronLeft class="h-4 w-4" />
+          </button>
+          <button class="rounded-lg p-1.5 hover:bg-gray-100" @click="$emit('nextMonth')">
+            <ChevronRight class="h-4 w-4" />
+          </button>
         </div>
       </div>
 
       <div class="mb-2 grid grid-cols-7 text-center">
-        <div v-for="d in dayNames" :key="d" class="py-1 text-xs font-semibold text-gray-400">{{ d }}</div>
+        <div v-for="d in dayNames" :key="d" class="py-1 text-xs font-semibold text-gray-400">
+          {{ d }}
+        </div>
       </div>
 
-      <div class="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200">
+      <div
+        class="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200"
+      >
         <div
           v-for="(day, index) in calendarDays"
           :key="index"
           :class="[
             'min-h-[110px] bg-white p-2 transition-colors',
-            day ? 'cursor-pointer hover:bg-primary/5' : ''
+            day ? 'cursor-pointer hover:bg-primary/5' : '',
           ]"
           @click="day && $emit('selectDay', day)"
         >
@@ -83,7 +110,7 @@ function statusLabel(status: UploadStatus) {
             v-if="day"
             :class="[
               'mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
-              day === selectedDay ? 'bg-primary text-white' : 'text-gray-600'
+              day === selectedDay ? 'bg-primary text-white' : 'text-gray-600',
             ]"
           >
             {{ day }}
@@ -105,7 +132,9 @@ function statusLabel(status: UploadStatus) {
       </div>
     </section>
 
-    <aside class="flex min-h-[520px] flex-col rounded-2xl border border-gray-100 bg-white shadow-sm">
+    <aside
+      class="flex min-h-[520px] flex-col rounded-2xl border border-gray-100 bg-white shadow-sm"
+    >
       <div class="border-b border-gray-100 p-4">
         <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Agenda do dia</p>
         <p class="text-3xl font-bold text-gray-900">{{ selectedDay }}</p>
@@ -113,7 +142,10 @@ function statusLabel(status: UploadStatus) {
       </div>
 
       <div class="flex-1 space-y-3 overflow-y-auto p-4">
-        <div v-if="selectedDayUploads.length === 0" class="flex h-40 flex-col items-center justify-center text-center text-gray-400">
+        <div
+          v-if="selectedDayUploads.length === 0"
+          class="flex h-40 flex-col items-center justify-center text-center text-gray-400"
+        >
           <CalendarDays class="mb-2 h-8 w-8 opacity-30" />
           <p class="text-sm">Nenhum post planejado para esse dia.</p>
         </div>

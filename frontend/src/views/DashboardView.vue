@@ -117,7 +117,7 @@ onMounted(async () => {
   <AppLayout>
     <div class="flex items-start justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Bom dia, {{ userName }}.</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Olá {{ userName }}.</h1>
         <p class="text-gray-500 mt-1">Aqui está o que está acontecendo na empresa hoje.</p>
       </div>
       <div class="flex items-center gap-3">

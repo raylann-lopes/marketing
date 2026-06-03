@@ -14,7 +14,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits<{
+defineEmits<{
   (e: 'prevWeek'): void
   (e: 'nextWeek'): void
   (e: 'selectDay', date: Date): void
@@ -43,9 +43,11 @@ const weekNavLabel = computed(() => {
 })
 
 function isSameDay(a: Date, b: Date) {
-  return a.getDate() === b.getDate() &&
+  return (
+    a.getDate() === b.getDate() &&
     a.getMonth() === b.getMonth() &&
     a.getFullYear() === b.getFullYear()
+  )
 }
 
 const selectedDayLabel = computed(() => {
@@ -68,9 +70,13 @@ const statusLabel: Record<string, string> = {
     <div class="flex items-center justify-between mb-4">
       <h2 class="font-semibold text-gray-900">Cronograma Semanal</h2>
       <div class="flex items-center gap-1">
-        <button class="p-1 hover:bg-gray-100 rounded" @click="$emit('prevWeek')"><ChevronLeft class="w-4 h-4 text-gray-500" /></button>
+        <button class="p-1 hover:bg-gray-100 rounded" @click="$emit('prevWeek')">
+          <ChevronLeft class="w-4 h-4 text-gray-500" />
+        </button>
         <span class="text-[10px] text-gray-400 font-medium px-1">{{ weekNavLabel }}</span>
-        <button class="p-1 hover:bg-gray-100 rounded" @click="$emit('nextWeek')"><ChevronRight class="w-4 h-4 text-gray-500" /></button>
+        <button class="p-1 hover:bg-gray-100 rounded" @click="$emit('nextWeek')">
+          <ChevronRight class="w-4 h-4 text-gray-500" />
+        </button>
       </div>
     </div>
 
@@ -85,7 +91,7 @@ const statusLabel: Record<string, string> = {
               ? 'bg-primary text-white shadow-sm'
               : isSameDay(visibleWeekDates[i]!, today)
                 ? 'ring-2 ring-primary text-primary'
-                : 'text-gray-600 hover:bg-gray-100'
+                : 'text-gray-600 hover:bg-gray-100',
           ]"
           @click="$emit('selectDay', visibleWeekDates[i]!)"
         >
@@ -96,7 +102,9 @@ const statusLabel: Record<string, string> = {
 
     <!-- Posts do dia selecionado -->
     <div class="mt-4">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">{{ selectedDayLabel }}</p>
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+        {{ selectedDayLabel }}
+      </p>
       <div v-if="selectedDayPosts.length === 0" class="text-sm text-gray-500 text-center py-4">
         Nenhum post agendado para este dia.
       </div>
@@ -106,9 +114,16 @@ const statusLabel: Record<string, string> = {
           <div class="flex-1">
             <div class="flex items-center justify-between">
               <span class="text-xs font-semibold text-primary">
-                {{ new Date(post.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }}
+                {{
+                  new Date(post.scheduledAt).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                }}
               </span>
-              <Badge variant="outline" class="text-[10px]">{{ statusLabel[post.status] || post.status }}</Badge>
+              <Badge variant="outline" class="text-[10px]">{{
+                statusLabel[post.status] || post.status
+              }}</Badge>
             </div>
             <p class="text-sm font-medium text-gray-800 mt-0.5">{{ post.title }}</p>
             <p class="text-xs mt-0.5 text-gray-500">{{ post.theme }}</p>

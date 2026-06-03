@@ -76,7 +76,7 @@ function toggleSidebar() {
       <div :class="['flex items-start gap-2', isCollapsed ? 'justify-center' : 'justify-between']">
         <div v-if="!isCollapsed">
           <h1 class="text-xl font-bold text-[#6B21A8]">North Produções</h1>
-          <p class="text-xs text-gray-500 mt-0.5">Produto Audiovisual</p>
+          <p class="text-xs text-gray-500 mt-0.5">Produtora Audiovisual</p>
         </div>
         <button
           type="button"

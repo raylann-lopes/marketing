@@ -20,7 +20,7 @@ interface Props {
 }
 
 defineProps<Props>()
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void
   (e: 'openPostModal', day: number | null): void
 }>()

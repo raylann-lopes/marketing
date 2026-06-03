@@ -22,9 +22,9 @@ interface Props {
   internalRevisionNotes: string
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void
   (e: 'sendToClient'): void
   (e: 'openRejectModal'): void
