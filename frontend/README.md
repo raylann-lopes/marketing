@@ -1,6 +1,6 @@
 # North Produções — Frontend
 
-Interface web do sistema North Produções, plataforma de gestão de produção de conteúdo para agências de marketing.
+Interface web do sistema North Produções, plataforma de gestão operacional para produtora audiovisual.
 
 ---
 
@@ -33,6 +33,7 @@ Componentes UI construídos sobre **Tailwind CSS** + **class-variance-authority*
 - **Aprovações** — lista de artes aguardando aprovação
 - **Financeiro** — cadastro e controle de transações por cliente
 - **Configurações** — perfil do usuário, troca de senha, vinculação de conta Instagram via Meta e grupo de WhatsApp por cliente (admin)
+- **Usuários** — listagem, criação, alteração de papel e exclusão de colaboradores (admin)
 
 ---
 
@@ -115,7 +116,7 @@ npm run test:e2e:dev
 | `approvalService` | `create`, `getAll`, `approve`, `reject`, `delete` |
 | `mediaService` | `getUploadUrl`, `uploadToS3`, `getArtPreviewUrl` |
 | `accountConfigService` | `configure`, `getByClientId` |
-| `userService` | `getMe`, `updateProfile`, `changePassword` |
+| `userService` | `getMe`, `updateProfile`, `changePassword`, `listAll`, `create`, `updateRole`, `deleteById` |
 
 Todos os serviços utilizam `apiFetch` em `src/lib/api.ts`, que:
 

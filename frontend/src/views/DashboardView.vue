@@ -12,9 +12,11 @@ import ClientHealth from '@/components/dashboard/ClientHealth.vue'
 
 import { clientService, type Client } from '@/services/clientService'
 import { postService, type Post } from '@/services/postService'
+import { userService } from '@/services/userService'
 
 const router = useRouter()
 const today = new Date()
+const userName = ref('')
 
 const totalClients = ref(0)
 const postsThisMonth = ref(0)
@@ -25,15 +27,21 @@ const allClients = ref<Client[]>([])
 const recentPosts = ref<Post[]>([])
 
 const selectedWeekStart = ref(
-  (() => { const d = new Date(today); d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1)); return d })()
+  (() => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1))
+    return d
+  })(),
 )
 
 const selectedWeekDate = ref(new Date(today))
 
 function isSameDay(a: Date, b: Date) {
-  return a.getDate() === b.getDate() &&
+  return (
+    a.getDate() === b.getDate() &&
     a.getMonth() === b.getMonth() &&
     a.getFullYear() === b.getFullYear()
+  )
 }
 
 function selectWeekDay(date: Date) {
@@ -51,21 +59,23 @@ function nextWeek() {
 }
 
 const selectedDayPosts = computed(() =>
-  allPosts.value.filter(p => {
+  allPosts.value.filter((p) => {
     if (!p.scheduledAt) return false
     return isSameDay(new Date(p.scheduledAt), selectedWeekDate.value)
-  })
+  }),
 )
 
 async function fetchDashboardData() {
   try {
     const [clientsData, postsData] = await Promise.all([
       clientService.getAll(),
-      postService.getAll()
+      postService.getAll(),
     ])
 
-    const clients = Array.isArray(clientsData) ? clientsData : ((clientsData as { data: Client[] }).data || [])
-    const posts = Array.isArray(postsData) ? postsData : ((postsData as { data: Post[] }).data || [])
+    const clients = Array.isArray(clientsData)
+      ? clientsData
+      : (clientsData as { data: Client[] }).data || []
+    const posts = Array.isArray(postsData) ? postsData : (postsData as { data: Post[] }).data || []
 
     allClients.value = clients
     allPosts.value = posts
@@ -79,22 +89,27 @@ async function fetchDashboardData() {
     })
 
     postsThisMonth.value = monthPosts.length
-    pendingPosts.value = posts.filter((p: Post) =>
-      p.status !== 'PUBLISHED' && p.status !== 'FINISHED'
+    pendingPosts.value = posts.filter(
+      (p: Post) => p.status !== 'PUBLISHED' && p.status !== 'FINISHED',
     ).length
     publishedPosts.value = posts.filter((p: Post) => p.status === 'PUBLISHED').length
 
     recentPosts.value = [...posts]
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
       .slice(0, 8)
-
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchDashboardData()
+  try {
+    const me = await userService.getMe()
+    userName.value = me.name?.split(' ')[0] || 'North'
+  } catch {
+    userName.value = 'North'
+  }
 })
 </script>
 
@@ -102,8 +117,8 @@ onMounted(() => {
   <AppLayout>
     <div class="flex items-start justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Bom dia, North.</h1>
-        <p class="text-gray-500 mt-1">Aqui está o que está acontecendo no ateliê hoje.</p>
+        <h1 class="text-3xl font-bold text-gray-900">Bom dia, {{ userName }}.</h1>
+        <p class="text-gray-500 mt-1">Aqui está o que está acontecendo na empresa hoje.</p>
       </div>
       <div class="flex items-center gap-3">
         <Button variant="outline" class="gap-2" @click="router.push('/clients')">
@@ -126,10 +141,7 @@ onMounted(() => {
           :published-posts="publishedPosts"
         />
 
-        <RecentPosts
-          :posts="recentPosts"
-          :clients="allClients"
-        />
+        <RecentPosts :posts="recentPosts" :clients="allClients" />
       </div>
 
       <div class="space-y-6">
@@ -143,9 +155,7 @@ onMounted(() => {
           @select-day="selectWeekDay"
         />
 
-        <ClientHealth
-          :clients="allClients"
-        />
+        <ClientHealth :clients="allClients" />
       </div>
     </div>
   </AppLayout>

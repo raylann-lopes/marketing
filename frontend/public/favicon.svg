@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Black horseshoe arc, open at bottom -->
+  <path d="M 31 78 A 38 38 0 1 0 69 78"
+        fill="none"
+        stroke="#111111"
+        stroke-width="15"
+        stroke-linecap="round"/>
+  <!-- Purple upward triangle -->
+  <polygon points="50,30 30,70 70,70" fill="#6B21A8"/>
+</svg>
