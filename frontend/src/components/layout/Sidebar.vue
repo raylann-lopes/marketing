@@ -35,9 +35,9 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Board de Produção', to: '/board', icon: Kanban },
-  { label: 'Aprovações', to: '/approvals', icon: CheckCircle2 },
-  { label: 'Calendário Editorial', to: '/calendar', icon: CalendarDays },
   { label: 'Clientes', to: '/clients', icon: Users },
+  { label: 'Calendário Editorial', to: '/calendar', icon: CalendarDays },
+  { label: 'Aprovações', to: '/approvals', icon: CheckCircle2 },
   { label: 'Ideias de Conteúdo', to: '/ideas', icon: Lightbulb },
   { label: 'Relatórios do Cliente', to: '/client-reports', icon: FileText },
 ]
@@ -68,7 +68,7 @@ function toggleSidebar() {
   <aside
     :class="[
       'min-h-screen bg-[#EEF2FF] flex flex-col shrink-0 transition-all duration-200',
-      isCollapsed ? 'w-16' : 'w-60'
+      isCollapsed ? 'w-16' : 'w-60',
     ]"
   >
     <!-- Logo -->
@@ -76,7 +76,7 @@ function toggleSidebar() {
       <div :class="['flex items-start gap-2', isCollapsed ? 'justify-center' : 'justify-between']">
         <div v-if="!isCollapsed">
           <h1 class="text-xl font-bold text-[#6B21A8]">North Produções</h1>
-          <p class="text-xs text-gray-500 mt-0.5">Digital Ateliê</p>
+          <p class="text-xs text-gray-500 mt-0.5">Produto Audiovisual</p>
         </div>
         <button
           type="button"
@@ -117,7 +117,7 @@ function toggleSidebar() {
         :title="isCollapsed ? 'Novo Projeto' : undefined"
         :class="[
           'my-2.5 w-full flex items-center justify-center rounded-lg border border-primary/20 bg-white text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 active:scale-[0.98]',
-          isCollapsed ? 'h-10 px-0' : 'gap-2 px-4 py-2.5'
+          isCollapsed ? 'h-10 px-0' : 'gap-2 px-4 py-2.5',
         ]"
         @click="router.push({ path: '/board', query: { new: '1' } })"
       >
@@ -146,7 +146,7 @@ function toggleSidebar() {
         :title="isCollapsed ? 'Sair' : undefined"
         :class="[
           'w-full flex items-center rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors',
-          isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+          isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
         ]"
         @click="logout"
       >

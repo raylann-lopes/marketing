@@ -59,7 +59,7 @@ async function handleLogin() {
       <!-- Header -->
       <div class="text-center mb-8">
         <h1 class="text-3xl font-bold text-[#6B21A8]">North Produções</h1>
-        <p class="text-xs tracking-[0.2em] text-gray-400 mt-1 uppercase">Digital Ateliê</p>
+        <p class="text-xs tracking-[0.2em] text-gray-400 mt-1 uppercase">Produtora Audiovisual</p>
         <p class="text-sm text-gray-500 mt-3">Entre na sua conta para gerenciar seus projetos.</p>
       </div>
 
@@ -125,14 +125,6 @@ async function handleLogin() {
           <p class="text-xs text-gray-400">
             Acesso restrito a colaboradores e parceiros North Produções.
           </p>
-          <div class="flex items-center justify-center gap-4 mt-2">
-            <a href="#" class="text-xs text-gray-400 hover:text-gray-600 uppercase tracking-wide"
-              >Suporte</a
-            >
-            <a href="#" class="text-xs text-gray-400 hover:text-gray-600 uppercase tracking-wide"
-              >Segurança</a
-            >
-          </div>
         </div>
       </div>
     </div>
@@ -143,7 +135,7 @@ async function handleLogin() {
         <Shield class="w-3.5 h-3.5 text-[#7C3AED]" />
         <span class="text-xs text-gray-500 uppercase tracking-widest">Ambiente Seguro</span>
       </div>
-      <p class="text-xs text-gray-400">© 2024 North Produções. Todos os direitos reservados.</p>
+      <p class="text-xs text-gray-400">© 2026 North Produções. Todos os direitos reservados.</p>
     </div>
   </div>
 </template>
