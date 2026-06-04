@@ -35,4 +35,11 @@ public class AccountConfigController {
                 accountConfigService.findByClientId(clientId)
         ));
     }
+
+    @DeleteMapping("/client/{clientId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<Void> deleteByClientId(@PathVariable Long clientId) {
+        accountConfigService.deleteByClientId(clientId);
+        return ResponseEntity.noContent().build();
+    }
 }

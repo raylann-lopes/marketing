@@ -6,7 +6,11 @@ import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
+import com.north.producoes.repository.AccountConfigRepository;
+import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.ClientRepository;
+import com.north.producoes.repository.FinanceRepository;
+import com.north.producoes.repository.PostRepository;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +26,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ClientService {
     private final ClientRepository clientRepository;
+    private final ApproveRepository approveRepository;
+    private final PostRepository postRepository;
+    private final FinanceRepository financeRepository;
+    private final AccountConfigRepository accountConfigRepository;
 
     @Lazy
     @Setter(onMethod_ = @Autowired)
@@ -90,6 +98,10 @@ public class ClientService {
         if (!clientRepository.existsById(id)) {
             throw new ResourceNotFoundException("Cliente nao encontrado: id " + id);
         }
+        approveRepository.deleteByPostClientId(id);
+        postRepository.deleteByClientId(id);
+        financeRepository.deleteByClientId(id);
+        accountConfigRepository.deleteByClientId(id);
         clientRepository.deleteById(id);
     }
 

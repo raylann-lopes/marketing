@@ -20,6 +20,10 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
 
     List<PostEntity> findByUserId(Long id);
 
+    @Modifying
+    @Query("DELETE FROM PostEntity p WHERE p.client.id = :clientId")
+    void deleteByClientId(@Param("clientId") Long clientId);
+
     List<PostEntity> findByScheduledAtBetween(LocalDateTime scheduledAtAfter,
                                                LocalDateTime scheduledAtBefore);
 

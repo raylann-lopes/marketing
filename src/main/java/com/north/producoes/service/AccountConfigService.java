@@ -68,6 +68,15 @@ public class AccountConfigService {
         return findByClientId(clientId).getAccessToken();
     }
 
+    @Transactional
+    public void deleteByClientId(Long clientId) {
+        if (!accountConfigRepository.existsByClientId(clientId)) {
+            throw new ResourceNotFoundException(
+                    "Nenhuma configuração de conta encontrada para o cliente ID " + clientId);
+        }
+        accountConfigRepository.deleteByClientId(clientId);
+    }
+
     private String normalize(String value) {
         if (value == null) {
             return null;

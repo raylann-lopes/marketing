@@ -22,6 +22,10 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
 
     void deleteByPostId(Long postId);
 
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM ApproveEntity a WHERE a.post.client.id = :clientId")
+    void deleteByPostClientId(@org.springframework.data.repository.query.Param("clientId") Long clientId);
+
     /**
      * Busca aprovação PENDING vinculada ao grupo WhatsApp do cliente.
      * Usado pelo webhook para identificar a qual post o cliente está respondendo.

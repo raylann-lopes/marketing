@@ -11,4 +11,6 @@ public interface AccountConfigRepository extends JpaRepository<AccountConfigEnti
     Optional<AccountConfigEntity> findByClientId(Long clientId);
     Optional<AccountConfigEntity> findByIgUserId(String igUserId);
     boolean existsByClientId(Long clientId);
+
+    void deleteByClientId(Long clientId);
 }

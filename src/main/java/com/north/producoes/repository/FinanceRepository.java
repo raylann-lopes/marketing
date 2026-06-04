@@ -26,6 +26,10 @@ public interface FinanceRepository extends JpaRepository<FinanceEntity, Long> {
             Long clientId, FinanceStatusEnum status, LocalDateTime date);
 
     @Modifying
+    @Query("DELETE FROM FinanceEntity f WHERE f.client.id = :clientId")
+    void deleteByClientId(@Param("clientId") Long clientId);
+
+    @Modifying
     @Query("DELETE FROM FinanceEntity f WHERE f.client.id = :clientId AND f.status = :status AND f.expirationDate > :date")
     void deleteByClientIdAndStatusAndExpirationDateAfter(
             @Param("clientId") Long clientId,
