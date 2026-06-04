@@ -5,12 +5,12 @@ import com.north.producoes.controller.dto.response.MetaInstagramBusinessAccountR
 
 /**
  * Resposta da Meta Graph API ao listar páginas.
- * accessToken usa READ_ONLY: desserializado da resposta da Meta, mas nunca serializado em respostas HTTP.
+ * accessToken usa WRITE_ONLY: desserializado da resposta da Meta, mas nunca serializado em respostas HTTP.
  */
 public record MetaPageResponseDTO(
         String id,
         String name,
-        @JsonProperty(value = "access_token", access = JsonProperty.Access.READ_ONLY)
+        @JsonProperty(value = "access_token", access = JsonProperty.Access.WRITE_ONLY)
         String accessToken,
         @JsonProperty("instagram_business_account")
         MetaInstagramBusinessAccountResponseDTO instagramBusinessAccount
