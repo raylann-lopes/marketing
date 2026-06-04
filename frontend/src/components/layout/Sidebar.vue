@@ -19,6 +19,7 @@ import {
 import type { Component } from 'vue'
 import { ref } from 'vue'
 import { setCurrentUserId } from '@/lib/api'
+import logoUrl from '@/assets/logo.png'
 
 const router = useRouter()
 const role = localStorage.getItem('role') || sessionStorage.getItem('role')
@@ -74,9 +75,9 @@ function toggleSidebar() {
     <!-- Logo -->
     <div :class="['pt-6 pb-4', isCollapsed ? 'px-2' : 'px-6']">
       <div :class="['flex items-start gap-2', isCollapsed ? 'justify-center' : 'justify-between']">
-        <div v-if="!isCollapsed">
-          <h1 class="text-xl font-bold text-[#6B21A8]">North Produções</h1>
-          <p class="text-xs text-gray-500 mt-0.5">Produtora Audiovisual</p>
+        <div v-if="!isCollapsed" class="flex flex-col gap-0.5">
+          <img :src="logoUrl" alt="North Produções" class="h-9 object-contain object-left" />
+          <span class="text-xs font-semibold text-[#6B21A8] tracking-wide">North Produções</span>
         </div>
         <button
           type="button"

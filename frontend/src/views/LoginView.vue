@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Eye, EyeOff, Shield } from 'lucide-vue-next'
+import logoUrl from '@/assets/logo.png'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import { setCurrentUserId } from '@/lib/api'
@@ -58,9 +59,9 @@ async function handleLogin() {
     <div class="w-full max-w-sm">
       <!-- Header -->
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-[#6B21A8]">North Produções</h1>
-        <p class="text-xs tracking-[0.2em] text-gray-400 mt-1 uppercase">Produtora Audiovisual</p>
-        <p class="text-sm text-gray-500 mt-3">Entre na sua conta para gerenciar seus projetos.</p>
+        <img :src="logoUrl" alt="North Produções" class="h-20 w-auto block mx-auto mb-2 object-contain" />
+        <h1 class="text-xl font-bold text-[#6B21A8]">North Produções</h1>
+        <p class="text-sm text-gray-500 mt-1">Entre na sua conta para gerenciar seus projetos.</p>
       </div>
 
       <!-- Form -->
@@ -85,7 +86,6 @@ async function handleLogin() {
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
             <label class="text-xs font-semibold text-gray-500 tracking-wide uppercase">Senha</label>
-            <a href="#" class="text-xs text-[#7C3AED] hover:underline">Esqueceu sua senha?</a>
           </div>
           <div class="relative">
             <Input
@@ -118,7 +118,7 @@ async function handleLogin() {
 
         <!-- Submit -->
         <Button class="w-full h-11 text-base" :disabled="loading" @click="handleLogin">
-          {{ loading ? 'Entrando...' : 'Entrar no Ateliê' }}
+          {{ loading ? 'Entrando...' : 'Entrar' }}
         </Button>
 
         <div class="border-t border-gray-100 pt-4 text-center">
