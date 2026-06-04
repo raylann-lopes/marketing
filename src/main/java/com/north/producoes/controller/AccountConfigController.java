@@ -14,7 +14,7 @@ import java.security.Principal;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping("/api/admin/config")
+@RequestMapping("/api/admin/account-config")
 public class AccountConfigController {
 
     private final AccountConfigService accountConfigService;
