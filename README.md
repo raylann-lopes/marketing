@@ -1,738 +1,438 @@
-# North Producoes Backend
+# North Produções — Sistema de Gestão de Produção de Conteúdo
 
-Backend da plataforma **North Producoes**, um sistema para gestao operacional de uma agencia de marketing e producao de conteudo. A aplicacao centraliza autenticacao, clientes, usuarios, posts, aprovacoes, midias, financeiro e integracoes externas em uma API Spring Boot preparada para operar junto com frontend, automacoes n8n, AWS S3, Meta Graph API, Evolution API e OpenAI.
+Plataforma full-stack para gestão de produção audiovisual e conteúdo digital. Centraliza o fluxo de criação, aprovação via WhatsApp, publicação no Instagram e controle financeiro de uma produtora de conteúdo.
 
-O objetivo do projeto e reduzir a dependencia de planilhas, mensagens soltas e controles manuais, mantendo o ciclo de vida da producao de conteudo em um backend unico, versionado, testavel e com regras de negocio concentradas no servidor.
+---
 
-## Sumario
+## Sumário
 
-- [Visao do produto](#visao-do-produto)
-- [Principais capacidades](#principais-capacidades)
+- [Visão Geral](#visão-geral)
+- [Stack Tecnológica](#stack-tecnológica)
 - [Arquitetura](#arquitetura)
-- [Stack tecnica](#stack-tecnica)
-- [Modulos funcionais](#modulos-funcionais)
-- [Fluxo operacional](#fluxo-operacional)
-- [Mapa de endpoints](#mapa-de-endpoints)
-- [Seguranca](#seguranca)
-- [Integracoes externas](#integracoes-externas)
-- [Banco de dados e migracoes](#banco-de-dados-e-migracoes)
-- [Executando localmente](#executando-localmente)
-- [Variaveis de ambiente](#variaveis-de-ambiente)
-- [Testes e qualidade](#testes-e-qualidade)
-- [Padroes de desenvolvimento](#padroes-de-desenvolvimento)
-- [Troubleshooting](#troubleshooting)
+- [Funcionalidades](#funcionalidades)
+- [Pré-requisitos](#pré-requisitos)
+- [Configuração do Ambiente](#configuração-do-ambiente)
+- [Rodando o Projeto](#rodando-o-projeto)
+- [API Reference](#api-reference)
+- [Banco de Dados](#banco-de-dados)
+- [Integrações Externas](#integrações-externas)
+- [Segurança](#segurança)
+- [Deploy](#deploy)
 
-## Visao do produto
+---
 
-A North Producoes opera um fluxo em que cada cliente pode ter demandas de conteudo, artes, legendas, status de aprovacao, dados de publicacao, contatos de WhatsApp, configuracoes de Instagram e informacoes financeiras. Este backend foi construido para ser a fonte de verdade desse fluxo.
+## Visão Geral
 
-Em termos praticos, a API permite:
+O sistema gerencia o ciclo completo de produção de conteúdo para clientes de uma agência:
 
-- registrar clientes e manter dados operacionais de atendimento;
-- criar posts vinculados a cliente e usuario responsavel;
-- controlar status de producao, aprovacao e publicacao;
-- gerar URLs presignadas para upload de artes no S3;
-- confirmar upload de midia e disparar webhook para automacao;
-- gerar legenda com IA usando contexto do post e do cliente;
-- disponibilizar dados internos para n8n publicar conteudo;
-- vincular contas Instagram via Meta Graph API;
-- consultar e vincular grupos do WhatsApp via Evolution API;
-- controlar lancamentos financeiros associados a clientes;
-- proteger operacoes administrativas por perfil e rotas internas por API key.
+```
+Criação do Post → Upload da Arte (S3) → Geração de Legenda (IA) →
+Envio para Aprovação (WhatsApp) → Votação do Cliente →
+Agendamento → Publicação Automática (Instagram)
+```
 
-## Principais capacidades
+**Papéis de usuário:**
+- **ADMIN** — acesso completo: clientes, posts, aprovações, financeiro, integrações e gestão de usuários
+- **USER** — cria e edita posts, visualiza aprovações e dashboard
 
-| Area | Capacidade |
-| --- | --- |
-| Autenticacao | Login, registro, JWT, refresh token e usuario autenticado |
-| Usuarios | Cadastro, consulta, atualizacao de perfil, troca de senha e rotas administrativas |
-| Clientes | Cadastro, consulta por email/numero/status, atualizacao, exclusao e vinculo com grupo WhatsApp |
-| Posts | Criacao, edicao, filtros por status/cliente/usuario/data e geracao de legenda |
-| Aprovacoes | Registro de arte/legenda, aprovacao, rejeicao, atualizacao de status e callbacks internos |
-| Midia | Upload direto ao S3 por URL presignada, preview temporario e URL interna para automacoes |
-| Financeiro | Criacao, consulta, atualizacao e exclusao de registros financeiros |
-| Meta | Consulta e vinculo de contas Instagram Business por cliente |
-| Evolution API | Consulta de grupos e vinculo de grupo WhatsApp ao cliente |
-| n8n | Webhook de upload completo e rota interna protegida por `X-Internal-Api-Key` |
-| Observabilidade | Actuator e Qodana configurados para apoio de qualidade |
-| Documentacao | Swagger/OpenAPI via SpringDoc |
+---
+
+## Stack Tecnológica
+
+### Backend
+| Tecnologia | Versão | Uso |
+|---|---|---|
+| Java | 21 | Linguagem principal |
+| Spring Boot | 4.0.6 | Framework web/REST |
+| Spring Security | — | Autenticação e autorização |
+| Spring Data JPA | — | ORM / acesso a dados |
+| Flyway | — | Migrações de banco |
+| PostgreSQL | 17 | Banco de dados principal |
+| JJWT | 0.13.0 | Geração e validação de JWT |
+| Spring AI (OpenAI) | 2.0.0-M4 | Geração de legendas com GPT-4o |
+| AWS SDK v2 | 2.44.0 | Upload de arquivos no S3 |
+| Lombok | — | Redução de boilerplate |
+| Maven | 3.9.9 | Build e dependências |
+
+### Frontend
+| Tecnologia | Versão | Uso |
+|---|---|---|
+| Vue.js | 3.5 | Framework SPA |
+| TypeScript | 6.0 | Tipagem estática |
+| Vite | 8.0 | Build tool e dev server |
+| Vue Router | 5.0 | Roteamento |
+| Pinia | 3.0 | Gerenciamento de estado |
+| Tailwind CSS | 3.4 | Estilização |
+| Lucide Vue | 1.0 | Ícones |
+| Zod | 4.0 | Validação de schemas |
+
+---
 
 ## Arquitetura
 
-O projeto segue arquitetura em camadas, com separacao entre contrato HTTP, regras de negocio, persistencia, seguranca e integracoes externas.
-
-```text
-src/main/java/com/north/producoes
-├── config/                 Configuracoes de infraestrutura e clientes externos
-├── controller/             Implementacoes REST
-│   ├── api/                Interfaces de contrato e documentacao OpenAPI
-│   └── dto/                DTOs de request e response
-├── entity/                 Entidades JPA e enums de dominio
-├── exception/              Excecoes de dominio e handler global
-├── integration/            Clientes e DTOs de APIs externas
-│   ├── evolutionApi/       Cliente Evolution API e modelos externos
-│   └── meta/               Cliente Meta Graph API e modelos externos
-├── repository/             Repositorios Spring Data JPA
-├── security/               JWT, filtros, refresh token e configuracao de seguranca
-└── service/                Regras de negocio, orquestracao e integracoes aplicacionais
+```
+backend/
+├── src/main/java/com/north/producoes/
+│   ├── controller/          # Camada REST (11 controllers)
+│   ├── service/             # Regras de negócio (17 services)
+│   ├── entity/              # Entidades JPA (6 tabelas principais)
+│   ├── repository/          # Repositórios Spring Data (7)
+│   ├── dto/                 # DTOs de request/response
+│   ├── security/            # JWT, filtros, configuração Spring Security
+│   ├── integration/         # Clientes HTTP externos (Meta, Evolution, Apify)
+│   └── config/              # Beans de configuração (S3, bootstrap, agendadores)
+├── src/main/resources/
+│   ├── db/migration/        # Migrações Flyway (V1–V10)
+│   └── application.properties
+└── frontend/
+    ├── src/
+    │   ├── views/           # 12 páginas Vue
+    │   ├── components/      # 33+ componentes reutilizáveis
+    │   ├── services/        # Camada de API (TypeScript)
+    │   ├── lib/             # Utilitários e configurações
+    │   └── assets/          # Logo e imagens estáticas
+    └── package.json
 ```
 
-### Decisoes arquiteturais importantes
+---
 
-- **Controllers enxutos**: os controllers delegam regra de negocio para services.
-- **Contratos separados em `controller/api`**: rotas, operacoes e documentacao OpenAPI ficam em interfaces dedicadas.
-- **DTOs na borda da API**: requests e responses nao expõem diretamente a estrutura interna das entidades.
-- **Integracoes externas isoladas**: clientes de Meta Graph e Evolution API ficam em pacotes proprios, com DTOs externos separados dos DTOs da aplicacao.
-- **Regras no backend**: autorizacao, validacao, mudanca de status e composicao de payloads ficam no servidor.
-- **Banco versionado por Flyway**: mudancas estruturais sao aplicadas por migracoes controladas.
-- **Testes por camada**: services com Mockito/JUnit e controllers com testes focados no contrato HTTP.
+## Funcionalidades
 
-## Stack tecnica
+### Gestão de Conteúdo
+- Board Kanban com fluxo de status: `DEMAND → IN_PRODUCTION → WAITING_APPROVAL → SCHEDULE → PUBLISHED`
+- Upload de arte e imagem de referência direto para o S3 via URL pré-assinada
+- Geração de legenda automática via GPT-4o com base no tema, objetivo e identidade do cliente
 
-### Plataforma
+### Fluxo de Aprovação via WhatsApp
+1. Arte enviada ao grupo do cliente no WhatsApp com legenda
+2. Poll de votação criado automaticamente (✅ Aprovar / ❌ Rejeitar)
+3. Webhook da Evolution API recebe o voto do cliente
+4. Status do post atualizado automaticamente
+5. Notificação de rejeição com motivo enviada ao grupo quando necessário
 
-- Java 21
-- Spring Boot 4.0.4
-- Spring Web MVC
-- Spring Security
-- Spring Data JPA
-- Hibernate
-- Flyway
-- PostgreSQL
-- Maven Wrapper
+### Publicação Automática
+- Agendador verifica posts com status `SCHEDULE` a cada 20 minutos
+- Publicação automática no Instagram via Meta Graph API
 
-### Integracoes
+### Gestão de Clientes
+- Cadastro com vínculo a grupo WhatsApp e conta Instagram
+- Configuração de tom de voz e nicho para personalização da IA
+- Status ACTIVE/INACTIVE com soft delete
 
-- AWS SDK v2 para S3 e presigned URLs
-- Spring AI 2.0.0-M4
-- OpenAI
-- Meta Graph API
-- Evolution API
-- n8n
-- SpringDoc OpenAPI / Swagger UI
+### Controle Financeiro (Admin)
+- Registro de receitas e despesas por cliente
+- Previsão anual agrupada por mês
+- Filtros por status (PENDING/PAID) e tipo (INCOME/EXPENSE)
 
-### Dependencias de apoio
+### Gestão de Usuários (Admin)
+- Criação, edição, ativação e desativação de usuários
+- Troca de papel (ADMIN/USER) sem recriar o usuário
 
-- JJWT 0.13.0
-- Lombok
-- H2 para testes
-- AssertJ
-- Mockito
-- JUnit 5
-- Qodana
+---
 
-## Modulos funcionais
+## Pré-requisitos
 
-### Autenticacao e sessao
+- **Java 21+**
+- **Maven 3.9+**
+- **Node.js 22+**
+- **Docker & Docker Compose** (opcional, recomendado)
+- **PostgreSQL 17** (ou via Docker)
 
-Responsavel por autenticar usuarios, emitir tokens JWT e renovar sessao com refresh token.
+---
 
-Principais responsabilidades:
+## Configuração do Ambiente
 
-- autenticar por email e senha;
-- registrar usuarios;
-- gerar token de acesso;
-- renovar token por refresh token;
-- aplicar criptografia de senha com BCrypt;
-- carregar usuario autenticado pelo filtro JWT.
-
-### Usuarios
-
-Modulo de administracao e autocuidado do usuario.
-
-Recursos principais:
-
-- listagem e busca por email;
-- criacao administrativa;
-- exclusao administrativa;
-- consulta de perfil autenticado;
-- atualizacao de dados pessoais;
-- troca de senha.
-
-Rotas administrativas usam `@PreAuthorize` para restringir acesso a usuarios com perfil administrativo.
-
-### Clientes
-
-Representa a conta operacional atendida pela agencia.
-
-Campos relevantes:
-
-- nome;
-- email;
-- telefone;
-- link do Drive;
-- nicho;
-- tom de voz;
-- status;
-- grupo WhatsApp vinculado pela Evolution API.
-
-O cliente e a base para posts, aprovacoes, midias, conta Instagram e financeiro.
-
-### Posts
-
-Representa uma demanda de conteudo. Cada post possui:
-
-- titulo;
-- tema;
-- objetivo;
-- status;
-- data agendada;
-- cliente;
-- usuario responsavel;
-- aprovacao associada.
-
-O post concentra o planejamento da peca antes da aprovacao e publicacao.
-
-### Aprovacoes
-
-A aprovacao registra o material que sera analisado e potencialmente publicado.
-
-Ela guarda:
-
-- chave da arte no S3;
-- nome da arte;
-- legenda;
-- status de aprovacao;
-- data de aprovacao;
-- usuario aprovador;
-- dados de envio pelo WhatsApp quando retornados pela automacao.
-
-### Midia e S3
-
-O backend nao precisa receber arquivos pesados diretamente. Em vez disso:
-
-1. O frontend solicita uma URL presignada.
-2. O arquivo e enviado diretamente ao S3.
-3. O frontend confirma o upload.
-4. O backend atualiza o estado da aprovacao/post.
-5. O backend pode disparar webhook para o n8n.
-6. O n8n consulta uma rota interna para obter a URL e os dados de publicacao.
-
-Esse modelo reduz trafego no backend e melhora escalabilidade.
-
-### IA para legendas
-
-O `OpenAiService` usa Spring AI para gerar legendas considerando:
-
-- titulo do post;
-- tema;
-- objetivo;
-- contexto do cliente;
-- tom de voz;
-- imagem, quando uma URL estiver disponivel.
-
-Falhas de integracao sao convertidas para excecoes de dominio, evitando que detalhes da API externa vazem diretamente para o contrato HTTP.
-
-### Conta Instagram e Meta Graph
-
-O modulo Meta consulta paginas e contas Instagram Business disponiveis a partir do token configurado. Depois, permite vincular uma conta ao cliente.
-
-O vinculo final guarda:
-
-- `clientId`;
-- `igUserId`;
-- `accessToken`;
-- usuario administrador que realizou a configuracao.
-
-### Evolution API e WhatsApp
-
-A integracao com Evolution API permite:
-
-- consultar grupos disponiveis;
-- vincular `whatsappGroupId` e `whatsappGroupName` ao cliente;
-- preparar o backend para fluxos de envio e rastreio de mensagem via n8n.
-
-### Financeiro
-
-Modulo para controle financeiro associado a clientes.
-
-Permite:
-
-- listar registros;
-- filtrar por status;
-- buscar por cliente;
-- criar lancamento;
-- atualizar lancamento;
-- excluir lancamento.
-
-Atualmente o controller financeiro e protegido para usuarios administradores.
-
-## Fluxo operacional
-
-```text
-1. Usuario autentica na plataforma.
-2. Cliente e cadastrado com dados operacionais.
-3. Post e criado para o cliente.
-4. Arte e enviada ao S3 via URL presignada.
-5. Upload e confirmado no backend.
-6. Backend atualiza status e pode disparar webhook n8n.
-7. Legenda pode ser gerada com IA.
-8. Material e aprovado ou rejeitado.
-9. n8n consulta dados internos para publicacao.
-10. Backend recebe/guarda dados de retorno da automacao.
-```
-
-## Mapa de endpoints
-
-> O Swagger e a fonte interativa do contrato. Este mapa serve como visao rapida para desenvolvimento.
-
-### Autenticacao
-
-Base: `/api/auth`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| POST | `/login` | Autentica usuario e retorna tokens |
-| POST | `/register` | Registra usuario |
-| POST | `/refresh` | Renova token de acesso |
-
-### Usuarios
-
-Base: `/api/users`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/` | Lista usuarios |
-| GET | `/email/{email}` | Busca usuario por email |
-| POST | `/` | Cria usuario |
-| DELETE | `/id/{id}` | Remove usuario |
-| GET | `/me` | Retorna usuario autenticado |
-| PUT | `/me` | Atualiza perfil autenticado |
-| PUT | `/me/password` | Altera senha do usuario autenticado |
-
-### Clientes
-
-Base: `/api/clients`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/` | Lista clientes |
-| GET | `/email/{email}` | Busca por email |
-| GET | `/number/{number}` | Busca por telefone |
-| GET | `/status/{status}` | Filtra por status |
-| POST | `/` | Cria cliente |
-| PUT | `/update/{id}` | Atualiza cliente |
-| DELETE | `/id/{id}` | Remove cliente |
-
-### Posts
-
-Base: `/api/posts`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/` | Lista posts |
-| GET | `/status/{status}` | Filtra por status |
-| GET | `/client/{id}` | Lista posts por cliente |
-| GET | `/user/{id}` | Lista posts por usuario |
-| GET | `/scheduled/{scheduledAt}` | Busca por data agendada |
-| POST | `/save` | Cria post |
-| PUT | `/update/{id}` | Atualiza post |
-| DELETE | `/delete/{id}` | Remove post |
-| POST | `/{id}/generate-caption` | Gera legenda com IA |
-
-### Aprovacoes
-
-Base: `/api/post-approvals`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/all` | Lista aprovacoes |
-| GET | `/{id}` | Busca aprovacao por ID |
-| GET | `/status/{status}` | Filtra por status |
-| POST | `/approve/{id}` | Aprova material |
-| POST | `/reject/{id}` | Rejeita material |
-| POST | `/save` | Cria aprovacao |
-| PUT | `/update/{id}` | Atualiza aprovacao |
-| DELETE | `/delete/{id}` | Remove aprovacao |
-
-### Rotas internas de aprovacao
-
-Base: `/api/internal/post-approvals`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| PATCH | `/{id}/whatsapp` | Atualiza dados de envio WhatsApp |
-| PATCH | `/{id}/status` | Atualiza status por automacao |
-| GET | `/whatsapp` | Lista aprovacoes relevantes para WhatsApp |
-
-Essas rotas nao usam JWT. Elas sao protegidas pelo header `X-Internal-Api-Key`.
-
-### Midia
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| POST | `/api/media/upload-url` | Gera URL presignada de upload |
-| POST | `/api/media/upload-complete` | Confirma upload e dispara fluxo posterior |
-| GET | `/api/media/art-url` | Retorna URL temporaria de preview |
-| GET | `/api/internal/media-url/{postId}` | Retorna dados de midia para n8n |
-
-### Financeiro
-
-Base: `/api/finance`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/` | Lista lancamentos |
-| GET | `/status/{status}` | Filtra por status |
-| GET | `/client/{id}` | Busca por cliente |
-| POST | `/create` | Cria lancamento |
-| PATCH | `/update/{id}` | Atualiza lancamento |
-| DELETE | `/delete/{id}` | Remove lancamento |
-
-### Configuracao de contas
-
-Base: `/api/admin/account-config`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| POST | `/` | Configura conta externa para cliente |
-| GET | `/client/{clientId}` | Busca configuracao por cliente |
-
-### Meta Graph
-
-Base: `/api/admin/meta`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/instagram-accounts` | Lista contas Instagram Business disponiveis |
-| POST | `/instagram-accounts/link` | Vincula conta Instagram a um cliente |
-
-### Evolution API
-
-Base: `/api/admin/evolution`
-
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| GET | `/groups` | Lista grupos da instancia Evolution |
-| POST | `/groups/link` | Vincula grupo WhatsApp a cliente |
-
-## Seguranca
-
-O backend usa uma estrategia stateless:
-
-- JWT no header `Authorization: Bearer <token>`;
-- refresh token para renovacao;
-- BCrypt para hash de senha;
-- `@PreAuthorize` em rotas administrativas;
-- `X-Internal-Api-Key` para rotas internas consumidas pelo n8n;
-- CSRF desabilitado por se tratar de API stateless;
-- CORS configurado para o frontend local em `http://localhost:5173`;
-- Swagger desabilitado por padrao no perfil base/producao.
-
-### Politica de exposicao
-
-As rotas `/api/auth/**` sao publicas. As rotas `/api/internal/**` nao usam JWT, mas passam pelo `InternalApiKeyFilter`. Todas as demais rotas exigem autenticacao e podem ter restricoes adicionais por perfil.
-
-### Cuidados operacionais
-
-- Nao commitar `.env` com segredos reais.
-- Usar `JWT_KEY` forte e adequado para o algoritmo de assinatura.
-- Definir `N8N_INTERNAL_KEY` em qualquer ambiente que use rotas internas.
-- Desabilitar Swagger em producao, como ja configurado em `application-prod.properties`.
-- Evitar expor URLs permanentes de arquivos sensiveis; o padrao do projeto e gerar URLs sob demanda.
-
-## Integracoes externas
-
-### AWS S3
-
-Usado para armazenamento de artes e geracao de URLs presignadas.
-
-Configuracoes principais:
-
-- `AWS_S3_BUCKET`
-- `AWS_S3_REGION`
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_S3_PUBLIC_PREFIX`
-- `AWS_S3_PUBLIC_BASE_URL`
-
-### OpenAI
-
-Usado via Spring AI para geracao de legendas.
-
-Configuracoes:
-
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL`
-
-Modelo padrao: `gpt-4o`.
-
-### n8n
-
-Usado para automacoes internas.
-
-Configuracoes:
-
-- `N8N_INTERNAL_KEY`: protege rotas internas do backend.
-- `N8N_WEBHOOK_UPLOAD_COMPLETE_URL`: webhook chamado quando upload e confirmado.
-- `N8N_WEBHOOK_API_KEY`: chave enviada ao webhook configurado.
-
-### Meta Graph API
-
-Usada para listar e vincular contas Instagram Business.
-
-Configuracoes:
-
-- `META_GRAPH_BASE_URL`
-- `META_GRAPH_API_VERSION`
-- `META_GRAPH_ACCESS_TOKEN`
-
-### Evolution API
-
-Usada para consultar grupos do WhatsApp e vincular grupo ao cliente.
-
-Configuracoes:
-
-- `EVOLUTION_API_BASE_URL`
-- `EVOLUTION_API_KEY`
-- `EVOLUTION_API_INSTANCE`
-
-## Banco de dados e migracoes
-
-O banco principal e PostgreSQL. O schema e controlado por Flyway em:
-
-```text
-src/main/resources/db/migration
-```
-
-Configuracao relevante:
-
-```properties
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration
-spring.flyway.baseline-on-migrate=true
-spring.jpa.hibernate.ddl-auto=validate
-```
-
-O `ddl-auto=validate` e intencional: a aplicacao valida se o banco esta aderente as entidades, mas nao altera schema automaticamente. Mudancas estruturais devem ser feitas por migracoes.
-
-## Executando localmente
-
-### Pre-requisitos
-
-- Java 21
-- Maven Wrapper do projeto (`./mvnw`)
-- PostgreSQL local ou via Docker Compose
-- Variaveis de ambiente configuradas
-
-### Subir PostgreSQL com Docker Compose
-
-```bash
-docker compose up -d
-```
-
-O `compose.yaml` disponibiliza PostgreSQL na porta `5432`.
-
-### Configurar ambiente
-
-Crie um `.env` local a partir de `.env_example` ou exporte as variaveis no terminal. O projeto le `application.properties` e espera as principais variaveis obrigatorias do ambiente.
-
-Exemplo minimo para desenvolvimento:
+Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 
 ```env
-DB_URL=jdbc:postgresql://localhost:5432/postgres
+# Banco de Dados
+DB_URL=jdbc:postgresql://localhost:5432/producoes
 DB_USER=postgres
-DB_PASSWORD=postgres
-JWT_KEY=defina-uma-chave-forte-local
+DB_PASSWORD=sua_senha
+
+# JWT
+JWT_KEY=base64_encoded_secret_256bits
+
+# AWS S3
+AWS_ACCESS_KEY_ID=sua_access_key
+AWS_SECRET_ACCESS_KEY=sua_secret_key
+AWS_S3_BUCKET=north-producoes
+AWS_S3_REGION=sa-east-1
+AWS_S3_PUBLIC_BASE_URL=https://seu-bucket.s3.amazonaws.com
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o
+
+# Meta Graph API (Instagram)
+META_GRAPH_ACCESS_TOKEN=seu_token
+META_GRAPH_API_VERSION=v19.0
+
+# Evolution API (WhatsApp)
+EVOLUTION_API_BASE_URL=https://sua-instancia.evolution.com
+EVOLUTION_API_KEY=sua_chave
+EVOLUTION_API_INSTANCE=nome_da_instancia
+EVOLUTION_WEBHOOK_SECRET=uuid_aleatorio
+
+# Apify (Instagram scraping)
+APIFY_API_TOKEN=seu_token
+
+# Admin inicial (criado no startup)
+BOOTSTRAP_ADMIN_NAME=Admin
+BOOTSTRAP_ADMIN_EMAIL=admin@agencianorth.com
+BOOTSTRAP_ADMIN_PASSWORD=senha_segura
+
+# Integração interna (n8n)
+INTERNAL_API_KEY=chave_para_n8n
+
+# Ambiente
 SPRING_PROFILES_ACTIVE=dev
 ```
 
-Para executar com perfil de desenvolvimento:
+**Frontend** — crie `frontend/.env`:
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+---
+
+## Rodando o Projeto
+
+### Com Docker Compose (recomendado)
 
 ```bash
-SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+# Sobe PostgreSQL, backend e frontend
+docker compose -f docker-compose.local.yml up --build
 ```
 
-Aplicacao local:
+Acesse em `http://localhost`.
 
-```text
-http://localhost:8080
-```
+### Manualmente
 
-Swagger em desenvolvimento:
-
-```text
-http://localhost:8080/swagger-ui.html
-```
-
-OpenAPI JSON:
-
-```text
-http://localhost:8080/v3/api-docs
-```
-
-## Variaveis de ambiente
-
-| Variavel | Obrigatoria | Uso |
-| --- | --- | --- |
-| `DB_URL` | Sim | URL JDBC do PostgreSQL |
-| `DB_USER` | Sim | Usuario do banco |
-| `DB_PASSWORD` | Sim | Senha do banco |
-| `JWT_KEY` | Sim | Segredo usado para JWT |
-| `SPRING_PROFILES_ACTIVE` | Recomendado | Perfil ativo, como `dev` ou `prod` |
-| `AWS_S3_BUCKET` | Para S3 | Bucket de artes |
-| `AWS_S3_REGION` | Para S3 | Regiao AWS |
-| `AWS_ACCESS_KEY_ID` | Para S3 | Access key |
-| `AWS_SECRET_ACCESS_KEY` | Para S3 | Secret key |
-| `AWS_S3_PUBLIC_PREFIX` | Opcional | Prefixo publico, padrao `public/posts` |
-| `AWS_S3_PUBLIC_BASE_URL` | Opcional | Base publica quando aplicavel |
-| `OPENAI_API_KEY` | Para IA | Chave OpenAI |
-| `OPENAI_MODEL` | Opcional | Modelo de chat |
-| `N8N_INTERNAL_KEY` | Para rotas internas | API key exigida em `/api/internal/**` |
-| `N8N_WEBHOOK_UPLOAD_COMPLETE_URL` | Para webhook | URL chamada ao concluir upload |
-| `N8N_WEBHOOK_API_KEY` | Para webhook | Chave enviada ao n8n |
-| `META_GRAPH_BASE_URL` | Opcional | Base URL da Meta Graph API |
-| `META_GRAPH_API_VERSION` | Opcional | Versao da API, padrao `v19.0` |
-| `META_GRAPH_ACCESS_TOKEN` | Para Meta | Token da Meta |
-| `EVOLUTION_API_BASE_URL` | Para Evolution | URL da Evolution API |
-| `EVOLUTION_API_KEY` | Para Evolution | Chave da Evolution API |
-| `EVOLUTION_API_INSTANCE` | Para Evolution | Instancia usada nas chamadas |
-
-## Testes e qualidade
-
-O projeto possui cobertura unitária e de controllers usando JUnit 5, Mockito, AssertJ e recursos de teste do Spring Boot.
-
-### Rodar todos os testes
-
+**Backend:**
 ```bash
-./mvnw test
+# Na raiz do projeto
+mvn spring-boot:run
+# Disponível em http://localhost:8080
 ```
 
-Para manter alinhamento com o projeto, use Java 21:
-
+**Frontend:**
 ```bash
-JAVA_HOME=/caminho/para/jdk-21 ./mvnw test
+cd frontend
+npm install
+npm run dev
+# Disponível em http://localhost:5173
 ```
 
-### Estrutura dos testes
+---
 
-```text
-src/test/java/com/north/producoes
-├── controller/    Testes de contrato HTTP/controller
-├── security/      Testes de autenticacao
-└── service/       Testes unitarios de regra de negocio
+## API Reference
+
+### Autenticação
+
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | Login com e-mail e senha | Público |
+| `POST` | `/api/auth/register` | Criar usuário (admin) | ADMIN |
+| `POST` | `/api/auth/refresh` | Renovar access token | Público |
+
+Todas as rotas autenticadas exigem header:
+```
+Authorization: Bearer <access_token>
 ```
 
-### Padrao recomendado
+### Usuários
 
-- Services: JUnit 5 + Mockito, sem subir contexto Spring.
-- Controllers: testes focados em status HTTP, payload e delegacao.
-- Assertions: AssertJ para legibilidade.
-- Estrutura: Arrange, Act, Assert.
-- Dependencias externas: sempre mockadas em testes unitarios.
-- Banco real: deixar para testes de integracao dedicados.
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `GET` | `/api/users` | Listar usuários (paginado) | ADMIN |
+| `POST` | `/api/users` | Criar usuário | ADMIN |
+| `PUT` | `/api/users/id/{id}` | Atualizar usuário | ADMIN |
+| `PATCH` | `/api/users/id/{id}/role` | Alterar papel | ADMIN |
+| `PATCH` | `/api/users/id/{id}/activate` | Reativar usuário | ADMIN |
+| `DELETE` | `/api/users/id/{id}` | Desativar usuário | ADMIN |
+| `GET` | `/api/users/me` | Perfil do usuário logado | AUTH |
+| `PUT` | `/api/users/me` | Atualizar perfil | AUTH |
+| `PUT` | `/api/users/me/password` | Alterar senha | AUTH |
 
-### Qodana
+### Clientes
 
-O projeto possui `qodana.yaml` com:
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `GET` | `/api/clients` | Listar clientes | AUTH |
+| `GET` | `/api/clients/status/{status}` | Filtrar por status | AUTH |
+| `POST` | `/api/clients` | Criar cliente | ADMIN |
+| `PUT` | `/api/clients/{id}` | Atualizar cliente | ADMIN |
+| `PATCH` | `/api/clients/{id}/status` | Alterar status | ADMIN |
+| `DELETE` | `/api/clients/{id}` | Excluir cliente | ADMIN |
 
-- linter JVM 2026.1;
-- JDK 21;
-- profile recomendado;
-- checagem de licencas de dependencias.
+### Posts
 
-## Padroes de desenvolvimento
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `GET` | `/api/posts` | Listar posts | AUTH |
+| `GET` | `/api/posts/status/{status}` | Filtrar por status | AUTH |
+| `GET` | `/api/posts/client/{id}` | Posts de um cliente | AUTH |
+| `POST` | `/api/posts/save` | Criar post | ADMIN |
+| `PUT` | `/api/posts/update/{id}` | Atualizar post | ADMIN |
+| `DELETE` | `/api/posts/delete/{id}` | Excluir post | ADMIN |
+| `POST` | `/api/posts/{id}/generate-caption` | Gerar legenda com IA | AUTH |
 
-### Maven
+### Aprovações
 
-Use sempre o Maven Wrapper:
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `GET` | `/api/post-approvals/all` | Listar aprovações | ADMIN |
+| `GET` | `/api/post-approvals/{id}` | Buscar por post | AUTH |
+| `GET` | `/api/post-approvals/status/{status}` | Filtrar por status | ADMIN |
+| `POST` | `/api/post-approvals/save` | Criar aprovação | ADMIN |
+| `PUT` | `/api/post-approvals/update/{id}` | Atualizar aprovação | ADMIN |
+| `DELETE` | `/api/post-approvals/delete/{id}` | Excluir aprovação | ADMIN |
 
+### Mídia (Upload S3)
+
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `GET` | `/api/media/upload-url` | URL pré-assinada para arte | AUTH |
+| `GET` | `/api/media/reference-url` | URL pré-assinada para referência | AUTH |
+| `POST` | `/api/media/upload-complete` | Confirmar upload concluído | AUTH |
+| `GET` | `/api/media/preview/{postId}` | URL de preview da arte | AUTH |
+
+### Financeiro
+
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `GET` | `/api/finance` | Listar registros | ADMIN |
+| `GET` | `/api/finance/forecast?year=` | Previsão anual | ADMIN |
+| `POST` | `/api/finance` | Criar registro | ADMIN |
+| `PUT` | `/api/finance/{id}` | Atualizar registro | ADMIN |
+| `DELETE` | `/api/finance/{id}` | Excluir registro | ADMIN |
+
+### Integração Interna (n8n)
+
+Requer header `X-Internal-Api-Key: <INTERNAL_API_KEY>`:
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `PATCH` | `/api/internal/approvals/{id}/status` | Atualizar status de aprovação |
+| `PATCH` | `/api/internal/approvals/post/{postId}/approve` | Aprovar post |
+| `PATCH` | `/api/internal/approvals/post/{postId}/reject` | Rejeitar post |
+| `GET` | `/api/internal/approvals/whatsapp-stanza/{id}` | Buscar por stanza ID |
+
+### Webhooks
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/api/webhooks/whatsapp/{webhookSecret}` | Receber eventos da Evolution API |
+
+---
+
+## Banco de Dados
+
+### Tabelas Principais
+
+| Tabela | Descrição |
+|---|---|
+| `tb_users` | Usuários da equipe (ADMIN/USER) |
+| `tb_client` | Clientes com dados de integração |
+| `tb_posts` | Posts e conteúdos agendados |
+| `tb_post_approvals` | Registros de aprovação com metadados WhatsApp |
+| `tb_finance` | Movimentações financeiras |
+| `tb_account_config` | Configuração de contas Instagram por cliente |
+| `tb_refresh_tokens` | Rotação de tokens JWT |
+
+### Migrações Flyway
+
+```
+V1  — Schema inicial completo
+V2  — Campos de rejeição e correção de status de post
+V3  — Notas internas de revisão
+V4  — Urgência e imagem de referência
+V5  — Renomear status POSTED → PUBLISHED
+V6  — Valor mensal por cliente
+V7  — Tipo financeiro (INCOME/EXPENSE)
+V8  — Colunas monetárias para NUMERIC
+V9  — Campo active em usuários (soft delete)
+V10 — Length 1024 para voiceTone
+```
+
+---
+
+## Integrações Externas
+
+### OpenAI (GPT-4o)
+- Geração de legendas personalizadas por cliente
+- Usa `spring-ai` com o starter OpenAI
+- Endpoint: `POST /api/posts/{id}/generate-caption`
+
+### Meta Graph API (Instagram)
+- Publicação automática de posts no Instagram
+- Vinculação de conta Instagram por cliente via OAuth
+- Versão da API: `v19.0`
+
+### Evolution API (WhatsApp)
+- Envio de arte + legenda para grupos de clientes
+- Envio de poll de aprovação (✅/❌)
+- Recepção de votos via webhook
+- Armazenamento do `stanzaId` para correlação de eventos
+
+### AWS S3
+- Upload de artes e imagens de referência via URL pré-assinada
+- URLs de preview com expiração configurável
+- Região padrão: `sa-east-1`
+
+### Apify
+- Scraping de dados do Instagram para enriquecimento de conteúdo
+
+---
+
+## Segurança
+
+### Autenticação JWT
+- Algoritmo: **HMAC-SHA-256 (HS256)**
+- Expiração do access token: **24 horas**
+- Rotação de refresh token armazenada com hash no banco
+
+### Filtros de Segurança
+- **JwtFilter** — valida Bearer token e popula o `SecurityContext`
+- **InternalApiKeyFilter** — protege `/api/internal/**` com `X-Internal-Api-Key` (para automações n8n)
+
+### CORS
+
+| Rota | Origens Permitidas |
+|---|---|
+| `/**` | `localhost:5173`, `agencianorth.com` e `www.agencianorth.com` |
+| `/api/internal/**` | Todas (server-to-server) |
+| `/api/webhooks/**` | Todas (Evolution API) |
+
+### Autorização
+- `@PreAuthorize` nas rotas administrativas
+- Endpoints financeiros e de usuários restritos ao papel **ADMIN**
+
+---
+
+## Deploy
+
+### CI/CD (GitHub Actions)
+
+O pipeline em `.github/workflows/main.yml` detecta mudanças automaticamente:
+
+- **Backend alterado** → build e push da imagem `producoes-api:latest` para o GHCR
+- **Frontend alterado** → build e push da imagem `producoes-web:latest` para o GHCR
+
+### Imagens Docker
+
+**Backend** — build multi-stage (Maven → Alpine JRE 21):
 ```bash
-./mvnw <comando>
+docker build -t producoes-api .
 ```
 
-Isso reduz diferencas entre ambientes locais e CI.
-
-### Git
-
-O `AGENTS.md` do projeto define:
-
-- mudancas focadas no escopo solicitado;
-- branches para alteracoes nao triviais;
-- commits no padrao Conventional Commits;
-- testes relevantes antes de concluir;
-- evitar rewrites especulativos.
-
-Exemplos de mensagens:
-
-```text
-feat: add media upload workflow
-fix: update vulnerable dependencies
-test: cover post service caption generation
-docs: improve backend README
-```
-
-### API
-
-Ao criar nova funcionalidade:
-
-1. Defina DTOs de request/response.
-2. Exponha o contrato em `controller/api`.
-3. Implemente controller enxuto.
-4. Coloque regra de negocio no service.
-5. Persista via repository.
-6. Mapeie excecoes de dominio no handler global quando necessario.
-7. Adicione testes focados no comportamento.
-
-### Integracoes
-
-Para novas APIs externas:
-
-- criar `Config` para propriedades;
-- criar client dedicado em `integration/<provedor>`;
-- separar DTO externo de DTO interno;
-- converter falhas para excecoes de dominio;
-- testar service com mocks;
-- evitar expor resposta bruta externa no contrato da aplicacao.
-
-## Troubleshooting
-
-### Swagger nao abre
-
-No perfil base e em producao o Swagger fica desabilitado. Use:
-
+**Frontend** — build multi-stage (Node 22 → Nginx Alpine):
 ```bash
-SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+docker build --build-arg VITE_API_BASE_URL=https://api.agencianorth.com -t producoes-web ./frontend
 ```
 
-Depois acesse:
-
-```text
-http://localhost:8080/swagger-ui.html
+### Variáveis de Build (Frontend)
 ```
-
-### Erro de JWT secret
-
-Confirme se `JWT_KEY` esta definido. Em ambiente real, use um segredo forte e gerenciado por mecanismo seguro de configuracao.
-
-### Rotas internas retornam 401 ou 503
-
-Rotas `/api/internal/**` exigem:
-
-```http
-X-Internal-Api-Key: <valor de N8N_INTERNAL_KEY>
+VITE_API_BASE_URL   URL pública da API (obrigatório em produção)
 ```
-
-Se `N8N_INTERNAL_KEY` nao estiver configurado, o backend responde `503`.
-
-### Testes com warning do Mockito
-
-O warning de auto-attach do Mockito/Byte Buddy pode aparecer em JDKs modernos. Ele nao significa falha se o processo terminar com `BUILD SUCCESS`. Para este projeto, mantenha a execucao em JDK 21.
-
-### Hibernate reclama de schema
-
-Como `spring.jpa.hibernate.ddl-auto=validate`, divergencias entre entidade e banco quebram a inicializacao. Corrija com migracao Flyway em `src/main/resources/db/migration`.
-
-### Dependencias vulneraveis
-
-Fluxo recomendado:
-
-1. Identificar a dependencia e o caminho transitorio com `./mvnw dependency:tree`.
-2. Se for gerenciada pelo Spring Boot, preferir atualizar a versao do parent quando for seguro.
-3. Se for dependencia direta, atualizar a versao no `pom.xml`.
-4. Se for transitiva, atualizar a dependencia raiz antes de usar exclusoes.
-5. Rodar `./mvnw test`.
-
-## Licenca
-
-Projeto privado/interno da North Producoes, salvo definicao diferente pelo mantenedor.
