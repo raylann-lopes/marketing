@@ -2,7 +2,8 @@ package com.north.producoes.service;
 
 import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
-import com.north.producoes.controller.dto.request.InternalApprovalRequestDTO;
+import com.north.producoes.controller.dto.request.ApproveByPostRequestDTO;
+import com.north.producoes.controller.dto.request.RejectByPostRequestDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.PostEntity;
@@ -177,38 +178,38 @@ class ApprovedServiceTest {
     class InternalMethods {
         @Test
         @DisplayName("deve aprovar por post ID")
-        void shouldInternalApproveByPostId() {
+        void shouldApproveByPostId() {
             // Arrange
             ApproveEntity approve = approval(5L, post(10L));
-            InternalApprovalRequestDTO request = new InternalApprovalRequestDTO(LocalDateTime.now().plusDays(2), "Notas");
+            ApproveByPostRequestDTO request = new ApproveByPostRequestDTO(LocalDateTime.now().plusDays(2), "Notas");
             when(approveRepository.findByPostId(10L)).thenReturn(List.of(approve));
             when(approveRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
             // Act
-            ApproveEntity result = approvedService.internalApproveByPostId(10L, "user", request);
+            var result = approvedService.approveByPostId(10L, "user", request);
 
             // Assert
-            assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.APPROVE);
-            assertThat(result.getApprovedUser()).isEqualTo("user");
-            assertThat(result.getPost().getStatus()).isEqualTo(PostStatusEnum.FINISHED);
+            assertThat(result.status()).isEqualTo(ApproveStatusEnum.APPROVE);
+            assertThat(result.approvedUser()).isEqualTo("user");
         }
 
         @Test
         @DisplayName("deve rejeitar por post ID e atualizar status do post")
-        void shouldInternalRejectByPostId() {
+        void shouldRejectByPostId() {
             // Arrange
             PostEntity post = post(10L);
             ApproveEntity approve = approval(5L, post);
+            RejectByPostRequestDTO request = new RejectByPostRequestDTO("motivo");
             when(approveRepository.findByPostId(10L)).thenReturn(List.of(approve));
             when(approveRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
             // Act
-            ApproveEntity result = approvedService.internalRejectByPostId(10L, "user", "motivo");
+            var result = approvedService.rejectByPostId(10L, "user", request);
 
             // Assert
-            assertThat(result.getStatus()).isEqualTo(ApproveStatusEnum.REJECTED);
+            assertThat(result.status()).isEqualTo(ApproveStatusEnum.REJECTED);
             assertThat(post.getStatus()).isEqualTo(PostStatusEnum.REJECTED);
-            assertThat(result.getRejectionReason()).isEqualTo("motivo");
+            assertThat(result.rejectionReason()).isEqualTo("motivo");
         }
     }
 
