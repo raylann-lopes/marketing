@@ -1,6 +1,8 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.dto.request.ApproveByPostRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveRequestDTO;
+import com.north.producoes.controller.dto.request.RejectByPostRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -57,6 +59,24 @@ public class ApproveController {
             @PathVariable Long id,
             @Valid @RequestBody ApproveRequestDTO approve) {
         return ResponseEntity.ok(approvedService.updateApproveDTO(id, approve));
+    }
+
+    @PatchMapping("/approve/{postId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<ApproveResponseDTO> approveByPostId(
+            @PathVariable Long postId,
+            @RequestBody(required = false) ApproveByPostRequestDTO dto,
+            @AuthenticationPrincipal UserEntity currentUser) {
+        return ResponseEntity.ok(approvedService.approveByPostId(postId, currentUser.getEmail(), dto));
+    }
+
+    @PatchMapping("/reject/{postId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<ApproveResponseDTO> rejectByPostId(
+            @PathVariable Long postId,
+            @RequestBody(required = false) RejectByPostRequestDTO dto,
+            @AuthenticationPrincipal UserEntity currentUser) {
+        return ResponseEntity.ok(approvedService.rejectByPostId(postId, currentUser.getEmail(), dto));
     }
 
     @DeleteMapping("/delete/{id}")

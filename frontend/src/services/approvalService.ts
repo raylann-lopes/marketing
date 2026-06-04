@@ -55,32 +55,27 @@ export const approvalService = {
     })
   },
 
-  // ADMIN only
-  async approve(postId: string | number): Promise<PostApproval> {
+  async approve(postId: string | number, data?: { scheduledAt?: string, internalRevisionNotes?: string }): Promise<PostApproval> {
     return apiFetch<PostApproval>(`/api/post-approvals/approve/${postId}`, {
-      method: 'POST'
-    })
-  },
-
-  // ADMIN only
-  async reject(postId: string | number): Promise<PostApproval> {
-    return apiFetch<PostApproval>(`/api/post-approvals/reject/${postId}`, {
-      method: 'POST'
-    })
-  },
-
-  async rejectInternalApproval(postId: string | number, data: { rejectionReason: string }): Promise<PostApproval> {
-    return apiFetch<PostApproval>(`/api/internal/approvals/post/${postId}/reject`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    })
-  },
-
-  async internalApprove(postId: string | number, data?: { scheduledAt?: string, internalRevisionNotes?: string }): Promise<PostApproval> {
-    return apiFetch<PostApproval>(`/api/internal/approvals/post/${postId}/approve`, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined
     })
+  },
+
+  async reject(postId: string | number, data?: { rejectionReason: string }): Promise<PostApproval> {
+    return apiFetch<PostApproval>(`/api/post-approvals/reject/${postId}`, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined
+    })
+  },
+
+  // aliases mantidos para compatibilidade com BoardView
+  async internalApprove(postId: string | number, data?: { scheduledAt?: string, internalRevisionNotes?: string }): Promise<PostApproval> {
+    return this.approve(postId, data)
+  },
+
+  async rejectInternalApproval(postId: string | number, data: { rejectionReason: string }): Promise<PostApproval> {
+    return this.reject(postId, data)
   },
 
   // ADMIN only

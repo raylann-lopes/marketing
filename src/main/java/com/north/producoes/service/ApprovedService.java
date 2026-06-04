@@ -1,8 +1,10 @@
 package com.north.producoes.service;
 
+import com.north.producoes.controller.dto.request.ApproveByPostRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ApproveWhatsAppUpdateRequestDTO;
+import com.north.producoes.controller.dto.request.RejectByPostRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
@@ -160,6 +162,52 @@ public class ApprovedService {
         return approveRepository.save(existing);
     }
 
+
+    public ApproveResponseDTO approveByPostId(Long postId, String username, ApproveByPostRequestDTO dto) {
+        ApproveEntity existing = approveRepository.findByPostId(postId).stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma aprovação encontrada para o post ID: " + postId));
+
+        existing.setStatus(ApproveStatusEnum.APPROVE);
+        existing.setApprovedAt(LocalDateTime.now());
+        existing.setApprovedUser(username);
+        existing.setRejectionReason(null);
+        existing.setRejectedAt(null);
+        existing.setRejectedBy(null);
+
+        if (dto != null) {
+            PostEntity post = existing.getPost();
+            if (dto.scheduledAt() != null) {
+                post.setScheduledAt(dto.scheduledAt());
+                post.setStatus(PostStatusEnum.FINISHED);
+                postRepository.save(post);
+            }
+            existing.setInternalRevisionNotes(dto.internalRevisionNotes());
+        }
+
+        return ApproveResponseDTO.from(approveRepository.save(existing));
+    }
+
+    public ApproveResponseDTO rejectByPostId(Long postId, String username, RejectByPostRequestDTO dto) {
+        ApproveEntity existing = approveRepository.findByPostId(postId).stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Nenhuma aprovação encontrada para o post ID: " + postId));
+
+        existing.setStatus(ApproveStatusEnum.REJECTED);
+        existing.setRejectedAt(LocalDateTime.now());
+        existing.setRejectedBy(username);
+        existing.setRejectionReason(dto != null ? dto.rejectionReason() : null);
+        existing.setApprovedAt(null);
+        existing.setApprovedUser("");
+
+        PostEntity post = existing.getPost();
+        if (post != null) {
+            post.setStatus(PostStatusEnum.REJECTED);
+            postRepository.save(post);
+        }
+
+        return ApproveResponseDTO.from(approveRepository.save(existing));
+    }
 
     // DTO-level methods used by ApproveController
     public List<ApproveResponseDTO> findAll() {
