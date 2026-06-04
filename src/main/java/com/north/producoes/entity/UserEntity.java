@@ -43,6 +43,9 @@ public class UserEntity implements UserDetails {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     @OneToMany(mappedBy = "user")
     @JsonIgnore
     private List<PostEntity> posts;
@@ -51,8 +54,14 @@ public class UserEntity implements UserDetails {
     public @NonNull Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
+
     @Override
     public @NonNull String getUsername() {
         return email;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return active;
     }
 }

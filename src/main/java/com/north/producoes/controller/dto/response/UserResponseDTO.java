@@ -7,14 +7,16 @@ public record UserResponseDTO(
         Long id,
         String name,
         String email,
-        UserRoleEnum role
+        UserRoleEnum role,
+        boolean active
 ) {
     public static UserResponseDTO from(UserEntity entity) {
         return new UserResponseDTO(
                 entity.getId(),
                 entity.getName(),
                 entity.getEmail(),
-                entity.getRole()
+                entity.getRole(),
+                entity.isActive()
         );
     }
 }

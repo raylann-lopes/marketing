@@ -68,8 +68,12 @@ public class UserController {
 
     @DeleteMapping("/id/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<Void> deleteUserById(@PathVariable Long id) {
-        userService.deleteUserById(id);
+    public ResponseEntity<Void> deactivateUserById(@PathVariable Long id,
+                                                    @AuthenticationPrincipal UserEntity currentUser) {
+        if (currentUser.getId().equals(id)) {
+            return ResponseEntity.status(403).build();
+        }
+        userService.deactivateUserById(id);
         return ResponseEntity.noContent().build();
     }
 
