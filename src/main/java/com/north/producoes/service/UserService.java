@@ -7,7 +7,10 @@ import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.exception.ResourceAlreadyExistsException;
 import com.north.producoes.exception.ResourceNotFoundException;
+import com.north.producoes.repository.FinanceRepository;
+import com.north.producoes.repository.PostRepository;
 import com.north.producoes.repository.UserRepository;
+import com.north.producoes.security.refreshToken.RefreshTokenRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
@@ -27,6 +30,9 @@ import java.util.Optional;
 public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final FinanceRepository financeRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public Page<UserEntity> findAllUser(Pageable pageable) {
         return userRepository.findAll(pageable);
@@ -69,6 +75,12 @@ public class UserService implements UserDetailsService {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID de Usuario nao encontrado" + id);
         }
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Usuario nao encontrado com id: " + id);
+        }
+        refreshTokenRepository.deleteByUserId(id);
+        postRepository.nullifyUserByUserId(id);
+        financeRepository.nullifyUserByUserId(id);
         userRepository.deleteById(id);
     }
 

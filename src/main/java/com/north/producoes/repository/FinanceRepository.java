@@ -45,6 +45,10 @@ public interface FinanceRepository extends JpaRepository<FinanceEntity, Long> {
 
     List<FinanceEntity> findByType(FinanceTypeEnum type);
 
+    @Modifying
+    @Query("UPDATE FinanceEntity f SET f.user = null WHERE f.user.id = :userId")
+    void nullifyUserByUserId(@Param("userId") Long userId);
+
     @Query("SELECT f.client.id FROM FinanceEntity f WHERE f.expirationDate BETWEEN :start AND :end")
     Set<Long> findClientIdsWithEntryInMonth(
             @Param("start") LocalDateTime start,

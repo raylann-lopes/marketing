@@ -53,7 +53,7 @@ public class PostEntity {
     private ClientEntity client;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id")
     private UserEntity user;
 
     @OneToOne(mappedBy = "post")
