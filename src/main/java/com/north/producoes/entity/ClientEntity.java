@@ -32,13 +32,13 @@ public class ClientEntity {
     @Column(nullable = false, unique = true)
     private String number;
 
-    @Column(nullable = false)
+    @Column
     private String driveLink;
 
     @Column(nullable = false)
     private String niche;
 
-    @Column
+    @Column(nullable = false, length = 1024)
     private String voiceTone;
 
     @Column(name = "whatsapp_group_id", unique = true, length = 100)
