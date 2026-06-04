@@ -1,148 +1,295 @@
-# North Produções — Sistema de Gestão de Produção de Conteúdo
+<h1 align="center">
+  🎬 North Produções — Gestão de Conteúdo
+</h1>
 
-Plataforma full-stack para gestão de produção audiovisual e conteúdo digital. Centraliza o fluxo de criação, aprovação via WhatsApp, publicação no Instagram e controle financeiro de uma produtora de conteúdo.
+<p align="center">
+  Plataforma full-stack inteligente para gestão de produção audiovisual e conteúdo digital.
+  <br>Centraliza o fluxo de criação, aprovação interativa, publicação e controle financeiro.
+</p>
 
----
+<p align="center">
+  <img src="https://img.shields.io/badge/Java_21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21" />
+  <img src="https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot" />
+  <img src="https://img.shields.io/badge/Vue.js_3-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white" alt="Vue 3" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI" />
+</p>
 
-## Sumário
+<hr/>
 
-- [Visão Geral](#visão-geral)
-- [Stack Tecnológica](#stack-tecnológica)
-- [Arquitetura](#arquitetura)
-- [Funcionalidades](#funcionalidades)
-- [Pré-requisitos](#pré-requisitos)
-- [Configuração do Ambiente](#configuração-do-ambiente)
-- [Rodando o Projeto](#rodando-o-projeto)
-- [API Reference](#api-reference)
-- [Banco de Dados](#banco-de-dados)
-- [Integrações Externas](#integrações-externas)
-- [Segurança](#segurança)
-- [Deploy](#deploy)
+## 📋 Sumário
 
----
-
-## Visão Geral
-
-O sistema gerencia o ciclo completo de produção de conteúdo para clientes de uma agência:
-
-```
-Criação do Post → Upload da Arte (S3) → Geração de Legenda (IA) →
-Envio para Aprovação (WhatsApp) → Votação do Cliente →
-Agendamento → Publicação Automática (Instagram)
-```
-
-**Papéis de usuário:**
-- **ADMIN** — acesso completo: clientes, posts, aprovações, financeiro, integrações e gestão de usuários
-- **USER** — cria e edita posts, visualiza aprovações e dashboard
+- [Visão Geral](#-visão-geral)
+- [Arquitetura do Sistema](#-arquitetura-do-sistema)
+- [Stack Tecnológica](#-stack-tecnológica)
+- [Principais Funcionalidades](#-principais-funcionalidades)
+- [Pré-requisitos e Instalação](#-pré-requisitos-e-instalação)
+- [Configuração do Ambiente](#-configuração-do-ambiente)
+- [Guia de API e Endpoints](#-guia-de-api-e-endpoints)
+- [Estrutura de Banco de Dados](#-estrutura-de-banco-de-dados)
+- [Segurança e Autenticação](#-segurança-e-autenticação)
+- [Deploy e CI/CD](#-deploy-e-cicd)
 
 ---
 
-## Stack Tecnológica
+## 🚀 Visão Geral
 
-### Backend
-| Tecnologia | Versão | Uso |
-|---|---|---|
-| Java | 21 | Linguagem principal |
-| Spring Boot | 4.0.6 | Framework web/REST |
-| Spring Security | — | Autenticação e autorização |
-| Spring Data JPA | — | ORM / acesso a dados |
-| Flyway | — | Migrações de banco |
-| PostgreSQL | 17 | Banco de dados principal |
-| JJWT | 0.13.0 | Geração e validação de JWT |
-| Spring AI (OpenAI) | 2.0.0-M4 | Geração de legendas com GPT-4o |
-| AWS SDK v2 | 2.44.0 | Upload de arquivos no S3 |
-| Lombok | — | Redução de boilerplate |
-| Maven | 3.9.9 | Build e dependências |
+O sistema automatiza e orquestra o ciclo completo de vida de um conteúdo digital para clientes de uma agência, minimizando atrito e garantindo entregas consistentes.
 
-### Frontend
-| Tecnologia | Versão | Uso |
-|---|---|---|
-| Vue.js | 3.5 | Framework SPA |
-| TypeScript | 6.0 | Tipagem estática |
-| Vite | 8.0 | Build tool e dev server |
-| Vue Router | 5.0 | Roteamento |
-| Pinia | 3.0 | Gerenciamento de estado |
-| Tailwind CSS | 3.4 | Estilização |
-| Lucide Vue | 1.0 | Ícones |
-| Zod | 4.0 | Validação de schemas |
-
----
-
-## Arquitetura
-
-```
-backend/
-├── src/main/java/com/north/producoes/
-│   ├── controller/          # Camada REST (11 controllers)
-│   ├── service/             # Regras de negócio (17 services)
-│   ├── entity/              # Entidades JPA (6 tabelas principais)
-│   ├── repository/          # Repositórios Spring Data (7)
-│   ├── dto/                 # DTOs de request/response
-│   ├── security/            # JWT, filtros, configuração Spring Security
-│   ├── integration/         # Clientes HTTP externos (Meta, Evolution, Apify)
-│   └── config/              # Beans de configuração (S3, bootstrap, agendadores)
-├── src/main/resources/
-│   ├── db/migration/        # Migrações Flyway (V1–V10)
-│   └── application.properties
-└── frontend/
-    ├── src/
-    │   ├── views/           # 12 páginas Vue
-    │   ├── components/      # 33+ componentes reutilizáveis
-    │   ├── services/        # Camada de API (TypeScript)
-    │   ├── lib/             # Utilitários e configurações
-    │   └── assets/          # Logo e imagens estáticas
-    └── package.json
+```mermaid
+flowchart LR
+    A[Criação da Ideia] --> B[Upload S3]
+    B --> C[IA Gera Legenda]
+    C --> D[WhatsApp: Aprovação]
+    D -- Cliente Vota --> E{Aprovado?}
+    E -- Sim --> F[Agendamento]
+    E -- Não --> G[Revisão Interna]
+    F --> H[Publicação Automática]
+    
+    style A fill:#3b82f6,color:#fff,stroke:none
+    style B fill:#3b82f6,color:#fff,stroke:none
+    style C fill:#8b5cf6,color:#fff,stroke:none
+    style D fill:#10b981,color:#fff,stroke:none
+    style E fill:#f59e0b,color:#fff,stroke:none
+    style F fill:#3b82f6,color:#fff,stroke:none
+    style G fill:#ef4444,color:#fff,stroke:none
+    style H fill:#ec4899,color:#fff,stroke:none
 ```
 
----
-
-## Funcionalidades
-
-### Gestão de Conteúdo
-- Board Kanban com fluxo de status: `DEMAND → IN_PRODUCTION → WAITING_APPROVAL → SCHEDULE → PUBLISHED`
-- Upload de arte e imagem de referência direto para o S3 via URL pré-assinada
-- Geração de legenda automática via GPT-4o com base no tema, objetivo e identidade do cliente
-
-### Fluxo de Aprovação via WhatsApp
-1. Arte enviada ao grupo do cliente no WhatsApp com legenda
-2. Poll de votação criado automaticamente (✅ Aprovar / ❌ Rejeitar)
-3. Webhook da Evolution API recebe o voto do cliente
-4. Status do post atualizado automaticamente
-5. Notificação de rejeição com motivo enviada ao grupo quando necessário
-
-### Publicação Automática
-- Agendador verifica posts com status `SCHEDULE` a cada 20 minutos
-- Publicação automática no Instagram via Meta Graph API
-
-### Gestão de Clientes
-- Cadastro com vínculo a grupo WhatsApp e conta Instagram
-- Configuração de tom de voz e nicho para personalização da IA
-- Status ACTIVE/INACTIVE com soft delete
-
-### Controle Financeiro (Admin)
-- Registro de receitas e despesas por cliente
-- Previsão anual agrupada por mês
-- Filtros por status (PENDING/PAID) e tipo (INCOME/EXPENSE)
-
-### Gestão de Usuários (Admin)
-- Criação, edição, ativação e desativação de usuários
-- Troca de papel (ADMIN/USER) sem recriar o usuário
+**Papéis no Sistema:**
+- 🛡️ **ADMIN** — Controle total do ecossistema: clientes, publicações, finanças, integrações sistêmicas e gestão de equipe.
+- 👤 **USER** — Operação diária: criação de posts, acompanhamento de board, envio para aprovação.
 
 ---
 
-## Pré-requisitos
+## 🏗️ Arquitetura do Sistema
 
-- **Java 21+**
-- **Maven 3.9+**
-- **Node.js 22+**
-- **Docker & Docker Compose** (opcional, recomendado)
-- **PostgreSQL 17** (ou via Docker)
+A arquitetura foi desenhada para ser modular, resiliente e altamente integrada a serviços em nuvem.
+
+<details open>
+<summary><b>📐 Visão Geral dos Componentes</b></summary>
+
+```mermaid
+graph TB
+    subgraph Usuarios["Usuários"]
+        SPA["🖥️ Vue.js SPA\n(Equipe)"]
+        N8N["🤖 n8n\n(Automações)"]
+        WA_CLIENT["📱 WhatsApp\n(Cliente Final)"]
+    end
+
+    subgraph API["⚙️ Spring Boot API"]
+        SEC["🛡️ Security Layer\nJwtFilter · ApiKeyFilter"]
+        REST["🌐 REST Controllers"]
+        SVC["🧠 Services"]
+        SCHED["⏰ Schedulers"]
+        HOOK["🔗 Webhook Handler"]
+    end
+
+    subgraph Storage["Persistência"]
+        PG[("🐘 PostgreSQL")]
+    end
+
+    subgraph Cloud["☁️ Serviços Externos"]
+        S3["🪣 AWS S3"]
+        GPT["🤖 OpenAI GPT-4o"]
+        META["📷 Meta Graph API"]
+        EVOL["💬 Evolution API"]
+        APIFY["🕵️ Apify"]
+    end
+
+    SPA -->|"HTTPS + JWT"| SEC
+    N8N -->|"X-Internal-Api-Key"| SEC
+    SEC --> REST
+    REST --> SVC
+    SCHED --> SVC
+    HOOK --> SVC
+    SVC <-->|"JPA"| PG
+    SVC -->|"presigned URL"| S3
+    SVC -->|"gerar legenda"| GPT
+    SVC -->|"scraping"| APIFY
+    SVC -->|"enviar arte + enquete"| EVOL
+    SCHED -->|"publicar post agendado"| META
+    EVOL -.->|"voto do cliente\nwebhook POST"| HOOK
+    EVOL <-->|"mensagens"| WA_CLIENT
+```
+
+</details>
 
 ---
 
-## Configuração do Ambiente
+<details open>
+<summary><b>📬 Fluxo de Aprovação via WhatsApp</b></summary>
 
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+```mermaid
+sequenceDiagram
+    actor Equipe as 👨‍💻 Equipe
+    actor Cliente as 📱 Cliente
+    participant API as ⚙️ Spring Boot
+    participant S3 as 🪣 AWS S3
+    participant EVOL as 💬 Evolution API
+    participant META as 📷 Meta Graph
+
+    Equipe->>API: Finaliza post e envia arte
+    API->>S3: Armazena arte (presigned URL)
+    API->>EVOL: Envia imagem + legenda ao grupo
+    EVOL->>Cliente: Mensagem no WhatsApp
+    API->>EVOL: Cria enquete ✅ Aprovar / ❌ Rejeitar
+    Cliente->>EVOL: Vota na enquete
+
+    EVOL-->>API: Webhook: resultado do voto
+
+    alt ✅ Aprovado
+        API->>API: Post → SCHEDULE
+        Note over API,META: Agendador verifica a cada 20min
+        API->>META: Publica automaticamente no Instagram
+    else ❌ Rejeitado
+        API->>API: Post → REJECTED
+        API->>EVOL: Notifica motivo ao grupo
+    end
+```
+
+</details>
+
+---
+
+<details>
+<summary><b>🔄 Ciclo de Vida de um Post</b></summary>
+
+```mermaid
+stateDiagram-v2
+    [*] --> DEMAND: Post criado
+
+    DEMAND --> IN_PRODUCTION: Equipe inicia produção
+    IN_PRODUCTION --> WAITING_APPROVAL: Arte enviada ao cliente
+    WAITING_APPROVAL --> SCHEDULE: ✅ Cliente aprova
+    WAITING_APPROVAL --> REJECTED: ❌ Cliente rejeita
+    REJECTED --> IN_PRODUCTION: Equipe revisa e reenvia
+    SCHEDULE --> PUBLISHED: ⏰ Publicação automática (Meta API)
+    PUBLISHED --> [*]
+```
+
+</details>
+
+---
+
+<details>
+<summary><b>🗂️ Relacionamento das Entidades</b></summary>
+
+```mermaid
+erDiagram
+    tb_users {
+        uuid id PK
+        string name
+        string email
+        string password_hash
+        enum role
+        boolean active
+    }
+
+    tb_client {
+        uuid id PK
+        string name
+        string niche
+        string voice_tone
+        string whatsapp_group_id
+        numeric monthly_value
+        enum status
+    }
+
+    tb_posts {
+        uuid id PK
+        string title
+        string theme
+        enum status
+        boolean is_urgent
+        string reference_image_s3_key
+        timestamp scheduled_at
+        uuid client_id FK
+        uuid user_id FK
+    }
+
+    tb_post_approvals {
+        uuid id PK
+        string art_s3_key
+        string caption
+        enum status
+        string whatsapp_stanza_id
+        string rejection_reason
+        uuid post_id FK
+    }
+
+    tb_finance {
+        uuid id PK
+        string description
+        numeric value
+        enum type
+        enum status
+        date expiration_date
+        uuid client_id FK
+    }
+
+    tb_account_config {
+        uuid id PK
+        string ig_user_id
+        string access_token
+        uuid client_id FK
+    }
+
+    tb_users ||--o{ tb_posts : "cria"
+    tb_client ||--o{ tb_posts : "possui"
+    tb_posts ||--|| tb_post_approvals : "gera"
+    tb_client ||--o{ tb_finance : "possui"
+    tb_client ||--|| tb_account_config : "configura"
+```
+
+</details>
+
+---
+
+## 🛠️ Stack Tecnológica
+
+**Backend (Core)**
+*   **Linguagem:** Java 21
+*   **Framework:** Spring Boot 4.0.6 (REST API)
+*   **Segurança:** Spring Security + JJWT 0.13.0
+*   **Persistência:** Spring Data JPA + Flyway + PostgreSQL 17
+*   **Integrações:** Spring AI (OpenAI GPT-4o), AWS SDK v2
+*   **Gestão de Pacotes:** Maven 3.9.9
+
+**Frontend (SPA)**
+*   **Linguagem:** TypeScript 6.0
+*   **Framework:** Vue.js 3.5 + Vite 8.0
+*   **Roteamento e Estado:** Vue Router 5.0 + Pinia 3.0
+*   **Estilização:** Tailwind CSS 3.4 + Lucide Vue
+*   **Validação:** Zod 4.0
+
+---
+
+## ✨ Principais Funcionalidades
+
+| Categoria | Descrição |
+| :--- | :--- |
+| **🎨 Gestão de Fluxo** | Board Kanban visual (`DEMAND` → `IN_PRODUCTION` → `WAITING_APPROVAL` → `SCHEDULE` → `PUBLISHED`). Upload direto via URLs pré-assinadas (S3). |
+| **🤖 Inteligência Artificial** | Geração de legendas usando GPT-4o, com base no tema, objetivo e identidade/nicho do cliente. |
+| **📱 Aprovação Omnichannel** | Enquetes de aprovação no WhatsApp. Sem necessidade de logins externos. Ações computadas instantaneamente via Webhooks. |
+| **⚙️ Automação de Redes** | Publicação automática no Instagram via Meta Graph API em posts agendados (`SCHEDULE`), verificados a cada 20 minutos. |
+| **💰 Gestão Financeira** | Controle de receitas/despesas por cliente, previsão anual agrupada por mês e filtros (PENDING/PAID). |
+
+---
+
+## 💻 Pré-requisitos e Instalação
+
+- [Java 21 JDK](https://adoptium.net/)
+- [Node.js 22+](https://nodejs.org/)
+- [Docker e Docker Compose](https://www.docker.com/) (Recomendado)
+- [Maven 3.9+](https://maven.apache.org/)
+
+---
+
+## ⚙️ Configuração do Ambiente
+
+Crie um arquivo `.env` na raiz do repositório baseado no `.env_example`:
 
 ```env
 # Banco de Dados
@@ -174,265 +321,119 @@ EVOLUTION_API_KEY=sua_chave
 EVOLUTION_API_INSTANCE=nome_da_instancia
 EVOLUTION_WEBHOOK_SECRET=uuid_aleatorio
 
-# Apify (Instagram scraping)
+# Apify
 APIFY_API_TOKEN=seu_token
 
-# Admin inicial (criado no startup)
+# Admin Inicial
 BOOTSTRAP_ADMIN_NAME=Admin
 BOOTSTRAP_ADMIN_EMAIL=admin@agencianorth.com
 BOOTSTRAP_ADMIN_PASSWORD=senha_segura
 
-# Integração interna (n8n)
+# Integração n8n
 INTERNAL_API_KEY=chave_para_n8n
 
-# Ambiente
+# Profile
 SPRING_PROFILES_ACTIVE=dev
 ```
 
-**Frontend** — crie `frontend/.env`:
+**Frontend (`frontend/.env`)**:
 ```env
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
----
+### Rodando o Projeto
 
-## Rodando o Projeto
-
-### Com Docker Compose (recomendado)
-
+**Via Docker Compose (Recomendado):**
 ```bash
-# Sobe PostgreSQL, backend e frontend
-docker compose -f docker-compose.local.yml up --build
+# Sobe banco de dados, backend e frontend
+docker compose -f docker-compose.local.yml up --build -d
 ```
+> Acesse: `http://localhost`
 
-Acesse em `http://localhost`.
-
-### Manualmente
-
-**Backend:**
-```bash
-# Na raiz do projeto
-mvn spring-boot:run
-# Disponível em http://localhost:8080
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm install
-npm run dev
-# Disponível em http://localhost:5173
-```
+**Manualmente:**
+*   **Backend:** `mvn spring-boot:run` (Disponível em `http://localhost:8080`)
+*   **Frontend:** `cd frontend && npm install && npm run dev` (Disponível em `http://localhost:5173`)
 
 ---
 
-## API Reference
+## 🔌 Guia de API e Endpoints
 
-### Autenticação
+<details>
+<summary><b>Ver Endpoints da API</b> (Clique para expandir)</summary>
 
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | Login com e-mail e senha | Público |
-| `POST` | `/api/auth/register` | Criar usuário (admin) | ADMIN |
-| `POST` | `/api/auth/refresh` | Renovar access token | Público |
+### 🔑 Autenticação
+* `POST /api/auth/login` (Público) - Login via e-mail e senha
+* `POST /api/auth/register` (ADMIN) - Registro de usuário
+* `POST /api/auth/refresh` (Público) - Atualização do JWT
 
-Todas as rotas autenticadas exigem header:
-```
-Authorization: Bearer <access_token>
-```
+### 👥 Usuários
+* `GET /api/users` (ADMIN) - Listagem paginada
+* `GET /api/users/me` (AUTH) - Perfil logado
+* `PATCH /api/users/id/{id}/role` (ADMIN) - Alterar permissão
+* `DELETE /api/users/id/{id}` (ADMIN) - Soft delete
 
-### Usuários
+### 🏢 Clientes
+* `GET /api/clients` (AUTH) - Listagem de clientes
+* `POST /api/clients` (ADMIN) - Criação de cliente
+* `PATCH /api/clients/{id}/status` (ADMIN) - Alternância de status
 
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `GET` | `/api/users` | Listar usuários (paginado) | ADMIN |
-| `POST` | `/api/users` | Criar usuário | ADMIN |
-| `PUT` | `/api/users/id/{id}` | Atualizar usuário | ADMIN |
-| `PATCH` | `/api/users/id/{id}/role` | Alterar papel | ADMIN |
-| `PATCH` | `/api/users/id/{id}/activate` | Reativar usuário | ADMIN |
-| `DELETE` | `/api/users/id/{id}` | Desativar usuário | ADMIN |
-| `GET` | `/api/users/me` | Perfil do usuário logado | AUTH |
-| `PUT` | `/api/users/me` | Atualizar perfil | AUTH |
-| `PUT` | `/api/users/me/password` | Alterar senha | AUTH |
+### 📝 Posts e Fluxos
+* `GET /api/posts` (AUTH) - Listagem de posts
+* `POST /api/posts/save` (ADMIN) - Novo post
+* `POST /api/posts/{id}/generate-caption` (AUTH) - Geração de legenda (IA)
 
-### Clientes
+### 💬 Aprovações (WhatsApp)
+* `GET /api/post-approvals/all` (ADMIN) - Todas as aprovações
+* `POST /api/post-approvals/save` (ADMIN) - Disparo de aprovação
+* `POST /api/webhooks/whatsapp/{secret}` (Webhook) - Recebe eventos Evolution
 
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `GET` | `/api/clients` | Listar clientes | AUTH |
-| `GET` | `/api/clients/status/{status}` | Filtrar por status | AUTH |
-| `POST` | `/api/clients` | Criar cliente | ADMIN |
-| `PUT` | `/api/clients/{id}` | Atualizar cliente | ADMIN |
-| `PATCH` | `/api/clients/{id}/status` | Alterar status | ADMIN |
-| `DELETE` | `/api/clients/{id}` | Excluir cliente | ADMIN |
+### ☁️ Upload (Mídia S3)
+* `GET /api/media/upload-url` (AUTH) - Gera Presigned URL de envio
+* `POST /api/media/upload-complete` (AUTH) - Confirmação
 
-### Posts
+### 💰 Financeiro
+* `GET /api/finance/forecast?year=` (ADMIN) - Previsão financeira anual
+* `POST /api/finance` (ADMIN) - Registro de movimentação
 
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `GET` | `/api/posts` | Listar posts | AUTH |
-| `GET` | `/api/posts/status/{status}` | Filtrar por status | AUTH |
-| `GET` | `/api/posts/client/{id}` | Posts de um cliente | AUTH |
-| `POST` | `/api/posts/save` | Criar post | ADMIN |
-| `PUT` | `/api/posts/update/{id}` | Atualizar post | ADMIN |
-| `DELETE` | `/api/posts/delete/{id}` | Excluir post | ADMIN |
-| `POST` | `/api/posts/{id}/generate-caption` | Gerar legenda com IA | AUTH |
+### 🤖 Automação Interna (n8n)
+*Requer header `X-Internal-Api-Key`*
+* `PATCH /api/internal/approvals/post/{postId}/approve`
+* `PATCH /api/internal/approvals/post/{postId}/reject`
 
-### Aprovações
-
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `GET` | `/api/post-approvals/all` | Listar aprovações | ADMIN |
-| `GET` | `/api/post-approvals/{id}` | Buscar por post | AUTH |
-| `GET` | `/api/post-approvals/status/{status}` | Filtrar por status | ADMIN |
-| `POST` | `/api/post-approvals/save` | Criar aprovação | ADMIN |
-| `PUT` | `/api/post-approvals/update/{id}` | Atualizar aprovação | ADMIN |
-| `DELETE` | `/api/post-approvals/delete/{id}` | Excluir aprovação | ADMIN |
-
-### Mídia (Upload S3)
-
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `GET` | `/api/media/upload-url` | URL pré-assinada para arte | AUTH |
-| `GET` | `/api/media/reference-url` | URL pré-assinada para referência | AUTH |
-| `POST` | `/api/media/upload-complete` | Confirmar upload concluído | AUTH |
-| `GET` | `/api/media/preview/{postId}` | URL de preview da arte | AUTH |
-
-### Financeiro
-
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| `GET` | `/api/finance` | Listar registros | ADMIN |
-| `GET` | `/api/finance/forecast?year=` | Previsão anual | ADMIN |
-| `POST` | `/api/finance` | Criar registro | ADMIN |
-| `PUT` | `/api/finance/{id}` | Atualizar registro | ADMIN |
-| `DELETE` | `/api/finance/{id}` | Excluir registro | ADMIN |
-
-### Integração Interna (n8n)
-
-Requer header `X-Internal-Api-Key: <INTERNAL_API_KEY>`:
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `PATCH` | `/api/internal/approvals/{id}/status` | Atualizar status de aprovação |
-| `PATCH` | `/api/internal/approvals/post/{postId}/approve` | Aprovar post |
-| `PATCH` | `/api/internal/approvals/post/{postId}/reject` | Rejeitar post |
-| `GET` | `/api/internal/approvals/whatsapp-stanza/{id}` | Buscar por stanza ID |
-
-### Webhooks
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/api/webhooks/whatsapp/{webhookSecret}` | Receber eventos da Evolution API |
+</details>
 
 ---
 
-## Banco de Dados
+## 🗄️ Estrutura de Banco de Dados
 
-### Tabelas Principais
+Gerenciado via **Flyway Migrations** (PostgreSQL).
 
-| Tabela | Descrição |
-|---|---|
-| `tb_users` | Usuários da equipe (ADMIN/USER) |
-| `tb_client` | Clientes com dados de integração |
-| `tb_posts` | Posts e conteúdos agendados |
-| `tb_post_approvals` | Registros de aprovação com metadados WhatsApp |
-| `tb_finance` | Movimentações financeiras |
-| `tb_account_config` | Configuração de contas Instagram por cliente |
-| `tb_refresh_tokens` | Rotação de tokens JWT |
-
-### Migrações Flyway
-
-```
-V1  — Schema inicial completo
-V2  — Campos de rejeição e correção de status de post
-V3  — Notas internas de revisão
-V4  — Urgência e imagem de referência
-V5  — Renomear status POSTED → PUBLISHED
-V6  — Valor mensal por cliente
-V7  — Tipo financeiro (INCOME/EXPENSE)
-V8  — Colunas monetárias para NUMERIC
-V9  — Campo active em usuários (soft delete)
-V10 — Length 1024 para voiceTone
-```
+| Tabela | Função Principal |
+| :--- | :--- |
+| `tb_users` | Credenciais, roles e soft-delete de equipe |
+| `tb_client` | Informações de faturamento e persona para IA |
+| `tb_posts` | Core business e agendamento de conteúdos |
+| `tb_post_approvals` | Log e controle de estado do WhatsApp (Evolution API) |
+| `tb_finance` | Lançamentos IN/OUT agrupados por status e categoria |
+| `tb_account_config` | Contas Meta vinculadas para automação social |
+| `tb_refresh_tokens` | Segurança do sistema de JWT contínuo |
 
 ---
 
-## Integrações Externas
+## 🔒 Segurança e Autenticação
 
-### OpenAI (GPT-4o)
-- Geração de legendas personalizadas por cliente
-- Usa `spring-ai` com o starter OpenAI
-- Endpoint: `POST /api/posts/{id}/generate-caption`
-
-### Meta Graph API (Instagram)
-- Publicação automática de posts no Instagram
-- Vinculação de conta Instagram por cliente via OAuth
-- Versão da API: `v19.0`
-
-### Evolution API (WhatsApp)
-- Envio de arte + legenda para grupos de clientes
-- Envio de poll de aprovação (✅/❌)
-- Recepção de votos via webhook
-- Armazenamento do `stanzaId` para correlação de eventos
-
-### AWS S3
-- Upload de artes e imagens de referência via URL pré-assinada
-- URLs de preview com expiração configurável
-- Região padrão: `sa-east-1`
-
-### Apify
-- Scraping de dados do Instagram para enriquecimento de conteúdo
+- **Autenticação:** Baseada em JWT com Hash `HMAC-SHA-256`, duração de 24h. Refresh Tokens armazenados com hash seguro na base.
+- **Autorização:** Isolamento baseado em roles (`ADMIN` vs `USER`) gerenciado através de anotações `@PreAuthorize` e custom `JwtFilter`.
+- **CORS:** Restrito à interface de produção (`agencianorth.com`) ou origens seguras, com abertura para webhooks e endpoints internos (`/api/internal/**`).
+- **Automação:** Endpoint protegidos com header `X-Internal-Api-Key`.
 
 ---
 
-## Segurança
+## 🚢 Deploy e CI/CD
 
-### Autenticação JWT
-- Algoritmo: **HMAC-SHA-256 (HS256)**
-- Expiração do access token: **24 horas**
-- Rotação de refresh token armazenada com hash no banco
+Pipeline CI/CD configurada usando **GitHub Actions** (`main.yml`).
 
-### Filtros de Segurança
-- **JwtFilter** — valida Bearer token e popula o `SecurityContext`
-- **InternalApiKeyFilter** — protege `/api/internal/**` com `X-Internal-Api-Key` (para automações n8n)
-
-### CORS
-
-| Rota | Origens Permitidas |
-|---|---|
-| `/**` | `localhost:5173`, `agencianorth.com` e `www.agencianorth.com` |
-| `/api/internal/**` | Todas (server-to-server) |
-| `/api/webhooks/**` | Todas (Evolution API) |
-
-### Autorização
-- `@PreAuthorize` nas rotas administrativas
-- Endpoints financeiros e de usuários restritos ao papel **ADMIN**
-
----
-
-## Deploy
-
-### CI/CD (GitHub Actions)
-
-O pipeline em `.github/workflows/main.yml` detecta mudanças automaticamente:
-
-- **Backend alterado** → build e push da imagem `producoes-api:latest` para o GHCR
-- **Frontend alterado** → build e push da imagem `producoes-web:latest` para o GHCR
-
-### Imagens Docker
-
-**Backend** — build multi-stage (Maven → Alpine JRE 21):
-```bash
-docker build -t producoes-api .
-```
-
-**Frontend** — build multi-stage (Node 22 → Nginx Alpine):
-```bash
-docker build --build-arg VITE_API_BASE_URL=https://api.agencianorth.com -t producoes-web ./frontend
-```
-
-### Variáveis de Build (Frontend)
-```
-VITE_API_BASE_URL   URL pública da API (obrigatório em produção)
-```
+1. Monitoramento automático de mudanças nos sub-diretórios (Backend/Frontend).
+2. Construção Multi-stage via Dockerfile (Node 22 p/ SPA via Nginx, Alpine JRE 21 p/ API).
+3. Publicação contínua de imagens Docker (`producoes-api:latest`, `producoes-web:latest`) no **GitHub Container Registry**.
+4. Execução local escalonável usando os `compose.yaml` fornecidos.
