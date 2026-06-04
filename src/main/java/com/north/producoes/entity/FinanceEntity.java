@@ -28,7 +28,7 @@ public class FinanceEntity {
     private ClientEntity client;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
     @Column

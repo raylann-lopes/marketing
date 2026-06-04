@@ -41,10 +41,6 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
      * Retorna 1 se a atualização ocorreu, 0 se outro processo já mudou o status.
      */
     @Modifying
-    @Query("UPDATE PostEntity p SET p.user = null WHERE p.user.id = :userId")
-    void nullifyUserByUserId(@Param("userId") Long userId);
-
-    @Modifying
     @Query("""
             UPDATE PostEntity p SET p.status = :newStatus
             WHERE p.id = :id AND p.status = :expectedStatus
