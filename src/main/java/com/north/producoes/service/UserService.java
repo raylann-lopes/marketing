@@ -67,6 +67,14 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
+    public UserEntity activateUserById(Long id) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + id));
+        user.setActive(true);
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public void deactivateUserById(Long id) {
         UserEntity user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + id));

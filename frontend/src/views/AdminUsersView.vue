@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { UserPlus, X, CheckCircle, Eye, EyeOff, UserX, Pencil } from 'lucide-vue-next'
+import { UserPlus, X, CheckCircle, Eye, EyeOff, UserX, UserCheck, Pencil } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
@@ -113,6 +113,19 @@ async function handleRoleChange(user: UserProfile, newRole: 'ADMIN' | 'USER') {
     error.value = e instanceof Error ? e.message : 'Erro ao alterar perfil'
   } finally {
     updatingRoleId.value = null
+  }
+}
+
+async function handleActivate(user: UserProfile) {
+  error.value = ''
+  try {
+    const updated = await userService.activateById(user.id)
+    const idx = users.value.findIndex(u => u.id === user.id)
+    if (idx !== -1) users.value[idx] = updated
+    success.value = `Usuário "${updated.name}" reativado.`
+    setTimeout(() => { success.value = '' }, 4000)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Erro ao reativar usuário'
   }
 }
 
@@ -283,6 +296,15 @@ onMounted(fetchUsers)
             </td>
             <td class="px-6 py-4 text-right">
               <div class="flex items-center justify-end gap-1">
+                <button
+                  v-if="!user.active"
+                  type="button"
+                  class="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                  title="Reativar usuário"
+                  @click="handleActivate(user)"
+                >
+                  <UserCheck class="w-4 h-4" />
+                </button>
                 <button
                   v-if="user.active"
                   type="button"

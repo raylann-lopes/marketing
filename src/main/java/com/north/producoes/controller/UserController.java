@@ -74,6 +74,12 @@ public class UserController {
         return ResponseEntity.ok(UserResponseDTO.from(userService.adminUpdateUser(id, request)));
     }
 
+    @PatchMapping("/id/{id}/activate")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<UserResponseDTO> activateUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(UserResponseDTO.from(userService.activateUserById(id)));
+    }
+
     @DeleteMapping("/id/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deactivateUserById(@PathVariable Long id,

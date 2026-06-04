@@ -62,6 +62,10 @@ export const userService = {
     })
   },
 
+  async activateById(id: number): Promise<UserProfile> {
+    return apiFetch<UserProfile>(`/api/users/id/${id}/activate`, { method: 'PATCH' })
+  },
+
   async updateById(id: number, data: { name: string; email: string }): Promise<UserProfile> {
     return apiFetch<UserProfile>(`/api/users/id/${id}`, {
       method: 'PUT',
