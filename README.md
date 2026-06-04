@@ -74,7 +74,6 @@ A arquitetura foi desenhada para ser modular, resiliente e altamente integrada a
 graph TB
     subgraph Usuarios["Usuários"]
         SPA["🖥️ Vue.js SPA\n(Equipe)"]
-        N8N["🤖 n8n\n(Automações)"]
         WA_CLIENT["📱 WhatsApp\n(Cliente Final)"]
     end
 
@@ -99,7 +98,6 @@ graph TB
     end
 
     SPA -->|"HTTPS + JWT"| SEC
-    N8N -->|"X-Internal-Api-Key"| SEC
     SEC --> REST
     REST --> SVC
     SCHED --> SVC
@@ -329,8 +327,8 @@ BOOTSTRAP_ADMIN_NAME=Admin
 BOOTSTRAP_ADMIN_EMAIL=admin@agencianorth.com
 BOOTSTRAP_ADMIN_PASSWORD=senha_segura
 
-# Integração n8n
-INTERNAL_API_KEY=chave_para_n8n
+# API Interna (server-to-server)
+INTERNAL_API_KEY=chave_aleatoria_segura
 
 # Profile
 SPRING_PROFILES_ACTIVE=dev
@@ -395,7 +393,7 @@ docker compose -f docker-compose.local.yml up --build -d
 * `GET /api/finance/forecast?year=` (ADMIN) - Previsão financeira anual
 * `POST /api/finance` (ADMIN) - Registro de movimentação
 
-### 🤖 Automação Interna (n8n)
+### 🔐 API Interna (Server-to-Server)
 *Requer header `X-Internal-Api-Key`*
 * `PATCH /api/internal/approvals/post/{postId}/approve`
 * `PATCH /api/internal/approvals/post/{postId}/reject`
@@ -425,7 +423,7 @@ Gerenciado via **Flyway Migrations** (PostgreSQL).
 - **Autenticação:** Baseada em JWT com Hash `HMAC-SHA-256`, duração de 24h. Refresh Tokens armazenados com hash seguro na base.
 - **Autorização:** Isolamento baseado em roles (`ADMIN` vs `USER`) gerenciado através de anotações `@PreAuthorize` e custom `JwtFilter`.
 - **CORS:** Restrito à interface de produção (`agencianorth.com`) ou origens seguras, com abertura para webhooks e endpoints internos (`/api/internal/**`).
-- **Automação:** Endpoint protegidos com header `X-Internal-Api-Key`.
+- **API Interna:** Endpoints server-to-server protegidos com header `X-Internal-Api-Key`.
 
 ---
 

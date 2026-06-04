@@ -19,7 +19,7 @@ import java.security.MessageDigest;
 
 /**
  * Protege as rotas /api/internal/** com uma API Key estática.
- * Essas rotas são consumidas pelo n8n e não usam JWT.
+ * Usado para integrações server-to-server que não passam por JWT.
  * Também permite acesso para usuários ADMIN autenticados via JWT.
  */
 @Component
@@ -28,7 +28,7 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
     private static final String INTERNAL_PATH_PREFIX = "/api/internal/";
     private static final String API_KEY_HEADER = "X-Internal-Api-Key";
 
-    @Value("${n8n.api.key:}")
+    @Value("${internal.api.key:}")
     private String expectedApiKey;
 
     @Override
@@ -47,7 +47,7 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 2. Caso contrário, exige a API Key estática (Cenário do n8n)
+            // 2. Caso contrário, exige a API Key estática
             if (!StringUtils.hasText(expectedApiKey)) {
                 response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
                 response.setContentType("application/json");

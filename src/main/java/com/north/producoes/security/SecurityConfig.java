@@ -56,7 +56,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        // Rotas internas (n8n/automações): sem restrição de origem
+        // Rotas internas (server-to-server): sem restrição de origem
         CorsConfiguration internalConfig = new CorsConfiguration();
         internalConfig.setAllowedOriginPatterns(List.of("*"));
         internalConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
@@ -64,7 +64,7 @@ public class SecurityConfig {
         internalConfig.setAllowCredentials(false);
 
         // Rotas da aplicação web: apenas o frontend
-        CorsConfiguration webConfig = new CorsConfiguration();
+            CorsConfiguration webConfig = new CorsConfiguration();
         webConfig.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost",
