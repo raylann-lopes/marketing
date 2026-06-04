@@ -76,6 +76,20 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
+    public UserEntity adminUpdateUser(Long userId, com.north.producoes.controller.dto.request.AdminUserUpdateRequestDTO dto) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + userId));
+        if (!user.getEmail().equals(dto.email())) {
+            if (userRepository.findByEmail(dto.email()).isPresent()) {
+                throw new IllegalArgumentException("Email ja esta em uso");
+            }
+            user.setEmail(dto.email());
+        }
+        user.setName(dto.name());
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public UserEntity updateProfile(Long userId, UserRequestDTO userRequestDTO) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado com id: " + userId));

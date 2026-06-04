@@ -62,6 +62,13 @@ export const userService = {
     })
   },
 
+  async updateById(id: number, data: { name: string; email: string }): Promise<UserProfile> {
+    return apiFetch<UserProfile>(`/api/users/id/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  },
+
   async deleteById(id: number): Promise<void> {
     return apiFetch<void>(`/api/users/id/${id}`, { method: 'DELETE' })
   }

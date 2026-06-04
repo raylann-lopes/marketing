@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { UserPlus, Trash2, X, CheckCircle, Eye, EyeOff, UserX, UserCheck } from 'lucide-vue-next'
+import { UserPlus, X, CheckCircle, Eye, EyeOff, UserX, Pencil } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
@@ -21,6 +21,45 @@ const formError = ref('')
 
 const updatingRoleId = ref<number | null>(null)
 const currentUserId = Number(localStorage.getItem('userId') || sessionStorage.getItem('userId') || 0)
+
+const editingUser = ref<UserProfile | null>(null)
+const editForm = ref({ name: '', email: '' })
+const editError = ref('')
+const editSaving = ref(false)
+
+function openEdit(user: UserProfile) {
+  editingUser.value = user
+  editForm.value = { name: user.name, email: user.email }
+  editError.value = ''
+}
+
+function closeEdit() {
+  editingUser.value = null
+  editForm.value = { name: '', email: '' }
+  editError.value = ''
+}
+
+async function handleEdit() {
+  if (!editingUser.value) return
+  editError.value = ''
+  if (!editForm.value.name.trim() || !editForm.value.email.trim()) {
+    editError.value = 'Preencha todos os campos.'
+    return
+  }
+  editSaving.value = true
+  try {
+    const updated = await userService.updateById(editingUser.value.id, editForm.value)
+    const idx = users.value.findIndex(u => u.id === editingUser.value!.id)
+    if (idx !== -1) users.value[idx] = updated
+    success.value = `Usuário "${updated.name}" atualizado.`
+    setTimeout(() => { success.value = '' }, 4000)
+    closeEdit()
+  } catch (e) {
+    editError.value = e instanceof Error ? e.message : 'Erro ao atualizar usuário'
+  } finally {
+    editSaving.value = false
+  }
+}
 
 async function fetchUsers() {
   loading.value = true
@@ -243,19 +282,70 @@ onMounted(fetchUsers)
               </span>
             </td>
             <td class="px-6 py-4 text-right">
-              <button
-                v-if="user.active && user.id !== currentUserId"
-                type="button"
-                class="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                title="Desativar usuário"
-                @click="handleDeactivate(user)"
-              >
-                <UserX class="w-4 h-4" />
-              </button>
+              <div class="flex items-center justify-end gap-1">
+                <button
+                  v-if="user.active"
+                  type="button"
+                  class="p-2 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                  title="Editar usuário"
+                  @click="openEdit(user)"
+                >
+                  <Pencil class="w-4 h-4" />
+                </button>
+                <button
+                  v-if="user.active && user.id !== currentUserId"
+                  type="button"
+                  class="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  title="Desativar usuário"
+                  @click="handleDeactivate(user)"
+                >
+                  <UserX class="w-4 h-4" />
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
     </Card>
+    <!-- Modal de edição -->
+    <div
+      v-if="editingUser"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      @click.self="closeEdit"
+    >
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-lg font-semibold text-gray-900">Editar Usuário</h2>
+          <button type="button" class="text-gray-400 hover:text-gray-600" @click="closeEdit">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div v-if="editError" class="flex items-center gap-2 bg-red-50 text-red-600 rounded-xl px-4 py-3 border border-red-100 mb-4">
+          <X class="w-4 h-4 shrink-0" />
+          <span class="text-sm">{{ editError }}</span>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium text-gray-700">Nome</label>
+            <Input v-model="editForm.name" placeholder="Nome completo" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium text-gray-700">E-mail</label>
+            <Input v-model="editForm.email" type="email" placeholder="email@exemplo.com" />
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+          <Button @click="handleEdit" :disabled="editSaving">
+            {{ editSaving ? 'Salvando...' : 'Salvar' }}
+          </Button>
+          <Button variant="outline" @click="closeEdit" :disabled="editSaving">
+            Cancelar
+          </Button>
+        </div>
+      </div>
+    </div>
   </AppLayout>
 </template>

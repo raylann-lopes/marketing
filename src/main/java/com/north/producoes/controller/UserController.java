@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.dto.request.AdminUserUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ChangePasswordRequestDTO;
 import com.north.producoes.controller.dto.request.UpdateRoleRequestDTO;
 import com.north.producoes.entity.UserEntity;
@@ -64,6 +65,13 @@ public class UserController {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(UserResponseDTO.from(userService.updateRole(id, request.role())));
+    }
+
+    @PutMapping("/id/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<UserResponseDTO> adminUpdateUser(@PathVariable Long id,
+                                                           @Valid @RequestBody AdminUserUpdateRequestDTO request) {
+        return ResponseEntity.ok(UserResponseDTO.from(userService.adminUpdateUser(id, request)));
     }
 
     @DeleteMapping("/id/{id}")
