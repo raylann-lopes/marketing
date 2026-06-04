@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { UserPlus, Trash2, X, CheckCircle, Eye, EyeOff } from 'lucide-vue-next'
+import { UserPlus, Trash2, X, CheckCircle, Eye, EyeOff, UserX, UserCheck } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
@@ -77,16 +77,17 @@ async function handleRoleChange(user: UserProfile, newRole: 'ADMIN' | 'USER') {
   }
 }
 
-async function handleDelete(user: UserProfile) {
-  if (!confirm(`Remover o usuário "${user.name}"? Esta ação não pode ser desfeita.`)) return
+async function handleDeactivate(user: UserProfile) {
+  if (!confirm(`Desativar o usuário "${user.name}"? Ele perderá o acesso ao sistema.`)) return
   error.value = ''
   try {
     await userService.deleteById(user.id)
-    users.value = users.value.filter(u => u.id !== user.id)
-    success.value = `Usuário "${user.name}" removido.`
+    const idx = users.value.findIndex(u => u.id === user.id)
+    if (idx !== -1) users.value[idx] = { ...users.value[idx], active: false }
+    success.value = `Usuário "${user.name}" desativado.`
     setTimeout(() => { success.value = '' }, 4000)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao remover usuário'
+    error.value = e instanceof Error ? e.message : 'Erro ao desativar usuário'
   }
 }
 
@@ -189,24 +190,29 @@ onMounted(fetchUsers)
             <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nome</th>
             <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">E-mail</th>
             <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Perfil</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
             <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
-          <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50/60 transition-colors">
+          <tr
+            v-for="user in users"
+            :key="user.id"
+            :class="['hover:bg-gray-50/60 transition-colors', !user.active && 'opacity-50']"
+          >
             <td class="px-6 py-4 font-medium text-gray-900">{{ user.name }}</td>
             <td class="px-6 py-4 text-gray-500">{{ user.email }}</td>
             <td class="px-6 py-4">
               <button
                 type="button"
-                :disabled="updatingRoleId === user.id || user.id === currentUserId"
-                :title="user.id === currentUserId ? 'Não é possível alterar o próprio perfil' : user.role === 'ADMIN' ? 'Clique para tornar Usuário' : 'Clique para tornar Admin'"
+                :disabled="updatingRoleId === user.id || user.id === currentUserId || !user.active"
+                :title="!user.active ? 'Usuário inativo' : user.id === currentUserId ? 'Não é possível alterar o próprio perfil' : user.role === 'ADMIN' ? 'Clique para tornar Usuário' : 'Clique para tornar Admin'"
                 :class="[
                   'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all select-none',
                   'disabled:pointer-events-none',
                   updatingRoleId === user.id
                     ? 'bg-gray-100 text-gray-400'
-                    : user.id === currentUserId
+                    : user.id === currentUserId || !user.active
                       ? user.role === 'ADMIN'
                         ? 'bg-primary/10 text-primary ring-1 ring-primary/20 opacity-50 cursor-not-allowed'
                         : 'bg-gray-100 text-gray-600 ring-1 ring-gray-200 opacity-50 cursor-not-allowed'
@@ -224,14 +230,27 @@ onMounted(fetchUsers)
                 {{ updatingRoleId === user.id ? '...' : user.role === 'ADMIN' ? 'Admin' : 'Usuário' }}
               </button>
             </td>
+            <td class="px-6 py-4">
+              <span
+                :class="[
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  user.active
+                    ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
+                    : 'bg-gray-100 text-gray-500 ring-1 ring-gray-200'
+                ]"
+              >
+                {{ user.active ? 'Ativo' : 'Inativo' }}
+              </span>
+            </td>
             <td class="px-6 py-4 text-right">
               <button
+                v-if="user.active && user.id !== currentUserId"
                 type="button"
                 class="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                title="Remover usuário"
-                @click="handleDelete(user)"
+                title="Desativar usuário"
+                @click="handleDeactivate(user)"
               >
-                <Trash2 class="w-4 h-4" />
+                <UserX class="w-4 h-4" />
               </button>
             </td>
           </tr>

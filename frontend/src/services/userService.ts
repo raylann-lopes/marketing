@@ -5,6 +5,7 @@ export interface UserProfile {
   name: string
   email: string
   role: string
+  active: boolean
 }
 
 export interface UpdateProfilePayload {
