@@ -25,8 +25,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                    JwtFilter jwtFilter,
-                                                    InternalApiKeyFilter internalApiKeyFilter) throws Exception {
+                                                    JwtFilter jwtFilter) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // Desabilita CSRF — não necessário em APIs stateless (sem sessão/cookie)
@@ -39,32 +38,21 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
-                        // Rotas internas protegidas pelo InternalApiKeyFilter, não por JWT
-                        .requestMatchers("/api/internal/**").permitAll()
                         // Webhook da Evolution API — autenticação via secret na URL
                         .requestMatchers("/api/webhooks/whatsapp/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())
 
                 // Registra o JwtFilter para rodar antes do filtro padrão do Spring Security
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                // InternalApiKeyFilter roda agora depois do JwtFilter
-                .addFilterAfter(internalApiKeyFilter, JwtFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        // Rotas internas (server-to-server): sem restrição de origem
-        CorsConfiguration internalConfig = new CorsConfiguration();
-        internalConfig.setAllowedOriginPatterns(List.of("*"));
-        internalConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        internalConfig.setAllowedHeaders(List.of("*"));
-        internalConfig.setAllowCredentials(false);
-
         // Rotas da aplicação web: apenas o frontend
-            CorsConfiguration webConfig = new CorsConfiguration();
+        CorsConfiguration webConfig = new CorsConfiguration();
         webConfig.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost",
@@ -72,7 +60,7 @@ public class SecurityConfig {
                 "https://www.agencianorth.com"
         ));
         webConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        webConfig.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Internal-Api-Key"));
+        webConfig.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         webConfig.setAllowCredentials(true);
 
         // Webhook Evolution API: server-to-server, sem restrição de origem
@@ -83,7 +71,6 @@ public class SecurityConfig {
         webhookConfig.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/internal/**", internalConfig);
         source.registerCorsConfiguration("/api/webhooks/**", webhookConfig);
         source.registerCorsConfiguration("/**", webConfig);
         return source;

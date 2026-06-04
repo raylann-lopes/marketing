@@ -21,7 +21,6 @@
 ## 📋 Sumário
 
 - [Visão Geral](#-visão-geral)
-- [Arquitetura do Sistema](#-arquitetura-do-sistema)
 - [Stack Tecnológica](#-stack-tecnológica)
 - [Principais Funcionalidades](#-principais-funcionalidades)
 - [Pré-requisitos e Instalação](#-pré-requisitos-e-instalação)
@@ -63,185 +62,6 @@ flowchart LR
 
 ---
 
-## 🏗️ Arquitetura do Sistema
-
-A arquitetura foi desenhada para ser modular, resiliente e altamente integrada a serviços em nuvem.
-
-<details open>
-<summary><b>📐 Visão Geral dos Componentes</b></summary>
-
-```mermaid
-graph TB
-    subgraph Usuarios["Usuários"]
-        SPA["🖥️ Vue.js SPA\n(Equipe)"]
-        WA_CLIENT["📱 WhatsApp\n(Cliente Final)"]
-    end
-
-    subgraph API["⚙️ Spring Boot API"]
-        SEC["🛡️ Security Layer\nJwtFilter · ApiKeyFilter"]
-        REST["🌐 REST Controllers"]
-        SVC["🧠 Services"]
-        SCHED["⏰ Schedulers"]
-        HOOK["🔗 Webhook Handler"]
-    end
-
-    subgraph Storage["Persistência"]
-        PG[("🐘 PostgreSQL")]
-    end
-
-    subgraph Cloud["☁️ Serviços Externos"]
-        S3["🪣 AWS S3"]
-        GPT["🤖 OpenAI GPT-4o"]
-        META["📷 Meta Graph API"]
-        EVOL["💬 Evolution API"]
-        APIFY["🕵️ Apify"]
-    end
-
-    SPA -->|"HTTPS + JWT"| SEC
-    SEC --> REST
-    REST --> SVC
-    SCHED --> SVC
-    HOOK --> SVC
-    SVC <-->|"JPA"| PG
-    SVC -->|"presigned URL"| S3
-    SVC -->|"gerar legenda"| GPT
-    SVC -->|"scraping"| APIFY
-    SVC -->|"enviar arte + enquete"| EVOL
-    SCHED -->|"publicar post agendado"| META
-    EVOL -.->|"voto do cliente\nwebhook POST"| HOOK
-    EVOL <-->|"mensagens"| WA_CLIENT
-```
-
-</details>
-
----
-
-<details open>
-<summary><b>📬 Fluxo de Aprovação via WhatsApp</b></summary>
-
-```mermaid
-sequenceDiagram
-    actor Equipe as 👨‍💻 Equipe
-    actor Cliente as 📱 Cliente
-    participant API as ⚙️ Spring Boot
-    participant S3 as 🪣 AWS S3
-    participant EVOL as 💬 Evolution API
-    participant META as 📷 Meta Graph
-
-    Equipe->>API: Finaliza post e envia arte
-    API->>S3: Armazena arte (presigned URL)
-    API->>EVOL: Envia imagem + legenda ao grupo
-    EVOL->>Cliente: Mensagem no WhatsApp
-    API->>EVOL: Cria enquete ✅ Aprovar / ❌ Rejeitar
-    Cliente->>EVOL: Vota na enquete
-
-    EVOL-->>API: Webhook: resultado do voto
-
-    alt ✅ Aprovado
-        API->>API: Post → SCHEDULE
-        Note over API,META: Agendador verifica a cada 20min
-        API->>META: Publica automaticamente no Instagram
-    else ❌ Rejeitado
-        API->>API: Post → REJECTED
-        API->>EVOL: Notifica motivo ao grupo
-    end
-```
-
-</details>
-
----
-
-<details>
-<summary><b>🔄 Ciclo de Vida de um Post</b></summary>
-
-```mermaid
-stateDiagram-v2
-    [*] --> DEMAND: Post criado
-
-    DEMAND --> IN_PRODUCTION: Equipe inicia produção
-    IN_PRODUCTION --> WAITING_APPROVAL: Arte enviada ao cliente
-    WAITING_APPROVAL --> SCHEDULE: ✅ Cliente aprova
-    WAITING_APPROVAL --> REJECTED: ❌ Cliente rejeita
-    REJECTED --> IN_PRODUCTION: Equipe revisa e reenvia
-    SCHEDULE --> PUBLISHED: ⏰ Publicação automática (Meta API)
-    PUBLISHED --> [*]
-```
-
-</details>
-
----
-
-<details>
-<summary><b>🗂️ Relacionamento das Entidades</b></summary>
-
-```mermaid
-erDiagram
-    tb_users {
-        uuid id PK
-        string name
-        string email
-        string password_hash
-        enum role
-        boolean active
-    }
-
-    tb_client {
-        uuid id PK
-        string name
-        string niche
-        string voice_tone
-        string whatsapp_group_id
-        numeric monthly_value
-        enum status
-    }
-
-    tb_posts {
-        uuid id PK
-        string title
-        string theme
-        enum status
-        boolean is_urgent
-        string reference_image_s3_key
-        timestamp scheduled_at
-        uuid client_id FK
-        uuid user_id FK
-    }
-
-    tb_post_approvals {
-        uuid id PK
-        string art_s3_key
-        string caption
-        enum status
-        string whatsapp_stanza_id
-        string rejection_reason
-        uuid post_id FK
-    }
-
-    tb_finance {
-        uuid id PK
-        string description
-        numeric value
-        enum type
-        enum status
-        date expiration_date
-        uuid client_id FK
-    }
-
-    tb_account_config {
-        uuid id PK
-        string ig_user_id
-        string access_token
-        uuid client_id FK
-    }
-
-    tb_users ||--o{ tb_posts : "cria"
-    tb_client ||--o{ tb_posts : "possui"
-    tb_posts ||--|| tb_post_approvals : "gera"
-    tb_client ||--o{ tb_finance : "possui"
-    tb_client ||--|| tb_account_config : "configura"
-```
-
-</details>
 
 ---
 
@@ -327,9 +147,6 @@ BOOTSTRAP_ADMIN_NAME=Admin
 BOOTSTRAP_ADMIN_EMAIL=admin@agencianorth.com
 BOOTSTRAP_ADMIN_PASSWORD=senha_segura
 
-# API Interna (server-to-server)
-INTERNAL_API_KEY=chave_aleatoria_segura
-
 # Profile
 SPRING_PROFILES_ACTIVE=dev
 ```
@@ -393,11 +210,6 @@ docker compose -f docker-compose.local.yml up --build -d
 * `GET /api/finance/forecast?year=` (ADMIN) - Previsão financeira anual
 * `POST /api/finance` (ADMIN) - Registro de movimentação
 
-### 🔐 API Interna (Server-to-Server)
-*Requer header `X-Internal-Api-Key`*
-* `PATCH /api/internal/approvals/post/{postId}/approve`
-* `PATCH /api/internal/approvals/post/{postId}/reject`
-
 </details>
 
 ---
@@ -422,8 +234,7 @@ Gerenciado via **Flyway Migrations** (PostgreSQL).
 
 - **Autenticação:** Baseada em JWT com Hash `HMAC-SHA-256`, duração de 24h. Refresh Tokens armazenados com hash seguro na base.
 - **Autorização:** Isolamento baseado em roles (`ADMIN` vs `USER`) gerenciado através de anotações `@PreAuthorize` e custom `JwtFilter`.
-- **CORS:** Restrito à interface de produção (`agencianorth.com`) ou origens seguras, com abertura para webhooks e endpoints internos (`/api/internal/**`).
-- **API Interna:** Endpoints server-to-server protegidos com header `X-Internal-Api-Key`.
+- **CORS:** Restrito à interface de produção (`agencianorth.com`) ou origens seguras, com abertura para webhooks da Evolution API.
 
 ---
 
