@@ -19,7 +19,7 @@ public class PostSchedulerService {
     private final PostRepository     postRepository;
     private final PostDispatchService postDispatchService;
 
-    @Scheduled(fixedDelayString = "${scheduler.post.fixed-delay-ms:300000}")
+    @Scheduled(fixedDelayString = "${scheduler.post.fixed-delay-ms:120000}")
     public void checkAndDispatchScheduledPosts() {
         LocalDateTime now = LocalDateTime.now();
 
