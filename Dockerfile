@@ -7,7 +7,8 @@ COPY src ./src
 RUN mvn package -Dmaven.test.skip=true
 
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache tzdata
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=America/Sao_Paulo", "-jar", "app.jar"]
