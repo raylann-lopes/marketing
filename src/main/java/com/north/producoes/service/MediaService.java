@@ -17,6 +17,8 @@ import lombok.AllArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -100,11 +102,18 @@ public class MediaService {
         post.setStatus(PostStatusEnum.WAITING_APPROVAL);
         postRepository.save(post);
 
-        // Dispara notificação WhatsApp diretamente — sem N8N
+        // Dispara notificação WhatsApp após o commit — evita race condition onde a
+        // thread @Async lê a entidade antes do stanzaId ter sido persistido.
         String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
-        // Passa IDs — a thread @Async re-busca as entidades com sessão JPA própria
-        whatsAppNotificationService.sendApprovalRequest(
-                post.getClient().getId(), post.getId(), approve.getId(), mediaUrl);
+        final long clientId  = post.getClient().getId();
+        final long postId_   = post.getId();
+        final long approveId = approve.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                whatsAppNotificationService.sendApprovalRequest(clientId, postId_, approveId, mediaUrl);
+            }
+        });
 
         return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), true);
     }

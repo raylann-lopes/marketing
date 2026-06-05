@@ -15,6 +15,8 @@ import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.PostRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -54,6 +58,16 @@ class MediaServiceTest {
 
     @InjectMocks
     private MediaService mediaService;
+
+    @BeforeEach
+    void initTxSync() {
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void clearTxSync() {
+        TransactionSynchronizationManager.clearSynchronization();
+    }
 
     @Nested
     @DisplayName("generateUploadUrl()")
@@ -143,7 +157,11 @@ class MediaServiceTest {
             assertThat(result.webhookDispatched()).isTrue();
             assertThat(post.getStatus()).isEqualTo(PostStatusEnum.WAITING_APPROVAL);
 
-            // Verifica que WhatsApp é acionado diretamente (sem N8N)
+            // Simula o commit da transação para disparar o afterCommit callback
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+
+            // Verifica que WhatsApp só é acionado após o commit (sem N8N)
             verify(whatsAppNotificationService).sendApprovalRequest(
                     any(Long.class), any(Long.class), any(Long.class), any(String.class));
         }

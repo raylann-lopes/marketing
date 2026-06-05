@@ -175,13 +175,17 @@ public class ApprovedService {
         existing.setRejectedAt(null);
         existing.setRejectedBy(null);
 
-        if (dto != null) {
-            PostEntity post = existing.getPost();
-            if (dto.scheduledAt() != null) {
+        PostEntity post = existing.getPost();
+        if (post != null) {
+            if (dto != null && dto.scheduledAt() != null) {
                 post.setScheduledAt(dto.scheduledAt());
-                post.setStatus(PostStatusEnum.FINISHED);
-                postRepository.save(post);
             }
+            rescheduleIfPastDue(post);
+            post.setStatus(PostStatusEnum.SCHEDULE);
+            postRepository.save(post);
+        }
+
+        if (dto != null) {
             existing.setInternalRevisionNotes(dto.internalRevisionNotes());
         }
 
