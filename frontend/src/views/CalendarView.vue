@@ -66,6 +66,11 @@ async function fetchInitialData() {
   }
 }
 
+function toLocalDateTimeInput(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function openPostModal(day?: number | null) {
   const date = new Date(currentDate.value)
   if (day) date.setDate(day)
@@ -76,7 +81,7 @@ function openPostModal(day?: number | null) {
     theme: '',
     objective: '',
     status: 'DEMAND',
-    scheduledAt: date.toISOString()
+    scheduledAt: toLocalDateTimeInput(date)
   } as unknown as Post
   fieldErrors.value = {}
   isModalOpen.value = true

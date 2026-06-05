@@ -52,12 +52,17 @@ watch(() => props.isOpen, (newVal) => {
         theme: '',
         objective: '',
         status: 'DEMAND',
-        scheduledAt: new Date().toISOString().slice(0, 16),
+        scheduledAt: toLocalDateTimeInput(new Date()),
         isUrgent: false
       }
     }
   }
 }, { immediate: true })
+
+function toLocalDateTimeInput(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
 function handleSave() {
   emit('save', { ...form.value })
