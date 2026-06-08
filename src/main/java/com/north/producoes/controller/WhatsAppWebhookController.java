@@ -37,7 +37,8 @@ import java.util.Set;
  * Vantagens: zero falsos positivos, sem matching de texto, UX simples.
  *
  * Configure na Evolution API:
- *   URL:     POST https://seudominio.com/api/webhooks/whatsapp/{EVOLUTION_WEBHOOK_SECRET}
+ *   URL:     POST https://seudominio.com/api/webhooks/whatsapp
+ *   Header:  X-Webhook-Secret: {EVOLUTION_WEBHOOK_SECRET}
  *   Eventos: messages.upsert
  */
 @RestController
@@ -56,10 +57,10 @@ public class WhatsAppWebhookController {
     private final PostRepository postRepository;
     private final WhatsAppNotificationService whatsAppNotificationService;
 
-    @PostMapping({"/{secret}", "/{secret}/messages-upsert"})
+    @PostMapping({"", "/messages-upsert"})
     @Transactional
     public ResponseEntity<Void> handleWebhook(
-            @PathVariable String secret,
+            @RequestHeader(value = "X-Webhook-Secret", required = false) String secret,
             @RequestBody String rawBody) {
 
         if (!StringUtils.hasText(webhookSecret)) {
@@ -67,10 +68,10 @@ public class WhatsAppWebhookController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
 
-        if (!MessageDigest.isEqual(
+        if (!StringUtils.hasText(secret) || !MessageDigest.isEqual(
                 secret.getBytes(StandardCharsets.UTF_8),
                 webhookSecret.getBytes(StandardCharsets.UTF_8))) {
-            log.warn("[Webhook] Secret inválido.");
+            log.warn("[Webhook] Secret inválido ou ausente.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 

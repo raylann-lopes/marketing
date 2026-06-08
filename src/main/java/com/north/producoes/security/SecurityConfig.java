@@ -38,7 +38,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
-                        // Webhook da Evolution API — autenticação via secret na URL
+                        // Webhook da Evolution API — autenticação via header X-Webhook-Secret
                         .requestMatchers("/api/webhooks/whatsapp/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated())

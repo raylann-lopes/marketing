@@ -4,13 +4,17 @@ import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.PostStatusEnum;
+import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.service.PostService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -24,6 +28,7 @@ public class PostController {
     private final PostService postService;
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findAll() {
         List<PostResponseDTO> post = postService.findAllPost()
                 .stream()
@@ -33,6 +38,7 @@ public class PostController {
     }
 
     @GetMapping("/status/{status}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByStatus(@PathVariable PostStatusEnum status) {
         List<PostResponseDTO> postStatus = postService.findByStatus(status)
                 .stream()
@@ -42,6 +48,7 @@ public class PostController {
     }
 
     @GetMapping("/client/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByClient(@PathVariable Long id) {
         List<PostResponseDTO> postClient = postService.findByClient(id)
                 .stream()
@@ -51,7 +58,12 @@ public class PostController {
     }
 
     @GetMapping("/user/{id}")
-    public ResponseEntity<List<PostResponseDTO>> findByUser(@PathVariable Long id) {
+    public ResponseEntity<List<PostResponseDTO>> findByUser(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserEntity currentUser) {
+        if (currentUser.getRole() != UserRoleEnum.ADMIN && !currentUser.getId().equals(id)) {
+            throw new AccessDeniedException("Sem permissão para acessar posts de outro usuário");
+        }
         List<PostResponseDTO> postUser = postService.findByUser(id)
                 .stream()
                 .map(PostResponseDTO::from)
@@ -60,6 +72,7 @@ public class PostController {
     }
 
     @GetMapping("/scheduled/{scheduledAt}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByScheduledAt(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scheduledAt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scheduledAtBefore) {

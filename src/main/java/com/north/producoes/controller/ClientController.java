@@ -24,6 +24,7 @@ public class ClientController {
     private final ClientService clientService;
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<ClientResponseDTO>> findAll() {
         List<ClientResponseDTO> clients = clientService.findAllClient()
                 .stream()
@@ -33,16 +34,19 @@ public class ClientController {
     }
 
     @GetMapping("/email/{email}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> findByEmail(@PathVariable String email) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByEmail(email)));
     }
 
     @GetMapping("/number/{number}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> findByNumber(@PathVariable String number) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByNumber(number)));
     }
 
     @GetMapping("/status/{status}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<ClientResponseDTO>> findByStatus(@PathVariable ClientStatusEnum status) {
         List<ClientResponseDTO> clients = clientService.findByStatus(status)
                 .stream()
