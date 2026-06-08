@@ -99,13 +99,13 @@ async function fetchClients() {
   }
 }
 
-async function fetchAccountConfigs() {
-  for (const client of clients.value) {
-    try {
-      const config = await accountConfigService.getByClientId(Number(client.id))
-      clientConfigs.value.set(Number(client.id), config)
-    } catch {
-    }
+async function fetchAccountConfig(clientId: number) {
+  if (clientConfigs.value.has(clientId)) return
+
+  try {
+    const config = await accountConfigService.getByClientId(clientId)
+    clientConfigs.value.set(clientId, config)
+  } catch {
   }
 }
 
@@ -311,15 +311,18 @@ onMounted(async () => {
   await fetchProfile()
   if (isAdmin) {
     await fetchClients()
-    await fetchAccountConfigs()
   }
 })
 
-watch(selectedClientId, () => {
+watch(selectedClientId, (clientId) => {
   accountSuccess.value = ''
   error.value = ''
   selectedMetaAccountKey.value = ''
   selectedEvolutionGroupId.value = ''
+
+  if (clientId) {
+    fetchAccountConfig(Number(clientId))
+  }
 })
 
 watch(selectedMetaAccountKey, () => {
