@@ -1,16 +1,21 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.PostApi;
 import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.PostStatusEnum;
+import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.service.PostService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -19,11 +24,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/posts")
 @AllArgsConstructor
-public class PostController {
+public class PostController implements PostApi {
 
     private final PostService postService;
 
+    @Override
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findAll() {
         List<PostResponseDTO> post = postService.findAllPost()
                 .stream()
@@ -32,7 +39,9 @@ public class PostController {
         return ResponseEntity.ok(post);
     }
 
+    @Override
     @GetMapping("/status/{status}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByStatus(@PathVariable PostStatusEnum status) {
         List<PostResponseDTO> postStatus = postService.findByStatus(status)
                 .stream()
@@ -41,7 +50,9 @@ public class PostController {
         return ResponseEntity.ok(postStatus);
     }
 
+    @Override
     @GetMapping("/client/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByClient(@PathVariable Long id) {
         List<PostResponseDTO> postClient = postService.findByClient(id)
                 .stream()
@@ -50,8 +61,14 @@ public class PostController {
         return ResponseEntity.ok(postClient);
     }
 
+    @Override
     @GetMapping("/user/{id}")
-    public ResponseEntity<List<PostResponseDTO>> findByUser(@PathVariable Long id) {
+    public ResponseEntity<List<PostResponseDTO>> findByUser(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserEntity currentUser) {
+        if (currentUser.getRole() != UserRoleEnum.ADMIN && !currentUser.getId().equals(id)) {
+            throw new AccessDeniedException("Sem permissão para acessar posts de outro usuário");
+        }
         List<PostResponseDTO> postUser = postService.findByUser(id)
                 .stream()
                 .map(PostResponseDTO::from)
@@ -59,7 +76,9 @@ public class PostController {
         return ResponseEntity.ok(postUser);
     }
 
+    @Override
     @GetMapping("/scheduled/{scheduledAt}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByScheduledAt(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scheduledAt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime scheduledAtBefore) {
@@ -70,18 +89,21 @@ public class PostController {
         return ResponseEntity.ok(postScheduledAt);
     }
 
+    @Override
     @PostMapping("/save")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> savePost(@Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.savePost(post)));
     }
 
+    @Override
     @PutMapping("/update/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> updatePost(@PathVariable Long id, @Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(id, post)));
     }
 
+    @Override
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deletePostById(@PathVariable Long id) {
@@ -89,6 +111,7 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
+    @Override
     @PatchMapping("/update-reference/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> updateReferenceImage(
@@ -97,6 +120,7 @@ public class PostController {
         return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, s3Key)));
     }
 
+    @Override
     @PostMapping("/{id}/generate-caption")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApproveResponseDTO> generateCaption(

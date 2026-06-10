@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.MediaApi;
 import com.north.producoes.controller.dto.request.MediaUploadCompleteRequestDTO;
 import com.north.producoes.controller.dto.response.MediaUrlResponseDTO;
 import com.north.producoes.controller.dto.response.MediaUploadCompleteResponseDTO;
@@ -16,10 +17,11 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/media")
 @AllArgsConstructor
-public class MediaController {
+public class MediaController implements MediaApi {
 
     private final MediaService mediaService;
 
+    @Override
     @RequestMapping(value = "/upload-url", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<PresignedUploadResponseDTO> generateUploadUrl(
             @RequestParam Long postId,
@@ -29,6 +31,7 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.generateUploadUrl(postId, filename, contentType, user));
     }
 
+    @Override
     @RequestMapping(value = "/reference-url", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<PresignedUploadResponseDTO> generateReferenceUploadUrl(
             @RequestParam Long postId,
@@ -38,6 +41,7 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.generateReferenceUploadUrl(postId, filename, contentType, user));
     }
 
+    @Override
     @PostMapping("/upload-complete")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MediaUploadCompleteResponseDTO> markUploadComplete(
@@ -46,6 +50,7 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.markUploadComplete(request, user));
     }
 
+    @Override
     @GetMapping("/preview/{postId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MediaUrlResponseDTO> getArtPreviewUrl(
@@ -54,6 +59,7 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.getArtPreviewUrl(postId, user));
     }
 
+    @Override
     @GetMapping("/reference-preview/{postId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MediaUrlResponseDTO> getReferencePreviewUrl(
