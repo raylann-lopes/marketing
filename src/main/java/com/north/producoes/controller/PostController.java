@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.PostApi;
 import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
@@ -23,10 +24,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/posts")
 @AllArgsConstructor
-public class PostController {
+public class PostController implements PostApi {
 
     private final PostService postService;
 
+    @Override
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findAll() {
@@ -37,6 +39,7 @@ public class PostController {
         return ResponseEntity.ok(post);
     }
 
+    @Override
     @GetMapping("/status/{status}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByStatus(@PathVariable PostStatusEnum status) {
@@ -47,6 +50,7 @@ public class PostController {
         return ResponseEntity.ok(postStatus);
     }
 
+    @Override
     @GetMapping("/client/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByClient(@PathVariable Long id) {
@@ -57,6 +61,7 @@ public class PostController {
         return ResponseEntity.ok(postClient);
     }
 
+    @Override
     @GetMapping("/user/{id}")
     public ResponseEntity<List<PostResponseDTO>> findByUser(
             @PathVariable Long id,
@@ -71,6 +76,7 @@ public class PostController {
         return ResponseEntity.ok(postUser);
     }
 
+    @Override
     @GetMapping("/scheduled/{scheduledAt}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findByScheduledAt(
@@ -83,18 +89,21 @@ public class PostController {
         return ResponseEntity.ok(postScheduledAt);
     }
 
+    @Override
     @PostMapping("/save")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> savePost(@Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.savePost(post)));
     }
 
+    @Override
     @PutMapping("/update/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> updatePost(@PathVariable Long id, @Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(id, post)));
     }
 
+    @Override
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deletePostById(@PathVariable Long id) {
@@ -102,6 +111,7 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
+    @Override
     @PatchMapping("/update-reference/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> updateReferenceImage(
@@ -110,6 +120,7 @@ public class PostController {
         return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, s3Key)));
     }
 
+    @Override
     @PostMapping("/{id}/generate-caption")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApproveResponseDTO> generateCaption(

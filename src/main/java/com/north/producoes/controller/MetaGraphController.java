@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.MetaGraphApi;
 import com.north.producoes.controller.dto.request.MetaInstagramAccountLinkRequestDTO;
 import com.north.producoes.controller.dto.response.AccountConfigResponseDTO;
 import com.north.producoes.controller.dto.response.MetaInstagramAccountResponseDTO;
@@ -17,16 +18,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/meta")
 @AllArgsConstructor
-public class MetaGraphController {
+public class MetaGraphController implements MetaGraphApi {
 
     private final MetaGraphService metaGraphService;
 
+    @Override
     @GetMapping("/instagram-accounts")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<MetaInstagramAccountResponseDTO>> findInstagramAccounts() {
         return ResponseEntity.ok(metaGraphService.findInstagramAccounts());
     }
 
+    @Override
     @PostMapping("/instagram-accounts/link")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<AccountConfigResponseDTO> linkInstagramAccount(

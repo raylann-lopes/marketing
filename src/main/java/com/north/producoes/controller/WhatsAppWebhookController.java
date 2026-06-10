@@ -2,6 +2,7 @@ package com.north.producoes.controller;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.north.producoes.controller.api.WhatsAppWebhookApi;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -37,15 +38,14 @@ import java.util.Set;
  * Vantagens: zero falsos positivos, sem matching de texto, UX simples.
  *
  * Configure na Evolution API:
- *   URL:     POST https://seudominio.com/api/webhooks/whatsapp
- *   Header:  X-Webhook-Secret: {EVOLUTION_WEBHOOK_SECRET}
+ *   URL:     POST https://seudominio.com/api/webhooks/whatsapp/{EVOLUTION_WEBHOOK_SECRET}
  *   Eventos: messages.upsert
  */
 @RestController
 @RequestMapping("/api/webhooks/whatsapp")
 @RequiredArgsConstructor
 @Slf4j
-public class WhatsAppWebhookController {
+public class WhatsAppWebhookController implements WhatsAppWebhookApi {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -57,10 +57,10 @@ public class WhatsAppWebhookController {
     private final PostRepository postRepository;
     private final WhatsAppNotificationService whatsAppNotificationService;
 
-    @PostMapping({"", "/messages-upsert"})
+    @PostMapping({"/{secret}", "/{secret}/messages-upsert"})
     @Transactional
     public ResponseEntity<Void> handleWebhook(
-            @RequestHeader(value = "X-Webhook-Secret", required = false) String secret,
+            @PathVariable String secret,
             @RequestBody String rawBody) {
 
         if (!StringUtils.hasText(webhookSecret)) {
@@ -68,10 +68,10 @@ public class WhatsAppWebhookController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
 
-        if (!StringUtils.hasText(secret) || !MessageDigest.isEqual(
+        if (!MessageDigest.isEqual(
                 secret.getBytes(StandardCharsets.UTF_8),
                 webhookSecret.getBytes(StandardCharsets.UTF_8))) {
-            log.warn("[Webhook] Secret inválido ou ausente.");
+            log.warn("[Webhook] Secret inválido.");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 

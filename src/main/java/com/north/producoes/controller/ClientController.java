@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.ClientApi;
 import com.north.producoes.controller.dto.request.ClientRequestDTO;
 import com.north.producoes.controller.dto.request.ClientStatusRequestDTO;
 import com.north.producoes.controller.dto.response.ClientResponseDTO;
@@ -19,10 +20,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/clients")
 @AllArgsConstructor
-public class ClientController {
+public class ClientController implements ClientApi {
 
     private final ClientService clientService;
 
+    @Override
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<ClientResponseDTO>> findAll() {
@@ -33,18 +35,21 @@ public class ClientController {
         return ResponseEntity.ok(clients);
     }
 
+    @Override
     @GetMapping("/email/{email}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> findByEmail(@PathVariable String email) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByEmail(email)));
     }
 
+    @Override
     @GetMapping("/number/{number}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> findByNumber(@PathVariable String number) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.findByNumber(number)));
     }
 
+    @Override
     @GetMapping("/status/{status}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<ClientResponseDTO>> findByStatus(@PathVariable ClientStatusEnum status) {
@@ -55,6 +60,7 @@ public class ClientController {
         return ResponseEntity.ok(clients);
     }
 
+    @Override
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> saveClient(
@@ -64,12 +70,14 @@ public class ClientController {
                 .body(ClientResponseDTO.from(clientService.saveClient(request, currentUser)));
     }
 
+    @Override
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> updateClient(@PathVariable Long id, @Valid @RequestBody ClientRequestDTO request) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateClient(id, request)));
     }
 
+    @Override
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ClientResponseDTO> updateStatus(
@@ -79,6 +87,7 @@ public class ClientController {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.updateStatus(id, request.status(), currentUser)));
     }
 
+    @Override
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deleteById(@PathVariable Long id) {

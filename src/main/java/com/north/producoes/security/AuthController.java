@@ -1,5 +1,6 @@
 package com.north.producoes.security;
 
+import com.north.producoes.controller.api.AuthApi;
 import com.north.producoes.controller.dto.request.LoginRequestDTO;
 import com.north.producoes.controller.dto.request.RegisterRequestDTO;
 import com.north.producoes.controller.dto.response.LoginResponseDTO;
@@ -18,13 +19,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @AllArgsConstructor
-public class AuthController {
+public class AuthController implements AuthApi {
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
 
+    @Override
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginRequestDTO loginRequestDTO) {
         authenticationManager.authenticate(
@@ -40,6 +42,7 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponseDTO(acessToken, refreshToken, user.getRole().name(), user.getId()));
     }
 
+    @Override
     @PostMapping("/register")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<LoginResponseDTO> register(@RequestBody @Valid RegisterRequestDTO registerRequestDTO) {
