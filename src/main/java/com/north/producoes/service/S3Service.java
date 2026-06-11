@@ -87,10 +87,6 @@ public class S3Service {
         return buildPublicUrl(s3Key);
     }
 
-    public String getPublicPrefix() {
-        return publicPrefix;
-    }
-
     private String normalizePrefix(String configuredPrefix) {
         String prefix = StringUtils.hasText(configuredPrefix) ? configuredPrefix.trim() : DEFAULT_PUBLIC_PREFIX;
         if (prefix.startsWith("/")) {
