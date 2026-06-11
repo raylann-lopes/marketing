@@ -60,4 +60,10 @@ public class ClientEntity {
 
     @OneToMany(mappedBy = "client")
     private List<PostEntity> posts;
+
+    @OneToMany(mappedBy = "client")
+    private List<ContentIdeaEntity> contentIdeas;
+
+    @OneToMany(mappedBy = "client")
+    private List<ContentIdeaRunsEntity> contentIdeaRuns;
 }
