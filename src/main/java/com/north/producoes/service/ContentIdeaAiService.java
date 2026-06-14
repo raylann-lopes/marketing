@@ -23,19 +23,17 @@ public class ContentIdeaAiService {
     private static final Logger log = LoggerFactory.getLogger(ContentIdeaAiService.class);
     private static final String SYSTEM_INSTRUCTION = "Você é um social media procurando os melhores posts para recomendar aos clientes. "
             + "O nicho do cliente é a fonte principal e obrigatória para recomendar os posts. "
-            + "Sua resposta deve conter apenas os termos de busca e hashtags, sem análises ou explicações. "
-            + "Responda no formato JSON com os campos 'searchTerms' e 'hashtags', ambos contendo listas de strings.";
+            + "Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem blocos de código. "
+            + "O JSON deve conter exatamente os campos 'searchTerms' e 'hashtags', ambos contendo listas de strings.";
 
     private final ChatClient chatClient;
-
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${spring.ai.openai.chat.options.model:gpt-4o}")
     private String model;
 
-    public ContentIdeaAiService(ChatClient chatClient, ObjectMapper objectMapper) {
-        this.chatClient = chatClient;
-        this.objectMapper = objectMapper;
+    public ContentIdeaAiService(ChatClient.Builder chatClientBuilder) {
+        this.chatClient = chatClientBuilder.build();
     }
 
 

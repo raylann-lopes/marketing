@@ -17,7 +17,7 @@ public class ApifySearchContentIdeaService {
         this.clientRepository = clientRepository;
     }
 
-    public ContentIdeaTermsDTO searchIdeas (ClientEntity client){
+    public ContentIdeaTermsDTO generateIdeas(ClientEntity client){
         var terms = contentIdeaAiService.generateContentIdeas(client);
         client.setAiTerms(terms);
         clientRepository.save(client);

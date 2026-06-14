@@ -1,14 +1,13 @@
 package com.north.producoes.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.exception.InvalidClientDataException;
 import com.north.producoes.integration.apify.dto.ContentIdeaTermsDTO;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
@@ -18,7 +17,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @DisplayName("ContentIdeaAiService")
@@ -26,13 +24,18 @@ import static org.mockito.Mockito.*;
 class ContentIdeaAiServiceTest {
 
     @Mock
-    private ChatClient chatClient;
+    private ChatClient.Builder chatClientBuilder;
 
     @Mock
-    private ObjectMapper objectMapper;
+    private ChatClient chatClient;
 
-    @InjectMocks
     private ContentIdeaAiService contentIdeaAiService;
+
+    @BeforeEach
+    void setUp() {
+        when(chatClientBuilder.build()).thenReturn(chatClient);
+        contentIdeaAiService = new ContentIdeaAiService(chatClientBuilder);
+    }
 
     @Nested
     @DisplayName("generateContentIdeas()")
@@ -52,12 +55,11 @@ class ContentIdeaAiServiceTest {
 
             when(chatClient.prompt(any(org.springframework.ai.chat.prompt.Prompt.class))).thenReturn(requestSpec);
             when(requestSpec.call()).thenReturn(callSpec);
-            when(callSpec.content()).thenReturn("{\"hashtag\":[],\"searchTerms\":[]}");
-            when(objectMapper.readValue(anyString(), eq(ContentIdeaTermsDTO.class))).thenReturn(expected);
+            when(callSpec.content()).thenReturn("{\"hashtags\":[\"odontologiaestetica\",\"sorrisoperfeito\"],\"searchTerms\":[\"clareamento dental antes e depois\",\"mitos sobre clareamento\"]}");
 
             ContentIdeaTermsDTO result = contentIdeaAiService.generateContentIdeas(client);
 
-            assertThat(result.hashtag()).containsExactly("odontologiaestetica", "sorrisoperfeito");
+            assertThat(result.hashtags()).containsExactly("odontologiaestetica", "sorrisoperfeito");
             assertThat(result.searchTerms()).containsExactly("clareamento dental antes e depois", "mitos sobre clareamento");
         }
 
@@ -78,7 +80,7 @@ class ContentIdeaAiServiceTest {
 
         @Test
         @DisplayName("deve retornar aiTerms do cliente como fallback quando a IA falha")
-        void shouldReturnSavedTermsWhenAiFails() throws Exception {
+        void shouldReturnSavedTermsWhenAiFails() {
             ContentIdeaTermsDTO fallback = new ContentIdeaTermsDTO(
                     List.of("odontologia"),
                     List.of("dentista estetico")
@@ -92,9 +94,7 @@ class ContentIdeaAiServiceTest {
 
             when(chatClient.prompt(any(org.springframework.ai.chat.prompt.Prompt.class))).thenReturn(requestSpec);
             when(requestSpec.call()).thenReturn(callSpec);
-            when(callSpec.content()).thenReturn("resposta invalida da ia");
-            when(objectMapper.readValue(anyString(), eq(ContentIdeaTermsDTO.class)))
-                    .thenThrow(new RuntimeException("parse error"));
+            when(callSpec.content()).thenReturn("resposta invalida da ia `backtick`");
 
             ContentIdeaTermsDTO result = contentIdeaAiService.generateContentIdeas(client);
 

@@ -48,7 +48,7 @@ class ApifySearchContentIdeaServiceTest {
             when(contentIdeaAiService.generateContentIdeas(client)).thenReturn(terms);
             when(clientRepository.save(client)).thenReturn(client);
 
-            ContentIdeaTermsDTO result = apifySearchContentIdeaService.searchIdeas(client);
+            ContentIdeaTermsDTO result = apifySearchContentIdeaService.generateIdeas(client);
 
             assertThat(result).isEqualTo(terms);
             assertThat(client.getAiTerms()).isEqualTo(terms);
@@ -69,7 +69,7 @@ class ApifySearchContentIdeaServiceTest {
 
             when(contentIdeaAiService.generateContentIdeas(client)).thenReturn(terms);
 
-            apifySearchContentIdeaService.searchIdeas(client);
+            apifySearchContentIdeaService.generateIdeas(client);
 
             verify(clientRepository).save(argThat(saved -> saved.getAiTerms().equals(terms)));
         }
