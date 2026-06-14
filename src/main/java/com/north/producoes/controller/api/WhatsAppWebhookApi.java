@@ -7,11 +7,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "WhatsApp Webhook", description = "Recebe eventos da Evolution API via webhook para processar aprovações de posts via WhatsApp")
 public interface WhatsAppWebhookApi {
 
+    @PostMapping({"/{secret}", "/{secret}/messages-upsert"})
     @Operation(
         summary = "Recebe evento de mensagem da Evolution API",
         description = """

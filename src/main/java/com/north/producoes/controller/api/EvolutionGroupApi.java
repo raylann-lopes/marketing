@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
@@ -16,11 +18,13 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 public interface EvolutionGroupApi {
 
+    @GetMapping("/groups")
     @Operation(summary = "Lista grupos do WhatsApp disponíveis na Evolution")
     @ApiResponse(responseCode = "200", description = "Grupos retornados com sucesso")
     @ApiResponse(responseCode = "502", description = "Falha ao consultar a Evolution API")
     ResponseEntity<List<EvolutionGroupResponseDTO>> findGroups();
 
+    @PostMapping("/groups/link")
     @Operation(summary = "Vincula um grupo do WhatsApp a um cliente")
     @ApiResponse(responseCode = "200", description = "Grupo vinculado com sucesso")
     @ApiResponse(responseCode = "404", description = "Cliente ou grupo não encontrado")

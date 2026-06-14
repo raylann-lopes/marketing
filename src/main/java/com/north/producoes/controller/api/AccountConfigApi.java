@@ -9,7 +9,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.security.Principal;
@@ -18,6 +21,7 @@ import java.security.Principal;
 @SecurityRequirement(name = "bearerAuth")
 public interface AccountConfigApi {
 
+    @PostMapping
     @Operation(summary = "Configura credenciais da conta Instagram/Graph para um cliente")
     @ApiResponse(responseCode = "201", description = "Configuração criada com sucesso")
     @ApiResponse(responseCode = "409", description = "Configuração já existe para este cliente")
@@ -26,12 +30,14 @@ public interface AccountConfigApi {
             @Valid @RequestBody AccountConfigRequestDTO request,
             Principal principal);
 
+    @GetMapping("/client/{clientId}")
     @Operation(summary = "Retorna a configuração de conta de um cliente")
     @ApiResponse(responseCode = "200", description = "Configuração encontrada")
     @ApiResponse(responseCode = "404", description = "Configuração não encontrada")
     ResponseEntity<AccountConfigResponseDTO> findByClientId(
             @Parameter(description = "ID do cliente") @PathVariable Long clientId);
 
+    @DeleteMapping("/client/{clientId}")
     @Operation(summary = "Remove a configuração de conta de um cliente")
     @ApiResponse(responseCode = "204", description = "Configuração removida com sucesso")
     @ApiResponse(responseCode = "404", description = "Configuração não encontrada")

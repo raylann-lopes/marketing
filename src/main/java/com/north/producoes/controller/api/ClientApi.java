@@ -12,7 +12,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
@@ -20,28 +25,33 @@ import java.util.List;
 @Tag(name = "Clientes", description = "Gerenciamento de clientes da agência (somente ADMIN)")
 public interface ClientApi {
 
+    @GetMapping
     @Operation(summary = "Lista todos os clientes")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     ResponseEntity<List<ClientResponseDTO>> findAll();
 
+    @GetMapping("/email/{email}")
     @Operation(summary = "Busca cliente por email")
     @ApiResponse(responseCode = "200", description = "Cliente encontrado")
     @ApiResponse(responseCode = "404", description = "Cliente não encontrado")
     ResponseEntity<ClientResponseDTO> findByEmail(
             @Parameter(description = "Email do cliente") @PathVariable String email);
 
+    @GetMapping("/number/{number}")
     @Operation(summary = "Busca cliente por telefone")
     @ApiResponse(responseCode = "200", description = "Cliente encontrado")
     @ApiResponse(responseCode = "404", description = "Cliente não encontrado")
     ResponseEntity<ClientResponseDTO> findByNumber(
             @Parameter(description = "Telefone do cliente") @PathVariable String number);
 
+    @GetMapping("/status/{status}")
     @Operation(summary = "Busca clientes por status")
     @ApiResponse(responseCode = "200", description = "Clientes encontrados")
     @ApiResponse(responseCode = "404", description = "Nenhum cliente encontrado com o status informado")
     ResponseEntity<List<ClientResponseDTO>> findByStatus(
             @Parameter(description = "Status do cliente") @PathVariable ClientStatusEnum status);
 
+    @PostMapping
     @Operation(summary = "Cadastra um novo cliente")
     @ApiResponse(responseCode = "201", description = "Cliente cadastrado com sucesso")
     @ApiResponse(responseCode = "409", description = "Cliente já cadastrado")
@@ -49,6 +59,7 @@ public interface ClientApi {
             @Valid @RequestBody ClientRequestDTO request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserEntity currentUser);
 
+    @PutMapping("/{id}")
     @Operation(summary = "Atualiza um cliente existente")
     @ApiResponse(responseCode = "200", description = "Cliente atualizado com sucesso")
     @ApiResponse(responseCode = "404", description = "Cliente não encontrado")
@@ -56,6 +67,7 @@ public interface ClientApi {
             @Parameter(description = "ID do cliente") @PathVariable Long id,
             @Valid @RequestBody ClientRequestDTO request);
 
+    @PatchMapping("/{id}/status")
     @Operation(summary = "Atualiza o status de um cliente")
     @ApiResponse(responseCode = "200", description = "Status atualizado com sucesso")
     @ApiResponse(responseCode = "404", description = "Cliente não encontrado")
@@ -64,6 +76,7 @@ public interface ClientApi {
             @Valid @RequestBody ClientStatusRequestDTO request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserEntity currentUser);
 
+    @DeleteMapping("/{id}")
     @Operation(summary = "Remove um cliente pelo ID")
     @ApiResponse(responseCode = "204", description = "Cliente removido com sucesso")
     @ApiResponse(responseCode = "404", description = "Cliente não encontrado")
