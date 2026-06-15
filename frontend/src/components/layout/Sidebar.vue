@@ -36,7 +36,6 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Board de Produção', to: '/board', icon: Kanban },
-  { label: 'Clientes', to: '/clients', icon: Users },
   { label: 'Calendário Editorial', to: '/calendar', icon: CalendarDays },
   { label: 'Aprovações', to: '/approvals', icon: CheckCircle2 },
   { label: 'Ideias de Conteúdo', to: '/ideas', icon: Lightbulb },
@@ -55,6 +54,7 @@ function logout() {
 }
 
 if (isAdmin) {
+  navItems.push({ label: 'Clientes', to: '/clients', icon: Users })
   navItems.push({ label: 'Financeiro', to: '/finance', icon: CreditCard })
   navItems.push({ label: 'Usuários', to: '/admin/users', icon: ShieldCheck })
 }

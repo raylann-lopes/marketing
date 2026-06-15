@@ -77,7 +77,7 @@ public class PostController {
     }
 
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PostResponseDTO> updatePost(@PathVariable Long id, @Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.updatePost(id, post)));
     }
