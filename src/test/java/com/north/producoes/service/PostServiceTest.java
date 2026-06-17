@@ -316,7 +316,9 @@ class PostServiceTest {
                 clientId,
                 userId,
                 false,
-                null
+                null,
+                null,
+                com.north.producoes.entity.enums.PostFormatEnum.IMAGE
         );
     }
 

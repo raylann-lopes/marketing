@@ -112,8 +112,32 @@ public class PostService {
         postExisting.setObjective(dto.objective());
         postExisting.setStatus(dto.status());
         postExisting.setIsUrgent(dto.isUrgent() != null ? dto.isUrgent() : false);
-        postExisting.setReferenceImageS3Key(dto.referenceImageS3Key());
         postExisting.setScheduledAt(dto.scheduledAt());
+        
+        if (dto.format() != null) {
+            postExisting.setFormat(dto.format());
+        }
+
+        if (postExisting.getCarouselImages() != null) {
+            postExisting.getCarouselImages().clear();
+        } else {
+            postExisting.setCarouselImages(new java.util.ArrayList<>());
+        }
+
+        List<String> refs = dto.referenceImageS3Keys();
+        if (refs != null && !refs.isEmpty()) {
+            int order = 0;
+            for (String key : refs) {
+                com.north.producoes.entity.PostCarouselImageEntity refEntity = new com.north.producoes.entity.PostCarouselImageEntity();
+                refEntity.setPost(postExisting);
+                refEntity.setS3Key(key);
+                refEntity.setSortOrder(order++);
+                postExisting.getCarouselImages().add(refEntity);
+            }
+            postExisting.setReferenceImageS3Key(refs.get(0));
+        } else if (StringUtils.hasText(dto.referenceImageS3Key())) {
+            postExisting.setReferenceImageS3Key(dto.referenceImageS3Key());
+        }
         
         if (client != null) {
             postExisting.setClient(client);
@@ -126,10 +150,28 @@ public class PostService {
     }
 
     @Transactional
-    public PostEntity updateReferenceImage(Long id, String s3Key) {
+    public PostEntity updateReferenceImage(Long id, List<String> s3Keys) {
         PostEntity post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + id));
-        post.setReferenceImageS3Key(s3Key);
+        
+        if (post.getCarouselImages() != null) {
+            post.getCarouselImages().clear();
+        } else {
+            post.setCarouselImages(new java.util.ArrayList<>());
+        }
+
+        if (s3Keys != null && !s3Keys.isEmpty()) {
+            int order = 0;
+            for (String key : s3Keys) {
+                com.north.producoes.entity.PostCarouselImageEntity refEntity = new com.north.producoes.entity.PostCarouselImageEntity();
+                refEntity.setPost(post);
+                refEntity.setS3Key(key);
+                refEntity.setSortOrder(order++);
+                post.getCarouselImages().add(refEntity);
+            }
+            post.setReferenceImageS3Key(s3Keys.get(0));
+        }
+
         return postRepository.save(post);
     }
 

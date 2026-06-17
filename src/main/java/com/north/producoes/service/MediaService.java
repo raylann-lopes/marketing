@@ -56,7 +56,9 @@ public class MediaService {
         }
         ApproveEntity approve = approvals.getFirst();
         String previewUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
-        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption());
+        List<String> previewUrls = approve.getCarouselArts().stream().map(a -> s3Service.resolveReadUrl(a.getS3Key())).toList();
+        if (previewUrls.isEmpty()) previewUrls = List.of(previewUrl);
+        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, previewUrls, approve.getCaption());
     }
 
     public MediaUrlResponseDTO getReferencePreviewUrl(Long postId, UserEntity user) {
@@ -65,7 +67,9 @@ public class MediaService {
             throw new ResourceNotFoundException("Nenhuma imagem de referência para o post ID: " + postId);
         }
         String previewUrl = s3Service.resolveReadUrl(post.getReferenceImageS3Key());
-        return new MediaUrlResponseDTO(null, postId, previewUrl, "Imagem de Referência");
+        List<String> previewUrls = post.getCarouselImages().stream().map(r -> s3Service.resolveReadUrl(r.getS3Key())).toList();
+        if (previewUrls.isEmpty()) previewUrls = List.of(previewUrl);
+        return new MediaUrlResponseDTO(null, postId, previewUrl, previewUrls, "Imagem de Referência");
     }
 
     /**
@@ -88,8 +92,30 @@ public class MediaService {
                     return entity;
                 });
 
-        approve.setArtS3Key(normalizeUploadS3Key(request.s3Key()));
-        approve.setArtName(request.artName());
+        if (approve.getCarouselArts() != null) {
+            approve.getCarouselArts().clear();
+        } else {
+            approve.setCarouselArts(new java.util.ArrayList<>());
+        }
+
+        List<MediaUploadCompleteRequestDTO.ArtItem> artsReq = request.arts();
+        if (artsReq != null && !artsReq.isEmpty()) {
+            int order = 0;
+            for (MediaUploadCompleteRequestDTO.ArtItem item : artsReq) {
+                com.north.producoes.entity.ApproveCarouselArtEntity artEntity = new com.north.producoes.entity.ApproveCarouselArtEntity();
+                artEntity.setApprove(approve);
+                artEntity.setS3Key(normalizeUploadS3Key(item.s3Key()));
+                artEntity.setArtName(item.artName());
+                artEntity.setSortOrder(order++);
+                approve.getCarouselArts().add(artEntity);
+            }
+            approve.setArtS3Key(approve.getCarouselArts().get(0).getS3Key());
+            approve.setArtName(approve.getCarouselArts().get(0).getArtName());
+        } else {
+            approve.setArtS3Key(normalizeUploadS3Key(request.s3Key()));
+            approve.setArtName(request.artName());
+        }
+
         approve.setStatus(ApproveStatusEnum.PENDING);
         approve.setApprovedAt(null);
         approve.setApprovedUser("");
@@ -104,14 +130,17 @@ public class MediaService {
 
         // Dispara notificação WhatsApp após o commit — evita race condition onde a
         // thread @Async lê a entidade antes do stanzaId ter sido persistido.
-        String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
+        List<String> mediaUrls = artsReq != null && !artsReq.isEmpty() ?
+                approve.getCarouselArts().stream().map(a -> s3Service.resolveReadUrl(a.getS3Key())).toList() :
+                List.of(s3Service.resolveReadUrl(approve.getArtS3Key()));
+
         final long clientId  = post.getClient().getId();
         final long postId_   = post.getId();
         final long approveId = approve.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                whatsAppNotificationService.sendApprovalRequest(clientId, postId_, approveId, mediaUrl);
+                whatsAppNotificationService.sendApprovalRequest(clientId, postId_, approveId, mediaUrls);
             }
         });
 

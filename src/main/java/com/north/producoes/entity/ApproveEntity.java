@@ -9,6 +9,8 @@ import lombok.Setter;
 import org.hibernate.annotations.TimeZoneStorage;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -66,4 +68,8 @@ public class ApproveEntity {
 
     @Column(name = "rejected_by")
     private String rejectedBy;
+
+    @OneToMany(mappedBy = "approve", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    private List<ApproveCarouselArtEntity> carouselArts = new ArrayList<>();
 }

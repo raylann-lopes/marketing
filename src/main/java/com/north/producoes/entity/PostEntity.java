@@ -10,6 +10,9 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import com.north.producoes.entity.enums.PostFormatEnum;
 
 @Entity
 @Getter
@@ -59,4 +62,12 @@ public class PostEntity {
     @OneToOne(mappedBy = "post")
     @JsonIgnore
     private ApproveEntity approve;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private PostFormatEnum format = PostFormatEnum.IMAGE;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    private List<PostCarouselImageEntity> carouselImages = new ArrayList<>();
 }

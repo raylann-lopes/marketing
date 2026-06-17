@@ -51,7 +51,7 @@ public class WhatsAppNotificationService {
      */
     @Async
     @Transactional
-    public void sendApprovalRequest(Long clientId, Long postId, Long approveId, String mediaUrl) {
+    public void sendApprovalRequest(Long clientId, Long postId, Long approveId, List<String> mediaUrls) {
         ClientEntity client  = clientRepository.findById(clientId).orElse(null);
         PostEntity   post    = postRepository.findById(postId).orElse(null);
         ApproveEntity approve = approveRepository.findById(approveId).orElse(null);
@@ -70,8 +70,13 @@ public class WhatsAppNotificationService {
 
         try {
             // Passo 1: envia a imagem com descrição do post
-            evolutionApiClient.sendMediaToGroup(groupId, mediaUrl, buildImageCaption(post, approve));
-            log.info("[WhatsApp] Arte enviada | grupo: '{}' | Post ID: {}",
+            boolean first = true;
+            for (String mediaUrl : mediaUrls) {
+                String caption = first ? buildImageCaption(post, approve) : null;
+                evolutionApiClient.sendMediaToGroup(groupId, mediaUrl, caption);
+                first = false;
+            }
+            log.info("[WhatsApp] Arte(s) enviada(s) | grupo: '{}' | Post ID: {}",
                     client.getWhatsappGroupName(), post.getId());
 
             // Passo 2: envia enquete logo em seguida

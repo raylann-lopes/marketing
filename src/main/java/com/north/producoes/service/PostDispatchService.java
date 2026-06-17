@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 /**
  * Responsável por reservar e despachar um post para publicação no Instagram.
@@ -57,12 +58,19 @@ public class PostDispatchService {
                 return;
             }
 
-            String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
+            List<String> mediaUrls;
+            if (approve.getCarouselArts() != null && !approve.getCarouselArts().isEmpty()) {
+                mediaUrls = approve.getCarouselArts().stream()
+                        .map(a -> s3Service.resolveReadUrl(a.getS3Key()))
+                        .toList();
+            } else {
+                mediaUrls = List.of(s3Service.resolveReadUrl(approve.getArtS3Key()));
+            }
 
             // @Async — retorna imediatamente; a transação acima commita antes de o
             // thread assíncrono tentar atualizar o status para PUBLISHED
             instagramPublishService.publishAsync(
-                    post.getId(), post.getClient().getId(), mediaUrl, approve.getCaption());
+                    post.getId(), post.getClient().getId(), mediaUrls, approve.getCaption(), post.getFormat());
 
         } catch (Exception e) {
             log.error("[Dispatch] Erro ao despachar post ID {} — {}. Revertendo para SCHEDULE.",

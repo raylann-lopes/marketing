@@ -12,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.ArrayList;
+import com.north.producoes.entity.enums.PostFormatEnum;
 
 /**
  * Publica posts no Instagram via Meta Graph API.
@@ -39,9 +42,9 @@ public class InstagramPublishService {
      */
     @Async
     @Transactional
-    public void publishAsync(Long postId, Long clientId, String imageUrl, String caption) {
+    public void publishAsync(Long postId, Long clientId, List<String> imageUrls, String caption, PostFormatEnum format) {
         try {
-            String mediaId = publish(clientId, imageUrl, caption);
+            String mediaId = publish(clientId, imageUrls, caption, format);
             postRepository.compareAndSetStatus(
                     postId, PostStatusEnum.IN_PRODUCTION, PostStatusEnum.PUBLISHED);
             log.info("[Instagram] ✅ Post ID {} publicado. Media ID: {}", postId, mediaId);
@@ -56,13 +59,20 @@ public class InstagramPublishService {
     /**
      * Publicação síncrona — use publishAsync para chamadas do scheduler.
      */
-    public String publish(Long clientId, String imageUrl, String caption) {
+    public String publish(Long clientId, List<String> imageUrls, String caption, PostFormatEnum format) {
         AccountConfigEntity config = accountConfigService.findByClientId(clientId);
         String igUserId    = config.getIgUserId();
         String accessToken = config.getAccessToken(); // NUNCA logar
 
         log.info("[Instagram] Iniciando publicação | cliente: {}", clientId);
 
+        if (format == PostFormatEnum.CAROUSEL || imageUrls.size() > 1) {
+            return publishCarousel(igUserId, imageUrls, caption, accessToken, clientId);
+        }
+        return publishSingle(igUserId, imageUrls.get(0), caption, accessToken, clientId);
+    }
+
+    private String publishSingle(String igUserId, String imageUrl, String caption, String accessToken, Long clientId) {
         MetaContainerIdResponseDTO container =
                 metaGraphClient.createContainer(igUserId, imageUrl, caption, accessToken);
 
@@ -74,6 +84,28 @@ public class InstagramPublishService {
         MetaContainerIdResponseDTO published =
                 metaGraphClient.publish(igUserId, creationId, accessToken);
 
+        return published.id();
+    }
+
+    private String publishCarousel(String igUserId, List<String> imageUrls, String caption, String accessToken, Long clientId) {
+        if (imageUrls.size() < 2 || imageUrls.size() > 10) {
+            throw new MetaGraphIntegrationException("Carrossel deve ter entre 2 e 10 imagens.");
+        }
+
+        List<String> childrenIds = new ArrayList<>();
+        for (String url : imageUrls) {
+            MetaContainerIdResponseDTO itemContainer = metaGraphClient.createCarouselItemContainer(igUserId, url, accessToken);
+            childrenIds.add(itemContainer.id());
+        }
+
+        for (String childId : childrenIds) {
+            awaitContainerReady(childId, accessToken, clientId);
+        }
+
+        MetaContainerIdResponseDTO parentContainer = metaGraphClient.createCarouselContainer(igUserId, childrenIds, caption, accessToken);
+        awaitContainerReady(parentContainer.id(), accessToken, clientId);
+
+        MetaContainerIdResponseDTO published = metaGraphClient.publish(igUserId, parentContainer.id(), accessToken);
         return published.id();
     }
 

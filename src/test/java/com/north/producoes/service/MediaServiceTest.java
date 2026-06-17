@@ -136,7 +136,7 @@ class MediaServiceTest {
             UserEntity user = user(2L, UserRoleEnum.USER);
             PostEntity post = post(10L, client, user);
             MediaUploadCompleteRequestDTO request = new MediaUploadCompleteRequestDTO(
-                    10L, " public/posts/1/10/art.png ", "Arte Final");
+                    10L, " public/posts/1/10/art.png ", "Arte Final", null);
 
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
             when(postRepository.existsByIdAndUserId(10L, 2L)).thenReturn(true);
@@ -163,7 +163,7 @@ class MediaServiceTest {
 
             // Verifica que WhatsApp só é acionado após o commit (sem N8N)
             verify(whatsAppNotificationService).sendApprovalRequest(
-                    any(Long.class), any(Long.class), any(Long.class), any(String.class));
+                    any(Long.class), any(Long.class), any(Long.class), any(List.class));
         }
 
         @Test
@@ -171,7 +171,7 @@ class MediaServiceTest {
         void shouldThrowWhenS3KeyIsNotPublic() {
             UserEntity user = user(2L, UserRoleEnum.USER);
             PostEntity post = post(10L, client(1L), user);
-            MediaUploadCompleteRequestDTO request = new MediaUploadCompleteRequestDTO(10L, "private/art.png", "Arte");
+            MediaUploadCompleteRequestDTO request = new MediaUploadCompleteRequestDTO(10L, "private/art.png", "Arte", null);
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
             when(postRepository.existsByIdAndUserId(10L, 2L)).thenReturn(true);
             when(approveRepository.findByPostId(10L)).thenReturn(List.of());

@@ -2,6 +2,7 @@ package com.north.producoes.repository;
 
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.PostStatusEnum;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -10,20 +11,33 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PostRepository extends JpaRepository<PostEntity, Long> {
 
+    @Override
+    @EntityGraph(attributePaths = {"carouselImages"})
+    List<PostEntity> findAll();
+
+    @Override
+    @EntityGraph(attributePaths = {"carouselImages"})
+    Optional<PostEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"carouselImages"})
     List<PostEntity> findByStatus(PostStatusEnum status);
 
+    @EntityGraph(attributePaths = {"carouselImages"})
     List<PostEntity> findByClientId(Long id);
 
+    @EntityGraph(attributePaths = {"carouselImages"})
     List<PostEntity> findByUserId(Long id);
 
     @Modifying
     @Query("DELETE FROM PostEntity p WHERE p.client.id = :clientId")
     void deleteByClientId(@Param("clientId") Long clientId);
 
+    @EntityGraph(attributePaths = {"carouselImages"})
     List<PostEntity> findByScheduledAtBetween(LocalDateTime scheduledAtAfter,
                                                LocalDateTime scheduledAtBefore);
 
