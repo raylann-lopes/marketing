@@ -69,17 +69,19 @@ public class WhatsAppNotificationService {
         }
 
         try {
-            // Passo 1: envia a imagem com descrição do post
-            boolean first = true;
+            // Passo 1: envia a(s) imagem(ns) sem legenda para o WhatsApp tentar agrupar em álbum
             for (String mediaUrl : mediaUrls) {
-                String caption = first ? buildImageCaption(post, approve) : null;
-                evolutionApiClient.sendMediaToGroup(groupId, mediaUrl, caption);
-                first = false;
+                evolutionApiClient.sendMediaToGroup(groupId, mediaUrl, null);
             }
-            log.info("[WhatsApp] Arte(s) enviada(s) | grupo: '{}' | Post ID: {}",
+            log.info("[WhatsApp] Arte(s) enviada(s) sem legenda | grupo: '{}' | Post ID: {}",
                     client.getWhatsappGroupName(), post.getId());
 
-            // Passo 2: envia enquete logo em seguida
+            // Passo 2: envia a legenda completa como uma mensagem de texto separada
+            evolutionApiClient.sendTextToGroup(groupId, buildImageCaption(post, approve));
+            log.info("[WhatsApp] Legenda enviada | grupo: '{}' | Post ID: {}",
+                    client.getWhatsappGroupName(), post.getId());
+
+            // Passo 3: envia enquete logo em seguida
             String pollStanzaId = evolutionApiClient.sendPollToGroup(
                     groupId,
                     buildPollQuestion(post),

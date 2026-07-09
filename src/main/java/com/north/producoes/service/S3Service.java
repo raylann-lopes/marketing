@@ -70,6 +70,17 @@ public class S3Service {
         return key.startsWith(publicPrefix + "/");
     }
 
+    /**
+     * Detecta chaves de vídeo pela extensão. Carrossel no Instagram só aceita
+     * imagens no fluxo atual (itens criados via image_url na Meta Graph API).
+     */
+    public boolean isVideoKey(String s3Key) {
+        if (!StringUtils.hasText(s3Key)) return false;
+        String key = s3Key.toLowerCase();
+        return key.endsWith(".mp4") || key.endsWith(".mov")
+                || key.endsWith(".webm") || key.endsWith(".avi") || key.endsWith(".mkv");
+    }
+
     public String buildPublicUrl(String s3Key) {
         String normalizedKey = normalizeKey(s3Key);
         if (!isPublicKey(normalizedKey)) {

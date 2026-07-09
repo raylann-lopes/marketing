@@ -2,6 +2,7 @@ package com.north.producoes.repository;
 
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,8 +14,16 @@ import java.util.Optional;
 @Repository
 public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
 
+    // carouselArts é EAGER — o @EntityGraph traz a coleção no mesmo select
+    // e evita uma query extra por aprovação (N+1) nas listagens do board
+    @Override
+    @EntityGraph(attributePaths = {"carouselArts"})
+    List<ApproveEntity> findAll();
+
+    @EntityGraph(attributePaths = {"carouselArts"})
     List<ApproveEntity> findApproveEntitiesByStatus(ApproveStatusEnum status);
 
+    @EntityGraph(attributePaths = {"carouselArts"})
     List<ApproveEntity> findByPostId(Long id);
 
     @Query("SELECT a FROM ApproveEntity a WHERE a.whatsappStanzaId = ?1")

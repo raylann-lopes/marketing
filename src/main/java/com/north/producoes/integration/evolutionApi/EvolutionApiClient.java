@@ -67,20 +67,23 @@ public class EvolutionApiClient {
     }
 
     /**
-     * Envia imagem com legenda para um grupo WhatsApp.
+     * Envia imagem ou vídeo com legenda para um grupo WhatsApp.
+     * O mediatype é inferido pela extensão da URL — um vídeo declarado como
+     * "image" falha na renderização do WhatsApp.
      *
      * @param groupId  ID do grupo (ex.: 120363...@g.us)
-     * @param mediaUrl URL pública da imagem
-     * @param caption  Texto acompanhando a imagem
+     * @param mediaUrl URL pública da mídia
+     * @param caption  Texto acompanhando a mídia
      * @return stanza ID da mensagem enviada
      */
     public String sendMediaToGroup(String groupId, String mediaUrl, String caption) {
         validate();
         try {
+            String mediatype = isVideoUrl(mediaUrl) ? "video" : "image";
             EvolutionSentMessageDTO response = evolutionApiRestClient.post()
                     .uri("/message/sendMedia/{instance}", instance)
                     .header("apikey", apiKey)
-                    .body(new EvolutionSendMediaDTO(groupId, "image", mediaUrl, caption))
+                    .body(new EvolutionSendMediaDTO(groupId, mediatype, mediaUrl, caption))
                     .retrieve()
                     .body(EvolutionSentMessageDTO.class);
 
@@ -88,6 +91,13 @@ public class EvolutionApiClient {
         } catch (RestClientException ex) {
             throw new EvolutionApiIntegrationException("Falha ao enviar mídia na Evolution API.", ex);
         }
+    }
+
+    private boolean isVideoUrl(String url) {
+        if (!StringUtils.hasText(url)) return false;
+        String clean = url.split("\\?")[0].toLowerCase();
+        return clean.endsWith(".mp4") || clean.endsWith(".mov")
+                || clean.endsWith(".webm") || clean.endsWith(".avi") || clean.endsWith(".mkv");
     }
 
     /**

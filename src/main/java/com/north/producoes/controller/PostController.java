@@ -2,6 +2,7 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
+import com.north.producoes.controller.dto.request.UpdateReferenceRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.enums.PostStatusEnum;
@@ -93,13 +94,14 @@ public class PostController {
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> updateReferenceImage(
             @PathVariable Long id,
-            @RequestBody(required = false) java.util.Map<String, List<String>> body,
+            @Valid @RequestBody(required = false) UpdateReferenceRequestDTO body,
             @RequestParam(required = false) String s3Key) {
-        
-        List<String> s3Keys = body != null ? body.get("s3Keys") : null;
+
+        List<String> s3Keys = body != null ? body.s3Keys() : null;
         if (s3Keys != null && !s3Keys.isEmpty()) {
             return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, s3Keys)));
         }
+        // Retrocompatibilidade: chave única via query param
         if (s3Key != null && !s3Key.isEmpty()) {
             return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, List.of(s3Key))));
         }

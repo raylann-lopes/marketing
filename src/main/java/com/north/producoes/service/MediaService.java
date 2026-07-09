@@ -92,29 +92,11 @@ public class MediaService {
                     return entity;
                 });
 
-        if (approve.getCarouselArts() != null) {
-            approve.getCarouselArts().clear();
-        } else {
-            approve.setCarouselArts(new java.util.ArrayList<>());
-        }
-
-        List<MediaUploadCompleteRequestDTO.ArtItem> artsReq = request.arts();
-        if (artsReq != null && !artsReq.isEmpty()) {
-            int order = 0;
-            for (MediaUploadCompleteRequestDTO.ArtItem item : artsReq) {
-                com.north.producoes.entity.ApproveCarouselArtEntity artEntity = new com.north.producoes.entity.ApproveCarouselArtEntity();
-                artEntity.setApprove(approve);
-                artEntity.setS3Key(normalizeUploadS3Key(item.s3Key()));
-                artEntity.setArtName(item.artName());
-                artEntity.setSortOrder(order++);
-                approve.getCarouselArts().add(artEntity);
-            }
-            approve.setArtS3Key(approve.getCarouselArts().get(0).getS3Key());
-            approve.setArtName(approve.getCarouselArts().get(0).getArtName());
-        } else {
-            approve.setArtS3Key(normalizeUploadS3Key(request.s3Key()));
-            approve.setArtName(request.artName());
-        }
+        List<ApproveArts.ArtRef> arts = request.arts() == null ? null :
+                request.arts().stream()
+                        .map(item -> new ApproveArts.ArtRef(item.s3Key(), item.artName()))
+                        .toList();
+        ApproveArts.replace(s3Service, approve, arts, request.s3Key(), request.artName());
 
         approve.setStatus(ApproveStatusEnum.PENDING);
         approve.setApprovedAt(null);
@@ -130,7 +112,7 @@ public class MediaService {
 
         // Dispara notificação WhatsApp após o commit — evita race condition onde a
         // thread @Async lê a entidade antes do stanzaId ter sido persistido.
-        List<String> mediaUrls = artsReq != null && !artsReq.isEmpty() ?
+        List<String> mediaUrls = !approve.getCarouselArts().isEmpty() ?
                 approve.getCarouselArts().stream().map(a -> s3Service.resolveReadUrl(a.getS3Key())).toList() :
                 List.of(s3Service.resolveReadUrl(approve.getArtS3Key()));
 
@@ -145,19 +127,6 @@ public class MediaService {
         });
 
         return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), true);
-    }
-
-    private String normalizeUploadS3Key(String s3Key) {
-        if (!StringUtils.hasText(s3Key)) {
-            throw new IllegalArgumentException("s3Key é obrigatória");
-        }
-        String normalized = s3Key.trim();
-        if (!s3Service.isPublicKey(normalized)) {
-            throw new IllegalArgumentException(
-                    "s3Key inválida para upload finalizado. Utilize o prefixo "
-                    + s3Service.getPublicPrefix() + "/");
-        }
-        return normalized;
     }
 
     private PostEntity getAuthorizedPost(Long postId, UserEntity user) {

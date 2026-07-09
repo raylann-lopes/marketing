@@ -69,7 +69,7 @@ public class ApproveEntity {
     @Column(name = "rejected_by")
     private String rejectedBy;
 
-    @OneToMany(mappedBy = "approve", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "approve", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("sortOrder ASC")
     private List<ApproveCarouselArtEntity> carouselArts = new ArrayList<>();
 }

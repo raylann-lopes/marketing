@@ -20,7 +20,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,8 +57,7 @@ public class ApprovedService {
                 .orElse(new ApproveEntity());
 
         approve.setPost(post);
-        approve.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
-        approve.setArtName(dto.artName());
+        applyArts(approve, dto);
         approve.setCaption(dto.caption());
         approve.setStatus(ApproveStatusEnum.PENDING);
 
@@ -86,11 +84,22 @@ public class ApprovedService {
                         "Post não encontrado com id: " + dto.postId()));
 
         existing.setPost(post);
-        existing.setArtS3Key(normalizePublicS3Key(dto.artS3Key()));
-        existing.setArtName(dto.artName());
+        applyArts(existing, dto);
         existing.setCaption(dto.caption());
 
         return approveRepository.save(existing);
+    }
+
+    /**
+     * Popula carouselArts a partir de dto.arts() (1 a 10 imagens) ou, na ausência,
+     * mantém o fluxo single-image legado via artS3Key/artName.
+     */
+    private void applyArts(ApproveEntity approve, ApproveRequestDTO dto) {
+        List<ApproveArts.ArtRef> arts = dto.arts() == null ? null :
+                dto.arts().stream()
+                        .map(item -> new ApproveArts.ArtRef(item.s3Key(), item.artName()))
+                        .toList();
+        ApproveArts.replace(s3Service, approve, arts, dto.artS3Key(), dto.artName());
     }
 
     public String getS3KeyByPostId(Long postId) {
@@ -281,15 +290,4 @@ public class ApprovedService {
         post.setScheduledAt(todayAtSameTime);
     }
 
-    private String normalizePublicS3Key(String s3Key) {
-        if (!StringUtils.hasText(s3Key)) {
-            throw new IllegalArgumentException("artS3Key é obrigatória");
-        }
-        String normalized = s3Key.trim();
-        if (!s3Service.isPublicKey(normalized)) {
-            throw new IllegalArgumentException(
-                    "artS3Key deve usar o prefixo público " + s3Service.getPublicPrefix() + "/");
-        }
-        return normalized;
-    }
 }

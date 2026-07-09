@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,7 +58,9 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
     /**
      * Transição atômica de status — previne race condition em deploy multi-instância.
      * Retorna 1 se a atualização ocorreu, 0 se outro processo já mudou o status.
+     * @Transactional próprio: também é chamado fora de transação (publishAsync).
      */
+    @Transactional
     @Modifying
     @Query("""
             UPDATE PostEntity p SET p.status = :newStatus

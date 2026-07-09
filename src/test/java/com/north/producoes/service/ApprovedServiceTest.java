@@ -120,7 +120,7 @@ class ApprovedServiceTest {
         @DisplayName("deve salvar nova aprovação")
         void shouldSaveNewApproval() {
             // Arrange
-            ApproveRequestDTO dto = new ApproveRequestDTO(10L, "public/posts/1/10/art.png", "art.png", "Legenda");
+            ApproveRequestDTO dto = new ApproveRequestDTO(10L, "public/posts/1/10/art.png", "art.png", "Legenda", null);
             PostEntity post = post(10L);
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
             when(s3Service.isPublicKey(any())).thenReturn(true);

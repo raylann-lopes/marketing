@@ -70,7 +70,7 @@ public class PostDispatchService {
             // @Async — retorna imediatamente; a transação acima commita antes de o
             // thread assíncrono tentar atualizar o status para PUBLISHED
             instagramPublishService.publishAsync(
-                    post.getId(), post.getClient().getId(), mediaUrls, approve.getCaption(), post.getFormat());
+                    post.getId(), post.getClient().getId(), mediaUrls, approve.getCaption());
 
         } catch (Exception e) {
             log.error("[Dispatch] Erro ao despachar post ID {} — {}. Revertendo para SCHEDULE.",

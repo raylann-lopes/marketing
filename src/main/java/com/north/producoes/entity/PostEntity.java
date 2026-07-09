@@ -67,7 +67,7 @@ public class PostEntity {
     @Enumerated(EnumType.STRING)
     private PostFormatEnum format = PostFormatEnum.IMAGE;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("sortOrder ASC")
     private List<PostCarouselImageEntity> carouselImages = new ArrayList<>();
 }

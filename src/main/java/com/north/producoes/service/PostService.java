@@ -3,6 +3,7 @@ package com.north.producoes.service;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
+import com.north.producoes.entity.PostCarouselImageEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -32,10 +34,12 @@ public class PostService {
     private final ApproveRepository approveRepository;
     private final S3Service s3Service;
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findAllPost(){
         return postRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByStatus(PostStatusEnum status){
         List<PostEntity> postStatus = postRepository.findByStatus(status);
         if(postStatus.isEmpty()){
@@ -44,6 +48,7 @@ public class PostService {
         return postStatus;
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByClient(Long clientId){
         List<PostEntity> postClient = postRepository.findByClientId(clientId);
         if(postClient.isEmpty()){
@@ -52,6 +57,7 @@ public class PostService {
         return postClient;
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByUser(Long userId){
         List<PostEntity> postUser = postRepository.findByUserId(userId);
         if(postUser.isEmpty()){
@@ -60,6 +66,7 @@ public class PostService {
         return postUser.stream().toList();
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByScheduledAt(LocalDateTime scheduledAtAfter, LocalDateTime scheduledAtBefore){
         if(scheduledAtAfter.isAfter(scheduledAtBefore)){
             throw new IllegalArgumentException("Data de inicio deve ser anterior a data de fim");
@@ -118,23 +125,11 @@ public class PostService {
             postExisting.setFormat(dto.format());
         }
 
-        if (postExisting.getCarouselImages() != null) {
-            postExisting.getCarouselImages().clear();
-        } else {
-            postExisting.setCarouselImages(new java.util.ArrayList<>());
-        }
-
+        // Só substitui as referências quando o campo vem no payload — updates
+        // parciais (ex.: edição pelo modal de demanda) não podem apagar a coleção
         List<String> refs = dto.referenceImageS3Keys();
-        if (refs != null && !refs.isEmpty()) {
-            int order = 0;
-            for (String key : refs) {
-                com.north.producoes.entity.PostCarouselImageEntity refEntity = new com.north.producoes.entity.PostCarouselImageEntity();
-                refEntity.setPost(postExisting);
-                refEntity.setS3Key(key);
-                refEntity.setSortOrder(order++);
-                postExisting.getCarouselImages().add(refEntity);
-            }
-            postExisting.setReferenceImageS3Key(refs.get(0));
+        if (refs != null) {
+            replaceReferenceImages(postExisting, refs);
         } else if (StringUtils.hasText(dto.referenceImageS3Key())) {
             postExisting.setReferenceImageS3Key(dto.referenceImageS3Key());
         }
@@ -153,26 +148,30 @@ public class PostService {
     public PostEntity updateReferenceImage(Long id, List<String> s3Keys) {
         PostEntity post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + id));
-        
+
+        replaceReferenceImages(post, s3Keys != null ? s3Keys : List.of());
+
+        return postRepository.save(post);
+    }
+
+    private void replaceReferenceImages(PostEntity post, List<String> s3Keys) {
         if (post.getCarouselImages() != null) {
             post.getCarouselImages().clear();
         } else {
-            post.setCarouselImages(new java.util.ArrayList<>());
+            post.setCarouselImages(new ArrayList<>());
         }
 
-        if (s3Keys != null && !s3Keys.isEmpty()) {
-            int order = 0;
-            for (String key : s3Keys) {
-                com.north.producoes.entity.PostCarouselImageEntity refEntity = new com.north.producoes.entity.PostCarouselImageEntity();
-                refEntity.setPost(post);
-                refEntity.setS3Key(key);
-                refEntity.setSortOrder(order++);
-                post.getCarouselImages().add(refEntity);
-            }
+        int order = 0;
+        for (String key : s3Keys) {
+            PostCarouselImageEntity refEntity = new PostCarouselImageEntity();
+            refEntity.setPost(post);
+            refEntity.setS3Key(key);
+            refEntity.setSortOrder(order++);
+            post.getCarouselImages().add(refEntity);
+        }
+        if (!s3Keys.isEmpty()) {
             post.setReferenceImageS3Key(s3Keys.get(0));
         }
-
-        return postRepository.save(post);
     }
 
     @Transactional

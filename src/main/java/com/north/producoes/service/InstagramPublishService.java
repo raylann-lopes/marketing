@@ -11,10 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.ArrayList;
-import com.north.producoes.entity.enums.PostFormatEnum;
 
 /**
  * Publica posts no Instagram via Meta Graph API.
@@ -39,12 +37,15 @@ public class InstagramPublishService {
     /**
      * Executa a publicação de forma assíncrona — thread do scheduler é liberada imediatamente.
      * Atualiza o status do post para PUBLISHED ou reverte para SCHEDULE em caso de falha.
+     *
+     * Sem @Transactional de propósito: o polling da Meta pode levar minutos e
+     * seguraria uma conexão do pool o tempo todo. O compareAndSetStatus abre
+     * sua própria transação curta.
      */
     @Async
-    @Transactional
-    public void publishAsync(Long postId, Long clientId, List<String> imageUrls, String caption, PostFormatEnum format) {
+    public void publishAsync(Long postId, Long clientId, List<String> imageUrls, String caption) {
         try {
-            String mediaId = publish(clientId, imageUrls, caption, format);
+            String mediaId = publish(clientId, imageUrls, caption);
             postRepository.compareAndSetStatus(
                     postId, PostStatusEnum.IN_PRODUCTION, PostStatusEnum.PUBLISHED);
             log.info("[Instagram] ✅ Post ID {} publicado. Media ID: {}", postId, mediaId);
@@ -59,14 +60,20 @@ public class InstagramPublishService {
     /**
      * Publicação síncrona — use publishAsync para chamadas do scheduler.
      */
-    public String publish(Long clientId, List<String> imageUrls, String caption, PostFormatEnum format) {
+    public String publish(Long clientId, List<String> imageUrls, String caption) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            throw new MetaGraphIntegrationException("Nenhuma mídia para publicar | cliente " + clientId);
+        }
+
         AccountConfigEntity config = accountConfigService.findByClientId(clientId);
         String igUserId    = config.getIgUserId();
         String accessToken = config.getAccessToken(); // NUNCA logar
 
-        log.info("[Instagram] Iniciando publicação | cliente: {}", clientId);
+        log.info("[Instagram] Iniciando publicação | cliente: {} | mídias: {}", clientId, imageUrls.size());
 
-        if (format == PostFormatEnum.CAROUSEL || imageUrls.size() > 1) {
+        // A quantidade de mídias define o formato: 1 = post simples, 2+ = carrossel.
+        // Não usar o campo format do post — um CAROUSEL com 1 imagem falharia para sempre.
+        if (imageUrls.size() > 1) {
             return publishCarousel(igUserId, imageUrls, caption, accessToken, clientId);
         }
         return publishSingle(igUserId, imageUrls.get(0), caption, accessToken, clientId);
@@ -92,14 +99,13 @@ public class InstagramPublishService {
             throw new MetaGraphIntegrationException("Carrossel deve ter entre 2 e 10 imagens.");
         }
 
+        // Cria e aguarda cada item individualmente — se um falhar, aborta cedo
+        // sem deixar uma fila de containers abandonados na Meta
         List<String> childrenIds = new ArrayList<>();
         for (String url : imageUrls) {
             MetaContainerIdResponseDTO itemContainer = metaGraphClient.createCarouselItemContainer(igUserId, url, accessToken);
+            awaitContainerReady(itemContainer.id(), accessToken, clientId);
             childrenIds.add(itemContainer.id());
-        }
-
-        for (String childId : childrenIds) {
-            awaitContainerReady(childId, accessToken, clientId);
         }
 
         MetaContainerIdResponseDTO parentContainer = metaGraphClient.createCarouselContainer(igUserId, childrenIds, caption, accessToken);
