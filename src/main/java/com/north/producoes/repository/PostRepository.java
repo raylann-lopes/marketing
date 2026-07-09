@@ -34,9 +34,22 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
     @EntityGraph(attributePaths = {"carouselImages"})
     List<PostEntity> findByUserId(Long id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM PostEntity p WHERE p.client.id = :clientId")
     void deleteByClientId(@Param("clientId") Long clientId);
+
+    /**
+     * Remove as imagens de referência antes do bulk delete dos posts.
+     * Bulk delete JPQL vai direto ao banco e ignora o cascade do JPA — sem
+     * esta limpeza prévia, bancos sem ON DELETE CASCADE violam a FK.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM PostCarouselImageEntity i
+            WHERE i.post.id IN (
+                SELECT p.id FROM PostEntity p WHERE p.client.id = :clientId)
+            """)
+    void deleteCarouselImagesByClientId(@Param("clientId") Long clientId);
 
     @EntityGraph(attributePaths = {"carouselImages"})
     List<PostEntity> findByScheduledAtBetween(LocalDateTime scheduledAtAfter,

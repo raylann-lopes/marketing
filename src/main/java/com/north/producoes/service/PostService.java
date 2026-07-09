@@ -17,11 +17,15 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @AllArgsConstructor
@@ -176,11 +180,46 @@ public class PostService {
 
     @Transactional
     public void deletePostById(Long id){
-        if(!postRepository.existsById(id)){
-            throw new ResourceNotFoundException("Post nao encontrado com id: " + id);
-        }
+        PostEntity post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post nao encontrado com id: " + id));
+
+        Set<String> s3Keys = collectS3Keys(post);
+
         approveRepository.deleteByPostId(id);
-        postRepository.deleteById(id);
+        postRepository.delete(post);
+
+        // Limpa os arquivos no S3 só depois do commit — um rollback não pode
+        // deixar registros no banco apontando para arquivos já removidos
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    s3Service.deleteObjects(s3Keys);
+                }
+            });
+        } else {
+            s3Service.deleteObjects(s3Keys);
+        }
+    }
+
+    /** Reúne todas as chaves S3 vinculadas ao post: referências, capa e artes do carrossel. */
+    private Set<String> collectS3Keys(PostEntity post) {
+        Set<String> keys = new LinkedHashSet<>();
+        if (StringUtils.hasText(post.getReferenceImageS3Key())) {
+            keys.add(post.getReferenceImageS3Key());
+        }
+        if (post.getCarouselImages() != null) {
+            post.getCarouselImages().forEach(image -> keys.add(image.getS3Key()));
+        }
+        for (ApproveEntity approve : approveRepository.findByPostId(post.getId())) {
+            if (StringUtils.hasText(approve.getArtS3Key())) {
+                keys.add(approve.getArtS3Key());
+            }
+            if (approve.getCarouselArts() != null) {
+                approve.getCarouselArts().forEach(art -> keys.add(art.getS3Key()));
+            }
+        }
+        return keys;
     }
 
     @Transactional

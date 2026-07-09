@@ -98,7 +98,10 @@ public class ClientService {
         if (!clientRepository.existsById(id)) {
             throw new ResourceNotFoundException("Cliente nao encontrado: id " + id);
         }
+        // Ordem importa: filhos antes dos pais — bulk delete não aciona cascade JPA
+        approveRepository.deleteCarouselArtsByPostClientId(id);
         approveRepository.deleteByPostClientId(id);
+        postRepository.deleteCarouselImagesByClientId(id);
         postRepository.deleteByClientId(id);
         financeRepository.deleteByClientId(id);
         accountConfigRepository.deleteByClientId(id);

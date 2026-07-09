@@ -4,6 +4,7 @@ import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -31,9 +32,25 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
 
     void deleteByPostId(Long postId);
 
-    @org.springframework.data.jpa.repository.Modifying
-    @org.springframework.data.jpa.repository.Query("DELETE FROM ApproveEntity a WHERE a.post.client.id = :clientId")
-    void deleteByPostClientId(@org.springframework.data.repository.query.Param("clientId") Long clientId);
+    // flush/clear automáticos: bulk delete vai direto ao banco e deixaria o
+    // persistence context com entidades órfãs — o clear evita flush de entidades
+    // já apagadas mais adiante na mesma transação
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM ApproveEntity a WHERE a.post.client.id = :clientId")
+    void deleteByPostClientId(@Param("clientId") Long clientId);
+
+    /**
+     * Remove as artes de carrossel antes do bulk delete das aprovações.
+     * Bulk delete JPQL vai direto ao banco e ignora o cascade do JPA — sem
+     * esta limpeza prévia, bancos sem ON DELETE CASCADE violam a FK.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM ApproveCarouselArtEntity a
+            WHERE a.approve.id IN (
+                SELECT ap.id FROM ApproveEntity ap WHERE ap.post.client.id = :clientId)
+            """)
+    void deleteCarouselArtsByPostClientId(@Param("clientId") Long clientId);
 
     /**
      * Busca aprovação PENDING vinculada ao grupo WhatsApp do cliente.
