@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { X, Eye, XCircle, Send, MessageSquare, Check, Maximize } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
+import { X, Eye, XCircle, Send, MessageSquare, Check, Maximize, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { type Post } from '@/services/postService'
 import { type PostApproval } from '@/services/approvalService'
@@ -11,7 +12,7 @@ interface Props {
   mode: ArtPreviewMode
   post: Post | null
   approval: PostApproval | null
-  artUrl: string
+  artUrls: string[]
   isLoading: boolean
   internalReviewAction: 'send' | 'reject' | null
   rejectionReason: string
@@ -22,7 +23,24 @@ interface Props {
   internalRevisionNotes: string
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+
+const activeIndex = ref(0)
+watch(
+  () => [props.isOpen, props.artUrls] as const,
+  () => {
+    activeIndex.value = 0
+  },
+)
+
+function goPrev() {
+  if (!props.artUrls.length) return
+  activeIndex.value = (activeIndex.value - 1 + props.artUrls.length) % props.artUrls.length
+}
+function goNext() {
+  if (!props.artUrls.length) return
+  activeIndex.value = (activeIndex.value + 1) % props.artUrls.length
+}
 
 defineEmits<{
   (e: 'close'): void
@@ -105,9 +123,9 @@ function formatSentAt(sentAt?: string) {
       <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
         <!-- Coluna 1: Visualização da Mídia -->
         <div class="space-y-4">
-          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-            >Mídia do Conteúdo</label
-          >
+          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            Mídia do Conteúdo {{ artUrls.length > 1 ? `(${activeIndex + 1}/${artUrls.length})` : '' }}
+          </label>
           <div
             class="relative aspect-square rounded-[2rem] border border-gray-100 bg-gray-950 flex items-center justify-center overflow-hidden shadow-2xl group"
           >
@@ -118,24 +136,42 @@ function formatSentAt(sentAt?: string) {
               <span class="text-[10px] font-bold uppercase tracking-widest">Carregando...</span>
             </div>
 
-            <template v-else-if="artUrl">
+            <template v-else-if="artUrls[activeIndex]">
               <video
-                v-if="isVideo(artUrl, approval?.artName)"
-                :src="artUrl"
+                v-if="isVideo(artUrls[activeIndex]!, approval?.artName)"
+                :src="artUrls[activeIndex]"
                 class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner"
                 controls
                 autoplay
               ></video>
               <img
                 v-else
-                :src="artUrl"
+                :src="artUrls[activeIndex]"
                 class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner"
                 alt="Mídia"
               />
 
+              <!-- Navegação Carrossel -->
+              <template v-if="artUrls.length > 1">
+                <button
+                  type="button"
+                  @click.stop="goPrev"
+                  class="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10"
+                >
+                  <ChevronLeft class="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  @click.stop="goNext"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10"
+                >
+                  <ChevronRight class="w-5 h-5" />
+                </button>
+              </template>
+
               <!-- Botão Tela Cheia -->
               <a
-                :href="artUrl"
+                :href="artUrls[activeIndex]"
                 target="_blank"
                 class="absolute top-4 right-4 p-2.5 rounded-xl bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10"
                 title="Abrir em nova aba"
@@ -148,6 +184,22 @@ function formatSentAt(sentAt?: string) {
               <Eye class="w-10 h-10 mx-auto mb-2 opacity-20" />
               <p class="text-xs font-bold uppercase tracking-widest">Indisponível</p>
             </div>
+          </div>
+
+          <!-- Miniaturas -->
+          <div v-if="artUrls.length > 1" class="flex gap-2 overflow-x-auto pb-1">
+            <button
+              v-for="(url, i) in artUrls"
+              :key="url + i"
+              type="button"
+              @click="activeIndex = i"
+              :class="[
+                'relative shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all',
+                i === activeIndex ? 'border-primary shadow-md' : 'border-transparent opacity-60 hover:opacity-100',
+              ]"
+            >
+              <img :src="url" class="absolute inset-0 w-full h-full object-cover" alt="Miniatura" />
+            </button>
           </div>
         </div>
 

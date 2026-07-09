@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { X, Sparkles, Upload, MessageSquare, Check, Maximize } from 'lucide-vue-next'
+import { X, Sparkles, Upload, MessageSquare, Check } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { type Post } from '@/services/postService'
 
@@ -10,9 +10,7 @@ interface Props {
   existingApprovalId: string | number | null
   data: {
     caption: string
-    artS3Key: string
-    artName: string
-    artPreviewUrl: string
+    arts: { s3Key: string; artName: string; previewUrl: string }[]
     isUploading: boolean
     isGenerating: boolean
     isSending: boolean
@@ -24,6 +22,7 @@ defineProps<Props>()
 defineEmits<{
   (e: 'close'): void
   (e: 'fileSelect', event: Event): void
+  (e: 'removeArt', index: number): void
   (e: 'generateCaption'): void
   (e: 'save'): void
   (e: 'update:caption', val: string): void
@@ -75,47 +74,63 @@ function isVideo(url: string, filename?: string) {
       <div class="grid grid-cols-2 gap-6 p-6">
         <!-- Coluna 1: Upload da Arte -->
         <div class="space-y-4">
-          <label class="text-xs font-bold text-gray-400 uppercase tracking-widest"
-            >Arte do Post</label
-          >
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-widest"
+              >Arte do Post {{ data.arts.length > 1 ? `(Carrossel · ${data.arts.length})` : '' }}</label
+            >
+          </div>
           <input
             ref="fileInputRef"
             type="file"
             accept="image/*,video/*"
+            multiple
             class="hidden"
             @change="$emit('fileSelect', $event)"
           />
-          <div
-            class="relative aspect-square rounded-2xl border border-gray-100 bg-gray-950 flex flex-col items-center justify-center gap-3 group hover:border-primary/40 transition-all cursor-pointer overflow-hidden shadow-2xl"
-            @click="fileInputRef?.click()"
-          >
-            <template v-if="data.artPreviewUrl">
+
+          <div v-if="data.arts.length" class="grid grid-cols-3 gap-2">
+            <div
+              v-for="(art, index) in data.arts"
+              :key="art.s3Key + index"
+              class="relative aspect-square rounded-xl border border-gray-100 bg-gray-950 overflow-hidden shadow-md group"
+            >
               <video
-                v-if="isVideo(data.artPreviewUrl, data.artName)"
-                :src="data.artPreviewUrl"
-                class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner"
-                autoplay
+                v-if="isVideo(art.previewUrl, art.artName)"
+                :src="art.previewUrl"
+                class="absolute inset-0 w-full h-full object-cover"
                 muted
                 loop
               ></video>
-              <img
-                v-else
-                :src="data.artPreviewUrl"
-                class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner"
-              />
-
-              <!-- Botão Tela Cheia -->
-              <a
-                :href="data.artPreviewUrl"
-                target="_blank"
-                @click.stop
-                class="absolute top-4 right-4 p-2 rounded-xl bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10 z-10"
+              <img v-else :src="art.previewUrl" class="absolute inset-0 w-full h-full object-cover" />
+              <span
+                class="absolute top-1 left-1 text-[10px] font-bold text-white bg-black/50 rounded px-1.5"
+                >{{ index + 1 }}</span
               >
-                <Maximize class="w-4 h-4" />
-              </a>
-            </template>
+              <button
+                type="button"
+                @click.stop="$emit('removeArt', index)"
+                class="absolute top-1 right-1 p-1 rounded-lg bg-black/60 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <X class="w-3 h-3" />
+              </button>
+            </div>
+            <button
+              type="button"
+              @click="fileInputRef?.click()"
+              :disabled="data.isUploading"
+              class="aspect-square rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-primary hover:border-primary/40 transition-colors"
+            >
+              <Upload class="w-5 h-5" />
+              <span class="text-[10px] font-bold">{{ data.isUploading ? 'Enviando...' : 'Adicionar' }}</span>
+            </button>
+          </div>
 
-            <div v-else-if="data.isUploading" class="flex flex-col items-center gap-2 text-primary">
+          <div
+            v-else
+            class="relative aspect-square rounded-2xl border border-gray-100 bg-gray-950 flex flex-col items-center justify-center gap-3 group hover:border-primary/40 transition-all cursor-pointer overflow-hidden shadow-2xl"
+            @click="fileInputRef?.click()"
+          >
+            <div v-if="data.isUploading" class="flex flex-col items-center gap-2 text-primary">
               <div
                 class="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
               ></div>
@@ -131,21 +146,9 @@ function isVideo(url: string, filename?: string) {
                 <Upload class="w-6 h-6" />
               </div>
               <span class="text-xs font-bold">Clique para upload</span>
-              <span class="text-[10px] text-gray-300">JPG, PNG, MP4</span>
-            </div>
-            <div
-              v-if="data.artPreviewUrl"
-              class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-            >
-              <Button variant="outline" class="bg-white border-none text-xs"
-                >Trocar
-                {{ isVideo(data.artPreviewUrl, data.artName) ? 'Vídeo' : 'Arquivo' }}</Button
-              >
+              <span class="text-[10px] text-gray-300">JPG, PNG, MP4 — até 10 imagens</span>
             </div>
           </div>
-          <p v-if="data.artName" class="text-[10px] text-gray-400 truncate text-center">
-            {{ data.artName }}
-          </p>
         </div>
 
         <!-- Coluna 2: Legenda e IA -->
@@ -191,7 +194,7 @@ function isVideo(url: string, filename?: string) {
         >
         <Button
           class="flex-[2] h-12 rounded-xl font-bold gap-2 shadow-lg shadow-primary/20"
-          :disabled="data.isSending || data.isUploading || !data.caption || !data.artS3Key"
+          :disabled="data.isSending || data.isUploading || !data.caption || !data.arts.length"
           @click="$emit('save')"
         >
           <template v-if="data.isSending">

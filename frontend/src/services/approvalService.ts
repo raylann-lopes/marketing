@@ -7,8 +7,9 @@ export type ApproveStatus = 'PENDING' | 'APPROVE' | 'REJECT'
 export type PostApproval = {
   id?: string | number
   postId: string | number
-  artS3Key: string   // Chave do objeto no S3 (não a URL)
+  artS3Key: string   // Chave do objeto no S3 (não a URL) — mantido para retrocompatibilidade
   artName: string
+  artS3Keys?: string[] // chaves de todas as artes, quando for carrossel
   caption: string
   status: ApproveStatus
   approvedAt?: string
@@ -23,9 +24,10 @@ export type PostApproval = {
 
 export type CreateApprovalDTO = {
   postId: string | number
-  artS3Key: string
-  artName: string
+  artS3Key?: string
+  artName?: string
   caption: string
+  arts?: { s3Key: string; artName: string }[]
 }
 
 export const approvalService = {
