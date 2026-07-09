@@ -223,10 +223,12 @@ class PostServiceTest {
     class DeletePostById {
 
         @Test
-        @DisplayName("deve deletar aprovação vinculada antes de deletar post")
+        @DisplayName("deve deletar aprovação vinculada antes de deletar post e limpar S3")
         void shouldDeleteApprovalBeforeDeletingPost() {
             // Arrange
-            when(postRepository.existsById(10L)).thenReturn(true);
+            PostEntity post = post(10L);
+            when(postRepository.findById(10L)).thenReturn(Optional.of(post));
+            when(approveRepository.findByPostId(10L)).thenReturn(List.of());
 
             // Act
             postService.deletePostById(10L);
@@ -234,14 +236,16 @@ class PostServiceTest {
             // Assert
             InOrder inOrder = inOrder(approveRepository, postRepository);
             inOrder.verify(approveRepository).deleteByPostId(10L);
-            inOrder.verify(postRepository).deleteById(10L);
+            inOrder.verify(postRepository).delete(post);
+            // Sem transação ativa no teste, a limpeza do S3 é imediata
+            verify(s3Service).deleteObjects(org.mockito.ArgumentMatchers.anyCollection());
         }
 
         @Test
         @DisplayName("deve lançar ResourceNotFoundException quando post não existe")
         void shouldThrowWhenPostDoesNotExist() {
             // Arrange
-            when(postRepository.existsById(99L)).thenReturn(false);
+            when(postRepository.findById(99L)).thenReturn(Optional.empty());
 
             // Act & Assert
             assertThatThrownBy(() -> postService.deletePostById(99L))
@@ -249,7 +253,7 @@ class PostServiceTest {
                     .hasMessageContaining("Post nao encontrado com id: 99");
 
             verifyNoInteractions(approveRepository);
-            verify(postRepository, never()).deleteById(99L);
+            verify(postRepository, never()).delete(any(PostEntity.class));
         }
     }
 
@@ -316,7 +320,9 @@ class PostServiceTest {
                 clientId,
                 userId,
                 false,
-                null
+                null,
+                null,
+                com.north.producoes.entity.enums.PostFormatEnum.IMAGE
         );
     }
 

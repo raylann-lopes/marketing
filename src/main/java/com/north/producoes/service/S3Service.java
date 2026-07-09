@@ -2,26 +2,36 @@ package com.north.producoes.service;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Delete;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.text.Normalizer;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 
 @Service
 @Getter
 @Setter
+@Slf4j
 public class S3Service {
 
     private static final String DEFAULT_PUBLIC_PREFIX = "public/posts";
     private static final String DEFAULT_REFERENCE_PREFIX = "public/references";
 
     private final S3Presigner presigner;
+    private final S3Client s3Client;
     private final String bucket;
     private final String region;
     private final String publicPrefix;
@@ -29,12 +39,14 @@ public class S3Service {
 
     public S3Service(
             S3Presigner presigner,
+            S3Client s3Client,
             @Value("${aws.s3.bucket}") String bucket,
             @Value("${aws.s3.region}") String region,
             @Value("${aws.s3.public-prefix:" + DEFAULT_PUBLIC_PREFIX + "}") String publicPrefix,
             @Value("${aws.s3.public-base-url:}") String publicBaseUrl
     ) {
         this.presigner = presigner;
+        this.s3Client = s3Client;
         this.bucket = bucket;
         this.region = region;
         this.publicPrefix = normalizePrefix(publicPrefix);
@@ -70,6 +82,17 @@ public class S3Service {
         return key.startsWith(publicPrefix + "/");
     }
 
+    /**
+     * Detecta chaves de vídeo pela extensão. Carrossel no Instagram só aceita
+     * imagens no fluxo atual (itens criados via image_url na Meta Graph API).
+     */
+    public boolean isVideoKey(String s3Key) {
+        if (!StringUtils.hasText(s3Key)) return false;
+        String key = s3Key.toLowerCase();
+        return key.endsWith(".mp4") || key.endsWith(".mov")
+                || key.endsWith(".webm") || key.endsWith(".avi") || key.endsWith(".mkv");
+    }
+
     public String buildPublicUrl(String s3Key) {
         String normalizedKey = normalizeKey(s3Key);
         if (!isPublicKey(normalizedKey)) {
@@ -85,6 +108,34 @@ public class S3Service {
 
     public String resolveReadUrl(String s3Key) {
         return buildPublicUrl(s3Key);
+    }
+
+    /**
+     * Remove objetos do bucket em best-effort: falha na limpeza do S3 não pode
+     * derrubar o fluxo de negócio (o registro já saiu do banco). Chaves fora
+     * do prefixo público são ignoradas por segurança.
+     */
+    public void deleteObjects(Collection<String> s3Keys) {
+        if (s3Keys == null || s3Keys.isEmpty()) return;
+
+        List<ObjectIdentifier> targets = s3Keys.stream()
+                .filter(this::isPublicKey)
+                .map(this::normalizeKey)
+                .distinct()
+                .map(key -> ObjectIdentifier.builder().key(key).build())
+                .toList();
+        if (targets.isEmpty()) return;
+
+        try {
+            s3Client.deleteObjects(DeleteObjectsRequest.builder()
+                    .bucket(bucket)
+                    .delete(Delete.builder().objects(targets).build())
+                    .build());
+            log.info("[S3] {} objeto(s) removido(s) do bucket.", targets.size());
+        } catch (SdkException e) {
+            log.warn("[S3] Falha ao remover {} objeto(s) — arquivos órfãos permanecem no bucket: {}",
+                    targets.size(), e.getMessage());
+        }
     }
 
     public String getPublicPrefix() {

@@ -42,6 +42,16 @@ type ColumnTheme = {
 
 type ArtPreviewMode = 'preview' | 'internal-review'
 
+type ArtItem = { s3Key: string; artName: string; previewUrl: string }
+
+const MAX_CAROUSEL_ITEMS = 10
+
+function isVideoFileName(name?: string) {
+  if (!name) return false
+  const clean = (name.split('?')[0] ?? '').toLowerCase()
+  return ['.mp4', '.webm', '.mov', '.avi', '.mkv'].some((ext) => clean.endsWith(ext))
+}
+
 const columns = ref<BoardColumn[]>([
   { id: 'DEMAND', label: 'Demanda', color: 'bg-gray-400', cards: [] },
   { id: 'IN_PRODUCTION', label: 'Em Produção', color: 'bg-blue-500', cards: [] },
@@ -63,9 +73,7 @@ const existingApprovalId = ref<string | number | null>(null)
 const selectedPostForApproval = ref<Post | null>(null)
 const approvalData = ref({
   caption: '',
-  artS3Key: '',
-  artName: '',
-  artPreviewUrl: '',
+  arts: [] as ArtItem[],
   isUploading: false,
   isGenerating: false,
   isSending: false,
@@ -74,9 +82,7 @@ const approvalData = ref({
 const isReferenceModalOpen = ref(false)
 const selectedPostForReference = ref<Post | null>(null)
 const referenceData = ref({
-  referenceS3Key: '',
-  referenceName: '',
-  referencePreviewUrl: '',
+  arts: [] as ArtItem[],
   isUploading: false,
   isSaving: false,
 })
@@ -89,7 +95,7 @@ const isArtPreviewModalOpen = ref(false)
 const artPreviewMode = ref<ArtPreviewMode>('preview')
 const selectedPostForPreview = ref<Post | null>(null)
 const selectedApprovalForPreview = ref<PostApproval | null>(null)
-const selectedArtPreviewUrl = ref('')
+const selectedArtPreviewUrls = ref<string[]>([])
 const isLoadingArtPreview = ref(false)
 const internalReviewAction = ref<'send' | 'reject' | null>(null)
 const isRejectReasonModalOpen = ref(false)
@@ -278,7 +284,7 @@ async function openArtPreviewModal(post: Post, mode: ArtPreviewMode = 'preview')
 
   selectedPostForPreview.value = post
   selectedApprovalForPreview.value = approval
-  selectedArtPreviewUrl.value = ''
+  selectedArtPreviewUrls.value = []
   artPreviewMode.value = mode
   scheduledAtForApproval.value = post.scheduledAt ? post.scheduledAt.substring(0, 16) : ''
   internalRevisionNotes.value = approval.internalRevisionNotes || ''
@@ -286,7 +292,8 @@ async function openArtPreviewModal(post: Post, mode: ArtPreviewMode = 'preview')
   isLoadingArtPreview.value = true
 
   try {
-    selectedArtPreviewUrl.value = await mediaService.getArtPreviewUrl(post.id!)
+    const urls = await mediaService.getArtPreviewUrls(post.id!)
+    selectedArtPreviewUrls.value = urls
   } catch {
     feedback.error('Erro ao carregar imagem.')
     isArtPreviewModalOpen.value = false
@@ -304,9 +311,7 @@ async function openApprovalModal(post: Post) {
   isApprovalModalOpen.value = true
   approvalData.value = {
     caption: '',
-    artS3Key: '',
-    artName: '',
-    artPreviewUrl: '',
+    arts: [],
     isUploading: false,
     isGenerating: false,
     isSending: false,
@@ -315,10 +320,14 @@ async function openApprovalModal(post: Post) {
   if (existing) {
     existingApprovalId.value = existing.id ?? null
     approvalData.value.caption = existing.caption
-    approvalData.value.artS3Key = existing.artS3Key
-    approvalData.value.artName = existing.artName
+    const keys = existing.artS3Keys?.length ? existing.artS3Keys : [existing.artS3Key]
     try {
-      approvalData.value.artPreviewUrl = await mediaService.getArtPreviewUrl(post.id!)
+      const urls = await mediaService.getArtPreviewUrls(post.id!)
+      approvalData.value.arts = keys.map((s3Key, i) => ({
+        s3Key,
+        artName: existing.artName,
+        previewUrl: urls[i] ?? urls[0] ?? '',
+      }))
     } catch {}
   } else {
     existingApprovalId.value = null
@@ -326,19 +335,33 @@ async function openApprovalModal(post: Post) {
 }
 
 async function handleFileSelect(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file || !selectedPostForApproval.value) return
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = '' // permite re-selecionar o mesmo arquivo depois de remover
+  if (!files.length || !selectedPostForApproval.value) return
+  if (approvalData.value.arts.length + files.length > MAX_CAROUSEL_ITEMS) {
+    feedback.warning(`Máximo de ${MAX_CAROUSEL_ITEMS} imagens por carrossel.`)
+    return
+  }
+  if (approvalData.value.arts.length + files.length > 1 && files.some((f) => isVideoFileName(f.name))) {
+    feedback.warning('Carrossel suporta apenas imagens. Envie vídeos como post único.')
+    return
+  }
   approvalData.value.isUploading = true
   try {
-    const { uploadUrl, s3Key } = await mediaService.getUploadUrl(
-      selectedPostForApproval.value.id!,
-      file.name,
-      file.type,
-    )
-    await mediaService.uploadToS3(uploadUrl, file)
-    approvalData.value.artS3Key = s3Key
-    approvalData.value.artName = file.name
-    approvalData.value.artPreviewUrl = URL.createObjectURL(file)
+    for (const file of files) {
+      const { uploadUrl, s3Key } = await mediaService.getUploadUrl(
+        selectedPostForApproval.value.id!,
+        file.name,
+        file.type,
+      )
+      await mediaService.uploadToS3(uploadUrl, file)
+      approvalData.value.arts.push({
+        s3Key,
+        artName: file.name,
+        previewUrl: URL.createObjectURL(file),
+      })
+    }
   } catch {
     feedback.error('Erro no upload.')
   } finally {
@@ -346,15 +369,28 @@ async function handleFileSelect(event: Event) {
   }
 }
 
+function removeApprovalArt(index: number) {
+  approvalData.value.arts.splice(index, 1)
+}
+
 async function saveApproval() {
-  if (!selectedPostForApproval.value || !approvalData.value.artS3Key) return
+  if (!selectedPostForApproval.value || !approvalData.value.arts.length) return
+  if (
+    approvalData.value.arts.length > 1 &&
+    approvalData.value.arts.some((a) => isVideoFileName(a.artName) || isVideoFileName(a.s3Key))
+  ) {
+    feedback.error('Carrossel suporta apenas imagens. Remova os vídeos.')
+    return
+  }
   approvalData.value.isSending = true
   try {
+    const arts = approvalData.value.arts.map(({ s3Key, artName }) => ({ s3Key, artName }))
     const payload = {
       postId: selectedPostForApproval.value.id!,
-      artS3Key: approvalData.value.artS3Key,
-      artName: approvalData.value.artName,
+      artS3Key: arts[0]!.s3Key,
+      artName: arts[0]!.artName,
       caption: approvalData.value.caption,
+      arts: arts.length > 1 ? arts : undefined,
     }
     if (existingApprovalId.value) await approvalService.update(existingApprovalId.value, payload)
     else await approvalService.create(payload)
@@ -398,11 +434,13 @@ async function handleSendApprovalFromFinished(post: Post, _isResend = false) {
   const approval = getApprovalByPost(post)
   if (!approval?.artS3Key) return false
   try {
-    const completion = await mediaService.completeUpload(
-      post.id!,
-      approval.artS3Key,
-      approval.artName,
-    )
+    const keys = approval.artS3Keys?.length ? approval.artS3Keys : [approval.artS3Key]
+    if (keys.length > 1 && keys.some((k) => isVideoFileName(k))) {
+      feedback.error('Carrossel suporta apenas imagens. Edite a aprovação e remova os vídeos.')
+      return false
+    }
+    const arts = keys.map((s3Key) => ({ s3Key, artName: approval.artName }))
+    const completion = await mediaService.completeUpload(post.id!, arts)
     if (completion.webhookDispatched) feedback.success('Enviado ao cliente.')
     return true
   } catch {
@@ -430,40 +468,53 @@ async function confirmInternalRejection() {
 }
 
 // Reference Modal Logic
-function openReferenceUpload(post: Post) {
+async function openReferenceUpload(post: Post) {
   selectedPostForReference.value = post
   referenceData.value = {
-    referenceS3Key: post.referenceImageS3Key || '',
-    referenceName: post.referenceImageS3Key ? 'Referência Atual' : '',
-    referencePreviewUrl: '',
+    arts: [],
     isUploading: false,
     isSaving: false,
   }
   if (post.id && post.referenceImageS3Key) {
-    mediaService
-      .getReferencePreviewUrl(post.id)
-      .then((url) => {
-        referenceData.value.referencePreviewUrl = url
-      })
-      .catch(() => {})
+    try {
+      const keys = post.referenceImageS3Keys?.length
+        ? post.referenceImageS3Keys
+        : [post.referenceImageS3Key]
+      const urls = await mediaService.getReferencePreviewUrls(post.id)
+      referenceData.value.arts = keys.map((s3Key, i) => ({
+        s3Key,
+        artName: 'Referência Atual',
+        previewUrl: urls[i] ?? urls[0] ?? '',
+      }))
+    } catch {}
   }
   isReferenceModalOpen.value = true
 }
 
 async function handleReferenceFileSelect(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file || !selectedPostForReference.value) return
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = '' // permite re-selecionar o mesmo arquivo depois de remover
+  if (!files.length || !selectedPostForReference.value) return
+  if (referenceData.value.arts.length + files.length > MAX_CAROUSEL_ITEMS) {
+    feedback.warning(`Máximo de ${MAX_CAROUSEL_ITEMS} arquivos de referência.`)
+    return
+  }
   referenceData.value.isUploading = true
   try {
-    const { uploadUrl, s3Key } = await mediaService.getReferenceUploadUrl(
-      selectedPostForReference.value.id!,
-      file.name,
-      file.type,
-    )
-    await mediaService.uploadToS3(uploadUrl, file)
-    referenceData.value.referenceS3Key = s3Key
-    referenceData.value.referenceName = file.name
-    referenceData.value.referencePreviewUrl = URL.createObjectURL(file)
+    for (const file of files) {
+      const { uploadUrl, s3Key } = await mediaService.getReferenceUploadUrl(
+        selectedPostForReference.value.id!,
+        file.name,
+        file.type,
+      )
+      await mediaService.uploadToS3(uploadUrl, file)
+      referenceData.value.arts.push({
+        s3Key,
+        artName: file.name,
+        previewUrl: URL.createObjectURL(file),
+      })
+    }
   } catch {
     feedback.error('Erro no upload.')
   } finally {
@@ -471,13 +522,17 @@ async function handleReferenceFileSelect(event: Event) {
   }
 }
 
+function removeReferenceArt(index: number) {
+  referenceData.value.arts.splice(index, 1)
+}
+
 async function saveReference() {
-  if (!selectedPostForReference.value?.id || !referenceData.value.referenceS3Key) return
+  if (!selectedPostForReference.value?.id || !referenceData.value.arts.length) return
   referenceData.value.isSaving = true
   try {
     await postService.updateReference(
       selectedPostForReference.value.id,
-      referenceData.value.referenceS3Key,
+      referenceData.value.arts.map((a) => a.s3Key),
     )
     await fetchInitialData()
     isReferenceModalOpen.value = false
@@ -503,7 +558,8 @@ async function viewReference(post: Post) {
   artPreviewMode.value = 'preview'
   isArtPreviewModalOpen.value = true
   try {
-    selectedArtPreviewUrl.value = await mediaService.getReferencePreviewUrl(post.id)
+    const urls = await mediaService.getReferencePreviewUrls(post.id)
+    selectedArtPreviewUrls.value = urls
   } catch {
     feedback.error('Erro ao carregar referência.')
     closeArtPreviewModal()
@@ -547,7 +603,7 @@ async function generateAICaption() {
   try {
     const result = await postService.generateCaption(
       post.id,
-      approvalData.value.artS3Key || undefined,
+      approvalData.value.arts[0]?.s3Key,
     )
     approvalData.value.caption = result.caption
   } catch {
@@ -644,6 +700,7 @@ onMounted(() => {
       :data="approvalData"
       @close="isApprovalModalOpen = false"
       @file-select="handleFileSelect"
+      @remove-art="removeApprovalArt"
       @generate-caption="generateAICaption"
       @save="saveApproval"
       @update:caption="approvalData.caption = $event"
@@ -653,7 +710,7 @@ onMounted(() => {
       :mode="artPreviewMode"
       :post="selectedPostForPreview"
       :approval="selectedApprovalForPreview"
-      :art-url="selectedArtPreviewUrl"
+      :art-urls="selectedArtPreviewUrls"
       :is-loading="isLoadingArtPreview"
       :internal-review-action="internalReviewAction"
       :rejection-reason="rejectionReason"
@@ -675,6 +732,7 @@ onMounted(() => {
       :data="referenceData"
       @close="isReferenceModalOpen = false"
       @file-select="handleReferenceFileSelect"
+      @remove-art="removeReferenceArt"
       @save="saveReference"
     />
   </AppLayout>

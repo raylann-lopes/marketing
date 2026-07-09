@@ -3,6 +3,7 @@ package com.north.producoes.service;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
+import com.north.producoes.entity.PostCarouselImageEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -16,10 +17,15 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @AllArgsConstructor
@@ -32,10 +38,12 @@ public class PostService {
     private final ApproveRepository approveRepository;
     private final S3Service s3Service;
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findAllPost(){
         return postRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByStatus(PostStatusEnum status){
         List<PostEntity> postStatus = postRepository.findByStatus(status);
         if(postStatus.isEmpty()){
@@ -44,6 +52,7 @@ public class PostService {
         return postStatus;
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByClient(Long clientId){
         List<PostEntity> postClient = postRepository.findByClientId(clientId);
         if(postClient.isEmpty()){
@@ -52,6 +61,7 @@ public class PostService {
         return postClient;
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByUser(Long userId){
         List<PostEntity> postUser = postRepository.findByUserId(userId);
         if(postUser.isEmpty()){
@@ -60,6 +70,7 @@ public class PostService {
         return postUser.stream().toList();
     }
 
+    @Transactional(readOnly = true)
     public List<PostEntity> findByScheduledAt(LocalDateTime scheduledAtAfter, LocalDateTime scheduledAtBefore){
         if(scheduledAtAfter.isAfter(scheduledAtBefore)){
             throw new IllegalArgumentException("Data de inicio deve ser anterior a data de fim");
@@ -112,8 +123,20 @@ public class PostService {
         postExisting.setObjective(dto.objective());
         postExisting.setStatus(dto.status());
         postExisting.setIsUrgent(dto.isUrgent() != null ? dto.isUrgent() : false);
-        postExisting.setReferenceImageS3Key(dto.referenceImageS3Key());
         postExisting.setScheduledAt(dto.scheduledAt());
+        
+        if (dto.format() != null) {
+            postExisting.setFormat(dto.format());
+        }
+
+        // Só substitui as referências quando o campo vem no payload — updates
+        // parciais (ex.: edição pelo modal de demanda) não podem apagar a coleção
+        List<String> refs = dto.referenceImageS3Keys();
+        if (refs != null) {
+            replaceReferenceImages(postExisting, refs);
+        } else if (StringUtils.hasText(dto.referenceImageS3Key())) {
+            postExisting.setReferenceImageS3Key(dto.referenceImageS3Key());
+        }
         
         if (client != null) {
             postExisting.setClient(client);
@@ -126,20 +149,77 @@ public class PostService {
     }
 
     @Transactional
-    public PostEntity updateReferenceImage(Long id, String s3Key) {
+    public PostEntity updateReferenceImage(Long id, List<String> s3Keys) {
         PostEntity post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + id));
-        post.setReferenceImageS3Key(s3Key);
+
+        replaceReferenceImages(post, s3Keys != null ? s3Keys : List.of());
+
         return postRepository.save(post);
+    }
+
+    private void replaceReferenceImages(PostEntity post, List<String> s3Keys) {
+        if (post.getCarouselImages() != null) {
+            post.getCarouselImages().clear();
+        } else {
+            post.setCarouselImages(new ArrayList<>());
+        }
+
+        int order = 0;
+        for (String key : s3Keys) {
+            PostCarouselImageEntity refEntity = new PostCarouselImageEntity();
+            refEntity.setPost(post);
+            refEntity.setS3Key(key);
+            refEntity.setSortOrder(order++);
+            post.getCarouselImages().add(refEntity);
+        }
+        if (!s3Keys.isEmpty()) {
+            post.setReferenceImageS3Key(s3Keys.get(0));
+        }
     }
 
     @Transactional
     public void deletePostById(Long id){
-        if(!postRepository.existsById(id)){
-            throw new ResourceNotFoundException("Post nao encontrado com id: " + id);
-        }
+        PostEntity post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post nao encontrado com id: " + id));
+
+        Set<String> s3Keys = collectS3Keys(post);
+
         approveRepository.deleteByPostId(id);
-        postRepository.deleteById(id);
+        postRepository.delete(post);
+
+        // Limpa os arquivos no S3 só depois do commit — um rollback não pode
+        // deixar registros no banco apontando para arquivos já removidos
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    s3Service.deleteObjects(s3Keys);
+                }
+            });
+        } else {
+            s3Service.deleteObjects(s3Keys);
+        }
+    }
+
+    /** Reúne todas as chaves S3 vinculadas ao post: referências, capa e artes do carrossel. */
+    private Set<String> collectS3Keys(PostEntity post) {
+        Set<String> keys = new LinkedHashSet<>();
+        if (StringUtils.hasText(post.getReferenceImageS3Key())) {
+            keys.add(post.getReferenceImageS3Key());
+        }
+        if (post.getCarouselImages() != null) {
+            post.getCarouselImages().forEach(image -> keys.add(image.getS3Key()));
+        }
+        for (ApproveEntity approve : approveRepository.findByPostId(post.getId())) {
+            if (StringUtils.hasText(approve.getArtS3Key())) {
+                keys.add(approve.getArtS3Key());
+            }
+            if (approve.getCarouselArts() != null) {
+                approve.getCarouselArts().forEach(art -> keys.add(art.getS3Key()));
+            }
+        }
+        return keys;
     }
 
     @Transactional

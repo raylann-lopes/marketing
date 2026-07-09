@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { X, Image, Upload, Info, Check, Maximize } from 'lucide-vue-next'
+import { X, Image, Upload, Info, Check } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { type Post } from '@/services/postService'
 
@@ -8,9 +8,7 @@ interface Props {
   isOpen: boolean
   post: Post | null
   data: {
-    referenceS3Key: string
-    referenceName: string
-    referencePreviewUrl: string
+    arts: { s3Key: string; artName: string; previewUrl: string }[]
     isUploading: boolean
     isSaving: boolean
   }
@@ -21,6 +19,7 @@ defineProps<Props>()
 defineEmits<{
   (e: 'close'): void
   (e: 'fileSelect', event: Event): void
+  (e: 'removeArt', index: number): void
   (e: 'save'): void
 }>()
 
@@ -58,37 +57,51 @@ function isVideo(url: string, filename?: string) {
       <div class="grid grid-cols-2 gap-8 p-7">
         <!-- Coluna 1: Upload da Referência -->
         <div class="space-y-4">
-          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Arquivo de Referência</label>
-          <input ref="fileInputRef" type="file" accept="image/*,video/*" class="hidden" @change="$emit('fileSelect', $event)" />
+          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            Arquivo(s) de Referência {{ data.arts.length > 1 ? `(${data.arts.length})` : '' }}
+          </label>
+          <input ref="fileInputRef" type="file" accept="image/*,video/*" multiple class="hidden" @change="$emit('fileSelect', $event)" />
+
+          <div v-if="data.arts.length" class="grid grid-cols-3 gap-2">
+            <div
+              v-for="(art, index) in data.arts"
+              :key="art.s3Key + index"
+              class="relative aspect-square rounded-xl border border-gray-100 bg-gray-950 overflow-hidden shadow-md group"
+            >
+              <video
+                v-if="isVideo(art.previewUrl, art.artName)"
+                :src="art.previewUrl"
+                class="absolute inset-0 w-full h-full object-cover"
+                muted
+                loop
+              ></video>
+              <img v-else :src="art.previewUrl" class="absolute inset-0 w-full h-full object-cover" />
+              <span class="absolute top-1 left-1 text-[10px] font-bold text-white bg-black/50 rounded px-1.5">{{ index + 1 }}</span>
+              <button
+                type="button"
+                @click.stop="$emit('removeArt', index)"
+                class="absolute top-1 right-1 p-1 rounded-lg bg-black/60 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <X class="w-3 h-3" />
+              </button>
+            </div>
+            <button
+              type="button"
+              @click="fileInputRef?.click()"
+              :disabled="data.isUploading"
+              class="aspect-square rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-amber-600 hover:border-amber-300 transition-colors"
+            >
+              <Upload class="w-5 h-5" />
+              <span class="text-[10px] font-bold">{{ data.isUploading ? 'Enviando...' : 'Adicionar' }}</span>
+            </button>
+          </div>
+
           <div
+            v-else
             class="relative aspect-square rounded-[2rem] border border-gray-100 bg-gray-950 flex flex-col items-center justify-center gap-3 group hover:border-amber-400/50 transition-all cursor-pointer overflow-hidden shadow-2xl"
             @click="fileInputRef?.click()"
           >
-            <template v-if="data.referencePreviewUrl">
-              <video 
-                v-if="isVideo(data.referencePreviewUrl, data.referenceName)"
-                :src="data.referencePreviewUrl" 
-                class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner"
-                autoplay muted loop
-              ></video>
-              <img 
-                v-else
-                :src="data.referencePreviewUrl" 
-                class="absolute inset-0 w-full h-full object-contain animate-in fade-in duration-500 shadow-inner" 
-              />
-
-              <!-- Botão Tela Cheia -->
-              <a 
-                :href="data.referencePreviewUrl" 
-                target="_blank" 
-                @click.stop
-                class="absolute top-4 right-4 p-2.5 rounded-xl bg-black/40 hover:bg-black/60 text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10 z-10"
-              >
-                <Maximize class="w-4 h-4" />
-              </a>
-            </template>
-            
-            <div v-else-if="data.isUploading" class="flex flex-col items-center gap-3 text-amber-600">
+            <div v-if="data.isUploading" class="flex flex-col items-center gap-3 text-amber-600">
               <div class="w-10 h-10 border-3 border-amber-200 border-t-amber-600 rounded-full animate-spin"></div>
               <span class="text-xs font-bold uppercase tracking-widest">Enviando...</span>
             </div>
@@ -98,12 +111,8 @@ function isVideo(url: string, filename?: string) {
               </div>
               <div class="text-center">
                 <span class="block text-sm font-bold">Clique para selecionar</span>
-                <span class="text-[10px] text-gray-400 font-medium">Imagens ou Vídeos de inspiração</span>
+                <span class="text-[10px] text-gray-400 font-medium">Imagens ou vídeos — até 10 arquivos</span>
               </div>
-            </div>
-
-            <div v-if="data.referencePreviewUrl" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <Button variant="outline" class="bg-white border-none text-xs font-bold px-6 h-10 rounded-xl">TROCAR ARQUIVO</Button>
             </div>
           </div>
         </div>
@@ -134,7 +143,7 @@ function isVideo(url: string, filename?: string) {
         <Button variant="outline" class="flex-1 h-14 rounded-2xl font-bold border-gray-200 text-gray-500" @click="$emit('close')">CANCELAR</Button>
         <Button
           class="flex-[2] h-14 rounded-2xl font-bold gap-2 shadow-xl shadow-amber-600/20 bg-amber-600 hover:bg-amber-700 text-white"
-          :disabled="data.isSaving || data.isUploading || !data.referenceS3Key"
+          :disabled="data.isSaving || data.isUploading || !data.arts.length"
           @click="$emit('save')"
         >
           <template v-if="data.isSaving">
