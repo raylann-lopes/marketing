@@ -13,6 +13,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.List;
+
 /**
  * Cliente HTTP para a Meta Graph API.
  *
@@ -62,6 +64,35 @@ public class MetaGraphClient {
                     .body(MetaContainerIdResponseDTO.class);
         } catch (RestClientException ex) {
             throw new MetaGraphIntegrationException("Falha ao criar container na Meta Graph API.", ex);
+        }
+    }
+
+    public MetaContainerIdResponseDTO createCarouselItemContainer(
+            String igUserId, String imageUrl, String token) {
+        validateToken(token);
+        try {
+            return metaGraphRestClient.post()
+                    .uri("/{apiVersion}/{igUserId}/media", apiVersion, igUserId)
+                    .header("Authorization", "Bearer " + token)
+                    .body(new com.north.producoes.integration.meta.dto.MetaCarouselItemRequestDTO(imageUrl, true))
+                    .retrieve().body(MetaContainerIdResponseDTO.class);
+        } catch (RestClientException ex) {
+            throw new MetaGraphIntegrationException("Falha ao criar item do carrossel na Meta Graph API.", ex);
+        }
+    }
+
+    public MetaContainerIdResponseDTO createCarouselContainer(
+            String igUserId, List<String> childrenIds, String caption, String token) {
+        validateToken(token);
+        try {
+            return metaGraphRestClient.post()
+                    .uri("/{apiVersion}/{igUserId}/media", apiVersion, igUserId)
+                    .header("Authorization", "Bearer " + token)
+                    .body(new com.north.producoes.integration.meta.dto.MetaCarouselContainerRequestDTO("CAROUSEL",
+                            String.join(",", childrenIds), caption))
+                    .retrieve().body(MetaContainerIdResponseDTO.class);
+        } catch (RestClientException ex) {
+            throw new MetaGraphIntegrationException("Falha ao criar container pai do carrossel na Meta Graph API.", ex);
         }
     }
 

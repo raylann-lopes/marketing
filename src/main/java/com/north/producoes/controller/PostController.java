@@ -3,6 +3,7 @@ package com.north.producoes.controller;
 import com.north.producoes.controller.api.PostApi;
 import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
+import com.north.producoes.controller.dto.request.UpdateReferenceRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.UserEntity;
@@ -91,7 +92,7 @@ public class PostController implements PostApi {
 
     @Override
     @PostMapping("/save")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PostResponseDTO> savePost(@Valid @RequestBody PostRequestDTO post) {
         return ResponseEntity.ok(PostResponseDTO.from(postService.savePost(post)));
     }
@@ -116,8 +117,18 @@ public class PostController implements PostApi {
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<PostResponseDTO> updateReferenceImage(
             @PathVariable Long id,
-            @RequestParam String s3Key) {
-        return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, s3Key)));
+            @Valid @RequestBody(required = false) UpdateReferenceRequestDTO body,
+            @RequestParam(required = false) String s3Key) {
+
+        List<String> s3Keys = body != null ? body.s3Keys() : null;
+        if (s3Keys != null && !s3Keys.isEmpty()) {
+            return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, s3Keys)));
+        }
+        // Retrocompatibilidade: chave única via query param
+        if (s3Key != null && !s3Key.isEmpty()) {
+            return ResponseEntity.ok(PostResponseDTO.from(postService.updateReferenceImage(id, List.of(s3Key))));
+        }
+        throw new IllegalArgumentException("Forneça s3Key(s) via query param ou body");
     }
 
     @Override

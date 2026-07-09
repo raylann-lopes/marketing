@@ -2,6 +2,7 @@ package com.north.producoes.service;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,6 +64,7 @@ class S3ServiceTest {
     private static S3Service service(String publicPrefix, String publicBaseUrl) {
         return new S3Service(
                 mock(S3Presigner.class),
+                mock(S3Client.class),
                 "bucket",
                 "sa-east-1",
                 publicPrefix,

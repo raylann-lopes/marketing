@@ -67,7 +67,7 @@ class ApproveControllerTest {
     @Test
     @DisplayName("deve criar aprovação com status 201")
     void shouldCreateApprovalWithCreatedStatus() {
-        ApproveRequestDTO request = new ApproveRequestDTO(10L, "public/posts/1/10/art.png", "art.png", "Legenda");
+        ApproveRequestDTO request = new ApproveRequestDTO(10L, "public/posts/1/10/art.png", "art.png", "Legenda", null);
         when(approvedService.saveApproveDTO(request)).thenReturn(ApproveResponseDTO.from(approval(5L)));
 
         ResponseEntity<ApproveResponseDTO> response = approveController.saveApprove(request);

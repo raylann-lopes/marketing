@@ -41,7 +41,9 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> {
-                        auth.requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
+                        // /error liberado para o erro real não virar 403 mascarado
+                        auth.requestMatchers("/api/auth/login", "/api/auth/refresh", "/error").permitAll()
+                            // Webhook da Evolution API — autenticação via secret na URL
                             .requestMatchers("/api/webhooks/whatsapp/**").permitAll();
                         if (swaggerEnabled) {
                             auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll();

@@ -56,7 +56,9 @@ public class MediaService {
         }
         ApproveEntity approve = approvals.getFirst();
         String previewUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
-        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, approve.getCaption());
+        List<String> previewUrls = approve.getCarouselArts().stream().map(a -> s3Service.resolveReadUrl(a.getS3Key())).toList();
+        if (previewUrls.isEmpty()) previewUrls = List.of(previewUrl);
+        return new MediaUrlResponseDTO(approve.getId(), postId, previewUrl, previewUrls, approve.getCaption());
     }
 
     public MediaUrlResponseDTO getReferencePreviewUrl(Long postId, UserEntity user) {
@@ -65,7 +67,9 @@ public class MediaService {
             throw new ResourceNotFoundException("Nenhuma imagem de referência para o post ID: " + postId);
         }
         String previewUrl = s3Service.resolveReadUrl(post.getReferenceImageS3Key());
-        return new MediaUrlResponseDTO(null, postId, previewUrl, "Imagem de Referência");
+        List<String> previewUrls = post.getCarouselImages().stream().map(r -> s3Service.resolveReadUrl(r.getS3Key())).toList();
+        if (previewUrls.isEmpty()) previewUrls = List.of(previewUrl);
+        return new MediaUrlResponseDTO(null, postId, previewUrl, previewUrls, "Imagem de Referência");
     }
 
     /**
@@ -88,8 +92,12 @@ public class MediaService {
                     return entity;
                 });
 
-        approve.setArtS3Key(normalizeUploadS3Key(request.s3Key()));
-        approve.setArtName(request.artName());
+        List<ApproveArts.ArtRef> arts = request.arts() == null ? null :
+                request.arts().stream()
+                        .map(item -> new ApproveArts.ArtRef(item.s3Key(), item.artName()))
+                        .toList();
+        ApproveArts.replace(s3Service, approve, arts, request.s3Key(), request.artName());
+
         approve.setStatus(ApproveStatusEnum.PENDING);
         approve.setApprovedAt(null);
         approve.setApprovedUser("");
@@ -104,31 +112,21 @@ public class MediaService {
 
         // Dispara notificação WhatsApp após o commit — evita race condition onde a
         // thread @Async lê a entidade antes do stanzaId ter sido persistido.
-        String mediaUrl = s3Service.resolveReadUrl(approve.getArtS3Key());
+        List<String> mediaUrls = !approve.getCarouselArts().isEmpty() ?
+                approve.getCarouselArts().stream().map(a -> s3Service.resolveReadUrl(a.getS3Key())).toList() :
+                List.of(s3Service.resolveReadUrl(approve.getArtS3Key()));
+
         final long clientId  = post.getClient().getId();
         final long postId_   = post.getId();
         final long approveId = approve.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                whatsAppNotificationService.sendApprovalRequest(clientId, postId_, approveId, mediaUrl);
+                whatsAppNotificationService.sendApprovalRequest(clientId, postId_, approveId, mediaUrls);
             }
         });
 
         return new MediaUploadCompleteResponseDTO(post.getId(), post.getStatus().name(), true);
-    }
-
-    private String normalizeUploadS3Key(String s3Key) {
-        if (!StringUtils.hasText(s3Key)) {
-            throw new IllegalArgumentException("s3Key é obrigatória");
-        }
-        String normalized = s3Key.trim();
-        if (!s3Service.isPublicKey(normalized)) {
-            throw new IllegalArgumentException(
-                    "s3Key inválida para upload finalizado. Utilize o prefixo "
-                    + s3Service.getPublicPrefix() + "/");
-        }
-        return normalized;
     }
 
     private PostEntity getAuthorizedPost(Long postId, UserEntity user) {

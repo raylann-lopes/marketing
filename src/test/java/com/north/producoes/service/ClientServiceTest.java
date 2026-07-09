@@ -31,6 +31,18 @@ class ClientServiceTest {
     private ClientRepository clientRepository;
 
     @Mock
+    private com.north.producoes.repository.ApproveRepository approveRepository;
+
+    @Mock
+    private com.north.producoes.repository.PostRepository postRepository;
+
+    @Mock
+    private com.north.producoes.repository.FinanceRepository financeRepository;
+
+    @Mock
+    private com.north.producoes.repository.AccountConfigRepository accountConfigRepository;
+
+    @Mock
     private FinanceService financeService;
 
     @InjectMocks

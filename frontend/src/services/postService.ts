@@ -19,6 +19,7 @@ export type Post = {
   status: PostStatus | string
   isUrgent?: boolean
   referenceImageS3Key?: string
+  referenceImageS3Keys?: string[]
   scheduledAt: string
 }
 
@@ -90,9 +91,10 @@ export const postService = {
     })
   },
 
-  async updateReference(id: string | number, s3Key: string): Promise<Post> {
-    return apiFetch<Post>(`/api/posts/update-reference/${id}?s3Key=${encodeURIComponent(s3Key)}`, {
+  async updateReference(id: string | number, s3Keys: string[]): Promise<Post> {
+    return apiFetch<Post>(`/api/posts/update-reference/${id}`, {
       method: 'PATCH',
+      body: JSON.stringify({ s3Keys }),
     })
   },
 

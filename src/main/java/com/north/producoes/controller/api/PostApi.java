@@ -2,6 +2,7 @@ package com.north.producoes.controller.api;
 
 import com.north.producoes.controller.dto.request.CaptionRequestDTO;
 import com.north.producoes.controller.dto.request.PostRequestDTO;
+import com.north.producoes.controller.dto.request.UpdateReferenceRequestDTO;
 import com.north.producoes.controller.dto.response.ApproveResponseDTO;
 import com.north.producoes.controller.dto.response.PostResponseDTO;
 import com.north.producoes.entity.UserEntity;
@@ -86,7 +87,8 @@ public interface PostApi {
     @ApiResponse(responseCode = "200", description = "Referência atualizada com sucesso")
     ResponseEntity<PostResponseDTO> updateReferenceImage(
             @Parameter(description = "ID do post") @PathVariable Long id,
-            @RequestParam String s3Key);
+            @Valid @RequestBody(required = false) UpdateReferenceRequestDTO body,
+            @Parameter(description = "Chave S3 única (retrocompatibilidade)") @RequestParam(required = false) String s3Key);
 
     @PostMapping("/{id}/generate-caption")
     @Operation(summary = "Gera legenda automaticamente usando IA")

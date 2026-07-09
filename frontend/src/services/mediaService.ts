@@ -12,12 +12,11 @@ export type UploadCompleteResponse = {
 }
 
 export type MediaUrlResponseDTO = {
-  id: number | null
+  approvalId: number | null
   postId: number
   mediaUrl: string
+  previewUrls: string[]
   caption: string
-  igUserId: string | null
-  accessToken: string | null
 }
 
 export const mediaService = {
@@ -68,22 +67,27 @@ export const mediaService = {
 
   async completeUpload(
     postId: string | number,
-    s3Key: string,
-    artName: string,
+    arts: { s3Key: string; artName: string }[],
   ): Promise<UploadCompleteResponse> {
+    const [first] = arts
     return apiFetch<UploadCompleteResponse>('/api/media/upload-complete', {
       method: 'POST',
-      body: JSON.stringify({ postId, s3Key, artName })
+      body: JSON.stringify({
+        postId,
+        s3Key: first?.s3Key,
+        artName: first?.artName,
+        arts: arts.length > 1 ? arts : undefined,
+      })
     })
   },
 
-  async getArtPreviewUrl(postId: string | number): Promise<string> {
+  async getArtPreviewUrls(postId: string | number): Promise<string[]> {
     const res = await apiFetch<MediaUrlResponseDTO>(`/api/media/preview/${postId}`)
-    return res.mediaUrl
+    return res.previewUrls?.length ? res.previewUrls : [res.mediaUrl]
   },
 
-  async getReferencePreviewUrl(postId: string | number): Promise<string> {
+  async getReferencePreviewUrls(postId: string | number): Promise<string[]> {
     const res = await apiFetch<MediaUrlResponseDTO>(`/api/media/reference-preview/${postId}`)
-    return res.mediaUrl
+    return res.previewUrls?.length ? res.previewUrls : [res.mediaUrl]
   }
 }

@@ -14,7 +14,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -53,7 +56,7 @@ class MediaControllerTest {
     void shouldMarkUploadComplete() {
         // Arrange
         UserEntity user = user();
-        MediaUploadCompleteRequestDTO request = new MediaUploadCompleteRequestDTO(10L, "public/posts/1/10/art.png", "Art");
+        MediaUploadCompleteRequestDTO request = new MediaUploadCompleteRequestDTO(10L, "public/posts/1/10/art.png", "Art", null);
         MediaUploadCompleteResponseDTO serviceResponse = new MediaUploadCompleteResponseDTO(10L, "WAITING_APPROVAL", true);
         when(mediaService.markUploadComplete(request, user)).thenReturn(serviceResponse);
 
@@ -70,7 +73,7 @@ class MediaControllerTest {
     void shouldReturnPreviewUrl() {
         // Arrange
         UserEntity user = user();
-        MediaUrlResponseDTO serviceResponse = new MediaUrlResponseDTO(5L, 10L, "https://cdn.example/art.png", "Legenda");
+        MediaUrlResponseDTO serviceResponse = new MediaUrlResponseDTO(5L, 10L, "https://cdn.example/art.png", List.of("https://cdn.example/art.png"), "Legenda");
         when(mediaService.getArtPreviewUrl(10L, user)).thenReturn(serviceResponse);
 
         // Act
@@ -86,7 +89,7 @@ class MediaControllerTest {
     void shouldGetReferencePreviewUrl() {
         // Arrange
         UserEntity user = user();
-        MediaUrlResponseDTO response = new MediaUrlResponseDTO(null, 10L, "url", "caption");
+        MediaUrlResponseDTO response = new MediaUrlResponseDTO(null, 10L, "url", List.of("url"), "caption");
         when(mediaService.getReferencePreviewUrl(10L, user)).thenReturn(response);
 
         // Act
