@@ -18,6 +18,7 @@ import com.north.producoes.repository.PostRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +33,7 @@ public class ApprovedService {
     private final S3Service s3Service;
     private final WhatsAppNotificationService whatsAppNotificationService;
 
+    @Transactional(readOnly = true)
     public Optional<ApproveEntity> findById(Long id) {
         if (!approveRepository.existsById(id)) {
             throw new ResourceNotFoundException("Nenhum post encontrado com id: " + id);
@@ -39,6 +41,7 @@ public class ApprovedService {
         return approveRepository.findById(id);
     }
 
+    @Transactional(readOnly = true)
     public List<ApproveEntity> findApproveByStatus(ApproveStatusEnum status) {
         List<ApproveEntity> result = approveRepository.findApproveEntitiesByStatus(status);
         if (result.isEmpty()) {
@@ -47,6 +50,7 @@ public class ApprovedService {
         return result;
     }
 
+    @Transactional
     public ApproveEntity saveApprove(ApproveRequestDTO dto) {
         PostEntity post = postRepository.findById(dto.postId())
                 .orElseThrow(() -> new ResourceNotFoundException("Post não encontrado com id: " + dto.postId()));
@@ -72,6 +76,7 @@ public class ApprovedService {
                         "Nenhum registro de aprovação encontrado com WhatsApp Stanza ID: " + stanzaId));
     }
 
+    @Transactional
     public ApproveEntity updateApprove(Long id, ApproveRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -108,6 +113,7 @@ public class ApprovedService {
         return approvals.getFirst().getArtS3Key();
     }
 
+    @Transactional
     public void deleteApproveById(Long id) {
         if (!approveRepository.existsById(id)) {
             throw new ResourceNotFoundException("Nenhum registro de aprovação encontrado com id: " + id);
@@ -115,6 +121,7 @@ public class ApprovedService {
         approveRepository.deleteById(id);
     }
 
+    @Transactional
     public ApproveEntity updateWhatsappMetadata(Long id, ApproveWhatsAppUpdateRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -133,6 +140,7 @@ public class ApprovedService {
      * APPROVE → muda post para SCHEDULE.
      * REJECTED → notifica grupo WhatsApp diretamente.
      */
+    @Transactional
     public ApproveEntity updateApprovalStatus(Long id, ApproveStatusUpdateRequestDTO dto) {
         ApproveEntity existing = approveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -170,6 +178,7 @@ public class ApprovedService {
     }
 
 
+    @Transactional
     public ApproveResponseDTO approveByPostId(Long postId, String username, ApproveByPostRequestDTO dto) {
         ApproveEntity existing = approveRepository.findByPostId(postId).stream()
                 .findFirst()
@@ -199,6 +208,7 @@ public class ApprovedService {
         return ApproveResponseDTO.from(approveRepository.save(existing));
     }
 
+    @Transactional
     public ApproveResponseDTO rejectByPostId(Long postId, String username, RejectByPostRequestDTO dto) {
         ApproveEntity existing = approveRepository.findByPostId(postId).stream()
                 .findFirst()
@@ -221,6 +231,7 @@ public class ApprovedService {
     }
 
     // DTO-level methods used by ApproveController
+    @Transactional(readOnly = true)
     public List<ApproveResponseDTO> findAll() {
         return approveRepository.findAll().stream().map(ApproveResponseDTO::from).toList();
     }
@@ -229,6 +240,7 @@ public class ApprovedService {
      * Busca aprovação por postId com verificação de ownership.
      * ADMIN vê qualquer aprovação; USER só vê aprovações de posts próprios.
      */
+    @Transactional(readOnly = true)
     public ApproveResponseDTO findByPostId(Long postId, UserEntity currentUser) {
         ApproveEntity approve = approveRepository.findByPostId(postId).stream()
                 .findFirst()
@@ -245,6 +257,7 @@ public class ApprovedService {
     }
 
     /** @deprecated Usar findByPostId(postId, currentUser) com verificação de ownership */
+    @Transactional(readOnly = true)
     public ApproveResponseDTO findByPostId(Long postId) {
         return approveRepository.findByPostId(postId).stream()
                 .findFirst()
@@ -253,15 +266,18 @@ public class ApprovedService {
                         "Nenhuma aprovação encontrada para o post: " + postId));
     }
 
+    @Transactional(readOnly = true)
     public List<ApproveResponseDTO> findByStatus(ApproveStatusEnum status) {
         return approveRepository.findApproveEntitiesByStatus(status).stream()
                 .map(ApproveResponseDTO::from).toList();
     }
 
+    @Transactional
     public ApproveResponseDTO saveApproveDTO(ApproveRequestDTO dto) {
         return ApproveResponseDTO.from(saveApprove(dto));
     }
 
+    @Transactional
     public ApproveResponseDTO updateApproveDTO(Long id, ApproveRequestDTO dto) {
         return ApproveResponseDTO.from(updateApprove(id, dto));
     }
