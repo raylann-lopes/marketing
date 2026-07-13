@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,8 +32,8 @@ public class ApifyClient {
     public ApifyRunResponseDTO runInstagramScraper(ApifyInstagramRunRequestDTO request) {
         validateConfig();
 
-        if (request == null || request.search() == null || request.search().isEmpty()) {
-            throw new ApifyIntegrationException("Termos de busca para Apify sao obrigatorios.");
+        if (request == null || !StringUtils.hasText(request.search())) {
+            throw new ApifyIntegrationException("Termo de busca para Apify e obrigatorio.");
         }
 
         try {
@@ -45,7 +46,7 @@ public class ApifyClient {
                     .retrieve()
                     .body(ApifyRunResponseDTO.class);
         } catch (RestClientException ex) {
-            throw new ApifyIntegrationException("Falha ao iniciar execucao do Actor na Apify.", ex);
+            throw apifyError("Falha ao iniciar execucao do Actor na Apify", ex);
         }
     }
 
@@ -63,7 +64,7 @@ public class ApifyClient {
                     .retrieve()
                     .body(ApifyRunResponseDTO.class);
         } catch (RestClientException ex) {
-            throw new ApifyIntegrationException("Falha ao consultar status da execucao na Apify.", ex);
+            throw apifyError("Falha ao consultar status da execucao na Apify", ex);
         }
     }
 
@@ -89,8 +90,21 @@ public class ApifyClient {
 
             return response == null ? List.of() : Arrays.asList(response);
         } catch (RestClientException ex) {
-            throw new ApifyIntegrationException("Falha ao consultar itens do dataset na Apify.", ex);
+            throw apifyError("Falha ao consultar itens do dataset na Apify", ex);
         }
+    }
+
+    /**
+     * Inclui o corpo da resposta de erro da Apify na mensagem — sem isso o
+     * motivo real (ex.: "Field input.search must be string") fica invisível.
+     */
+    private ApifyIntegrationException apifyError(String action, RestClientException ex) {
+        if (ex instanceof RestClientResponseException responseEx) {
+            return new ApifyIntegrationException(
+                    action + " (HTTP " + responseEx.getStatusCode().value() + "): "
+                            + responseEx.getResponseBodyAsString(), ex);
+        }
+        return new ApifyIntegrationException(action + ".", ex);
     }
 
     private void validateConfig() {
