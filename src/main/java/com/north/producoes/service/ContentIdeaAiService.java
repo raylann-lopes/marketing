@@ -2,6 +2,8 @@ package com.north.producoes.service;
 
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.exception.InvalidClientDataException;
+import com.north.producoes.integration.apify.dto.ApifyContentIdeaSignalDTO;
+import com.north.producoes.integration.apify.dto.ContentIdeaAiResponseDTO;
 import com.north.producoes.integration.apify.dto.ContentIdeaTermsDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +77,91 @@ public class ContentIdeaAiService {
                 "Nicho do cliente: " + client.getNiche() + "\n" +
                 "Tom de voz do cliente: " + client.getVoiceTone() + "\n" +
                 "Recomende os melhores termos de busca e hashtags para esse nicho.";
+    }
+
+    private static final String IDEAS_SYSTEM_INSTRUCTION = """
+            Você é um estrategista de conteúdo que transforma tendências virais do Instagram \
+            em ideias de posts acionáveis para clientes de uma agência.
+            Regras obrigatórias:
+            - Gere no MÁXIMO %d ideias.
+            - NUNCA copie a legenda viral literalmente; adapte a tendência ao nicho e tom de voz do cliente.
+            - Cada ideia deve ser aplicável como demanda real de produção.
+            - Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown, sem blocos de código.
+            O JSON deve ter exatamente este formato:
+            {"ideas":[{"title":"...","hook":"...","theme":"...","objective":"...",\
+            "format":"REELS|CAROUSEL|STORIES|FEED","reason":"...",\
+            "priority":"HIGH|MEDIUM|LOW","signalSummary":"...","signalIndex":1}]}
+            Onde: title = título da demanda; hook = gancho viral curto para o post; \
+            theme = temática; objective = objetivo de negócio; reason = justificativa curta \
+            (máx 300 caracteres) de por que a tendência funciona para o cliente; \
+            signalSummary = resumo curto da tendência/sinal viral usado como base; \
+            signalIndex = número do sinal listado no prompt que inspirou a ideia.""";
+
+    /**
+     * Transforma sinais virais coletados na Apify em ideias de conteúdo
+     * adaptadas ao nicho e tom de voz do cliente. Retorna lista vazia em caso
+     * de falha da IA — o chamador decide como registrar o erro.
+     */
+    public ContentIdeaAiResponseDTO generateIdeasFromSignals(ClientEntity client,
+                                                             List<ApifyContentIdeaSignalDTO> signals,
+                                                             int maxIdeas) {
+        try {
+            Prompt prompt = new Prompt(
+                    List.of(new SystemMessage(String.format(IDEAS_SYSTEM_INSTRUCTION, maxIdeas)),
+                            UserMessage.builder().text(buildIdeasPrompt(client, signals)).build()),
+                    OpenAiChatOptions.builder()
+                            .model(model)
+                            .temperature(0.5)
+                            .build()
+            );
+            String json = stripCodeFences(chatClient.prompt(prompt).call().content());
+            return objectMapper.readValue(json, ContentIdeaAiResponseDTO.class);
+        } catch (Exception e) {
+            log.error("Erro ao gerar ideias a partir de sinais para o cliente {}: {}",
+                    client.getId(), e.getMessage());
+            return new ContentIdeaAiResponseDTO(List.of());
+        }
+    }
+
+    private String buildIdeasPrompt(ClientEntity client, List<ApifyContentIdeaSignalDTO> signals) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Cliente: ").append(client.getName()).append("\n");
+        sb.append("Nicho: ").append(client.getNiche()).append("\n");
+        sb.append("Tom de voz: ").append(client.getVoiceTone()).append("\n\n");
+        sb.append("Sinais virais coletados (numerados — use o número em signalIndex):\n");
+
+        // A numeração segue a ordem da lista recebida: o chamador resolve
+        // signalIndex de volta para o sinal usando esta mesma ordem
+        for (int i = 0; i < signals.size(); i++) {
+            ApifyContentIdeaSignalDTO s = signals.get(i);
+            sb.append(i + 1).append(". [score ").append(s.score() != null ? s.score().intValue() : 0)
+                    .append(" | ").append(s.type() != null ? s.type() : "post")
+                    .append(" | likes ").append(s.likes() != null ? s.likes() : 0)
+                    .append(" | comments ").append(s.comments() != null ? s.comments() : 0)
+                    .append("] ").append(truncate(s.caption(), 220))
+                    .append(s.hashtags() != null && !s.hashtags().isEmpty()
+                            ? " (hashtags: " + String.join(", ", s.hashtags().stream().limit(5).toList()) + ")"
+                            : "")
+                    .append("\n");
+        }
+
+        sb.append("\nGere as ideias adaptadas a este cliente.");
+        return sb.toString();
+    }
+
+    private static String stripCodeFences(String content) {
+        if (content == null) return "";
+        String trimmed = content.trim();
+        if (trimmed.startsWith("```")) {
+            trimmed = trimmed.replaceFirst("^```(?:json)?\\s*", "").replaceFirst("\\s*```$", "");
+        }
+        return trimmed;
+    }
+
+    private static String truncate(String text, int max) {
+        if (text == null) return "";
+        String clean = text.replaceAll("\\s+", " ").trim();
+        return clean.length() <= max ? clean : clean.substring(0, max) + "…";
     }
 }
 

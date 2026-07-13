@@ -39,14 +39,18 @@ public class ContentIdeaEntity {
 
     private String hook;
 
+    @Column(length = 1024)
     private String reason;
 
-    @Column(name = "source_terms")
+    @Column(name = "source_terms", length = 1024)
     private String sourceTerms;
 
-
-    @Column(name = "signal_summary")
+    @Column(name = "signal_summary", length = 1024)
     private String signalSummary;
+
+    // Score do sinal viral que originou a ideia (likes + 2*comments)
+    @Column(name = "engagement_score")
+    private Double engagementScore;
 
     @Enumerated(EnumType.STRING)
     private ContentIdeaStatusEnum status = ContentIdeaStatusEnum.SUGGESTED;
