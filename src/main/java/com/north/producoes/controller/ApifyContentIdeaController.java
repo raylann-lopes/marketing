@@ -10,12 +10,16 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+// O valor em @RestController é nome de bean, não rota — o prefixo de path
+// precisa vir de @RequestMapping
 @AllArgsConstructor
-@RestController("/api/apify")
+@RestController
+@RequestMapping("/api/apify")
 public class ApifyContentIdeaController implements ApifyContentIdeaApi {
 
     private final ApifySearchContentIdeaService apifySearchContentIdeaService;
