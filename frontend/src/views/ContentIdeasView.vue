@@ -1,18 +1,25 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Filter, Lightbulb, RefreshCw, Search, Sparkles } from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
+import { Filter, Lightbulb, Loader2, RefreshCw, Search, Sparkles } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
 import { useFeedback } from '@/lib/feedback'
+import {
+  contentIdeaService,
+  type ContentIdea as ApiContentIdea,
+  type ContentIdeaStatus,
+} from '@/services/contentIdeaService'
+import { clientService, type Client } from '@/services/clientService'
 
 import IdeaCard from '@/components/ideas/IdeaCard.vue'
 import IdeaModal from '@/components/ideas/IdeaModal.vue'
 
-type IdeaStatus = 'SUGGESTED' | 'SAVED' | 'DISMISSED' | 'CONVERTED'
+type IdeaStatus = ContentIdeaStatus
 type IdeaPriority = 'ALTA' | 'MEDIA' | 'BAIXA'
 type SortMode = 'ALL' | 'RECENT' | 'VIEWS'
 
+// View model consumido por IdeaCard/IdeaModal
 type ContentIdea = {
   id: number
   client: string
@@ -42,122 +49,114 @@ const selectedStatus = ref<IdeaStatus | 'Todos'>('Todos')
 const sortMode = ref<SortMode>('ALL')
 const activeIdeaId = ref<number | null>(null)
 
-const ideas = ref<ContentIdea[]>([
-  {
-    id: 1,
-    client: 'Clínica Aurora',
-    niche: 'Saúde e estética',
-    format: 'Reels',
-    priority: 'ALTA',
-    title: 'Antes de marcar um procedimento, entenda o que muda no resultado',
-    previewTitle: 'Isso muda o resultado antes de qualquer procedimento',
-    theme: 'Educação rápida com quebra de objeção',
-    objective: 'Aumentar confiança e gerar conversas no direct',
-    reason: 'Conteúdos curtos com explicação simples e CTA de avaliação aparecem com forte retenção no nicho.',
-    sourceSignal: '#esteticaavancada · #cuidadoscomapele · vídeos educativos',
-    profile: '@clinica.aurora',
-    postedAt: '17 de abr.',
-    viewsLabel: '2.4M',
-    viewsCount: 2400000,
-    cardClass: 'bg-gradient-to-br from-indigo-500 to-violet-600',
-    status: 'SUGGESTED',
-  },
-  {
-    id: 2,
-    client: 'Imobiliária Norte',
-    niche: 'Imobiliário',
-    format: 'Carrossel',
-    priority: 'ALTA',
-    title: '5 detalhes que fazem um imóvel parecer mais caro nas fotos',
-    previewTitle: 'O erro que todo corretor comete no anúncio',
-    theme: 'Dicas práticas para compradores e proprietários',
-    objective: 'Atrair leads de avaliação e venda de imóveis',
-    reason: 'Posts de checklist performam bem porque geram salvamentos e abrem conversa consultiva.',
-    sourceSignal: '#mercadoimobiliario · #decoracaodeinteriores · checklists',
-    profile: '@imobiliaria.norte',
-    postedAt: '19 de abr.',
-    viewsLabel: '1.9M',
-    viewsCount: 1900000,
-    cardClass: 'bg-gradient-to-br from-pink-500 to-rose-500',
-    status: 'SAVED',
-  },
-  {
-    id: 3,
-    client: 'Bella Fit',
-    niche: 'Fitness',
-    format: 'Stories',
-    priority: 'MEDIA',
-    title: 'Desafio de 7 dias para voltar à rotina sem exageros',
-    previewTitle: 'Por que você ainda está travado na rotina',
-    theme: 'Sequência interativa com enquete diária',
-    objective: 'Reativar audiência e gerar respostas nos stories',
-    reason: 'Desafios curtos e progressivos tendem a aumentar interação sem exigir produção pesada.',
-    sourceSignal: '#vidasaudavel · #treinoemcasa · enquetes',
-    profile: '@bellafit.studio',
-    postedAt: '16 de abr.',
-    viewsLabel: '3.2M',
-    viewsCount: 3200000,
-    cardClass: 'bg-gradient-to-br from-cyan-500 to-teal-500',
-    status: 'SUGGESTED',
-  },
-  {
-    id: 4,
-    client: 'Café Jardim',
-    niche: 'Gastronomia',
-    format: 'Reels',
-    priority: 'MEDIA',
-    title: 'O caminho do café até a mesa em 20 segundos',
-    previewTitle: 'Acordei às 4h por 30 dias e aprendi isso',
-    theme: 'Bastidor sensorial do preparo',
-    objective: 'Valorizar experiência e aumentar desejo de visita',
-    reason: 'Bastidores com cortes rápidos e close no produto têm boa resposta visual para negócios locais.',
-    sourceSignal: '#cafeteria · #cafesespeciais · bastidores',
-    profile: '@cafejardim',
-    postedAt: '20 de abr.',
-    viewsLabel: '980K',
-    viewsCount: 980000,
-    cardClass: 'bg-gradient-to-br from-emerald-500 to-green-600',
-    status: 'CONVERTED',
-  },
-  {
-    id: 5,
-    client: 'Studio Forma',
-    niche: 'Arquitetura',
-    format: 'Carrossel',
-    priority: 'BAIXA',
-    title: 'Erros comuns que deixam a sala menor visualmente',
-    previewTitle: 'Como fazer 10k em atenção sem parecer anúncio',
-    theme: 'Conteúdo educativo com imagens de apoio',
-    objective: 'Gerar autoridade e pedidos de orçamento',
-    reason: 'Comparativos antes/depois geram leitura rápida e reforçam percepção de especialidade.',
-    sourceSignal: '#arquiteturadeinteriores · #salapequena · antes e depois',
-    profile: '@studioforma.arq',
-    postedAt: '22 de abr.',
-    viewsLabel: '742K',
-    viewsCount: 742000,
-    cardClass: 'bg-gradient-to-br from-orange-500 to-red-500',
-    status: 'SUGGESTED',
-  },
-  {
-    id: 6,
-    client: 'Clínica Aurora',
-    niche: 'Saúde e estética',
-    format: 'Feed',
-    priority: 'MEDIA',
-    title: 'O que ninguém te explica sobre constância nos cuidados',
-    previewTitle: 'Joguei fora esse hábito e minha pele respondeu',
-    theme: 'Post institucional com autoridade leve',
-    objective: 'Educar sem promessa exagerada e reforçar recorrência',
-    reason: 'Temas de rotina e manutenção ajudam a criar agenda de retorno sem parecer oferta direta.',
-    sourceSignal: '#skincareroutine · #cuidadosdiarios · posts educativos',
-    profile: '@clinica.aurora',
-    postedAt: '23 de abr.',
-    viewsLabel: '1.1M',
-    viewsCount: 1100000,
-    cardClass: 'bg-gradient-to-br from-red-500 to-rose-600',
-    status: 'DISMISSED',
-  },
-])
+const ideas = ref<ContentIdea[]>([])
+const isLoading = ref(false)
+const isCollecting = ref(false)
+const showCollectPanel = ref(false)
+const clients = ref<Client[]>([])
+const collectClientId = ref<number | string | ''>('')
+
+const cardPalette = [
+  'bg-gradient-to-br from-indigo-500 to-violet-600',
+  'bg-gradient-to-br from-pink-500 to-rose-500',
+  'bg-gradient-to-br from-cyan-500 to-teal-500',
+  'bg-gradient-to-br from-emerald-500 to-green-600',
+  'bg-gradient-to-br from-orange-500 to-red-500',
+  'bg-gradient-to-br from-red-500 to-rose-600',
+  'bg-gradient-to-br from-blue-500 to-indigo-600',
+  'bg-gradient-to-br from-fuchsia-500 to-purple-600',
+]
+
+const formatLabels: Record<string, string> = {
+  REELS: 'Reels',
+  CAROUSEL: 'Carrossel',
+  STORIES: 'Stories',
+  FEED: 'Feed',
+}
+
+const priorityLabels: Record<string, IdeaPriority> = {
+  HIGH: 'ALTA',
+  MEDIUM: 'MEDIA',
+  LOW: 'BAIXA',
+}
+
+function formatViews(score: number | null): string {
+  if (!score || score <= 0) return '—'
+  if (score >= 1_000_000) return `${(score / 1_000_000).toFixed(1).replace('.0', '')}M`
+  if (score >= 1_000) return `${(score / 1_000).toFixed(1).replace('.0', '')}K`
+  return String(Math.round(score))
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  } catch {
+    return iso
+  }
+}
+
+function toViewModel(idea: ApiContentIdea): ContentIdea {
+  return {
+    id: idea.id,
+    client: idea.clientName ?? '—',
+    niche: idea.clientNiche ?? '—',
+    format: formatLabels[idea.format] ?? idea.format,
+    priority: priorityLabels[idea.priority] ?? 'MEDIA',
+    title: idea.title,
+    previewTitle: idea.hook || idea.title,
+    theme: idea.theme ?? '—',
+    objective: idea.objective ?? '—',
+    reason: idea.reason ?? '—',
+    sourceSignal: idea.signalSummary || idea.sourceTerms || '—',
+    profile: idea.clientName ?? '—',
+    postedAt: formatDate(idea.createdAt),
+    viewsLabel: formatViews(idea.engagementScore),
+    viewsCount: idea.engagementScore ?? 0,
+    cardClass: cardPalette[idea.id % cardPalette.length]!,
+    status: idea.status,
+  }
+}
+
+async function fetchIdeas() {
+  isLoading.value = true
+  try {
+    const data = await contentIdeaService.getAll()
+    ideas.value = data.map(toViewModel)
+  } catch {
+    feedback.error('Erro ao carregar ideias de conteúdo.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function openCollectPanel() {
+  showCollectPanel.value = !showCollectPanel.value
+  if (showCollectPanel.value && clients.value.length === 0) {
+    try {
+      clients.value = await clientService.getAll()
+    } catch {
+      feedback.error('Erro ao carregar clientes.')
+    }
+  }
+}
+
+async function runCollect() {
+  if (!collectClientId.value) {
+    feedback.warning('Selecione um cliente para a coleta.')
+    return
+  }
+  isCollecting.value = true
+  try {
+    const created = await contentIdeaService.collect(collectClientId.value)
+    feedback.success(`Coleta concluída: ${created.length} nova(s) ideia(s).`)
+    showCollectPanel.value = false
+    await fetchIdeas()
+  } catch (e) {
+    feedback.error(e instanceof Error ? e.message : 'Erro na coleta de ideias.')
+  } finally {
+    isCollecting.value = false
+  }
+}
 
 const statusLabels: Record<IdeaStatus, string> = {
   SUGGESTED: 'Sugerida',
@@ -182,7 +181,7 @@ const priorityClasses: Record<IdeaPriority, string> = {
 const sortOptions: { id: SortMode; label: string }[] = [
   { id: 'ALL', label: 'Todos' },
   { id: 'RECENT', label: 'Mais recentes' },
-  { id: 'VIEWS', label: 'Mais views' },
+  { id: 'VIEWS', label: 'Mais engajamento' },
 ]
 
 const clientOptions = computed(() => ['Todos', ...new Set(ideas.value.map((idea) => idea.client))])
@@ -237,12 +236,17 @@ function closeIdea() {
   activeIdeaId.value = null
 }
 
-function setIdeaStatus(id: number, status: IdeaStatus) {
-  ideas.value = ideas.value.map((idea) => (idea.id === id ? { ...idea, status } : idea))
+async function setIdeaStatus(id: number, status: IdeaStatus) {
+  try {
+    await contentIdeaService.updateStatus(id, status)
+    ideas.value = ideas.value.map((idea) => (idea.id === id ? { ...idea, status } : idea))
 
-  if (status === 'SAVED') feedback.success('Ideia salva na lista mockada.')
-  if (status === 'DISMISSED') feedback.info('Ideia descartada nesta prévia.')
-  if (status === 'CONVERTED') feedback.success('Ideia marcada como convertida em demanda.')
+    if (status === 'SAVED') feedback.success('Ideia salva.')
+    if (status === 'DISMISSED') feedback.info('Ideia descartada.')
+    if (status === 'CONVERTED') feedback.success('Demanda criada no board de produção.')
+  } catch {
+    feedback.error('Erro ao atualizar o status da ideia.')
+  }
 }
 
 function resetFilters() {
@@ -252,6 +256,8 @@ function resetFilters() {
   selectedStatus.value = 'Todos'
   sortMode.value = 'ALL'
 }
+
+onMounted(fetchIdeas)
 </script>
 
 <template>
@@ -263,24 +269,48 @@ function resetFilters() {
             <Lightbulb class="h-5 w-5" />
           </div>
           <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <h1 class="text-2xl font-bold text-gray-900">Ideias Virais</h1>
-              <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Demo</span>
-            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Ideias Virais</h1>
             <p class="text-sm text-gray-500">Inspire-se em ganchos de Reels e adapte para cada cliente.</p>
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          <Button variant="outline" class="gap-2">
-            <RefreshCw class="h-4 w-4" />
-            Atualizar mock
+          <Button variant="outline" class="gap-2" :disabled="isLoading" @click="fetchIdeas">
+            <RefreshCw :class="['h-4 w-4', isLoading ? 'animate-spin' : '']" />
+            Atualizar
           </Button>
-          <Button class="gap-2">
+          <Button class="gap-2" @click="openCollectPanel">
             <Sparkles class="h-4 w-4" />
             Nova coleta
           </Button>
         </div>
       </div>
+
+      <Card v-if="showCollectPanel" class="p-4">
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="min-w-[240px] flex-1">
+            <label class="mb-1 block text-xs font-semibold uppercase text-gray-500">
+              Cliente para coleta
+            </label>
+            <select
+              v-model="collectClientId"
+              class="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="" disabled>Selecione um cliente...</option>
+              <option v-for="client in clients" :key="client.id" :value="client.id">
+                {{ client.name }} — {{ client.niche }}
+              </option>
+            </select>
+          </div>
+          <Button class="gap-2" :disabled="isCollecting" @click="runCollect">
+            <Loader2 v-if="isCollecting" class="h-4 w-4 animate-spin" />
+            <Sparkles v-else class="h-4 w-4" />
+            {{ isCollecting ? 'Coletando... (pode levar minutos)' : 'Iniciar coleta' }}
+          </Button>
+        </div>
+        <p class="mt-2 text-xs text-gray-400">
+          A coleta busca posts virais do nicho na Apify e usa IA para gerar até 5 ideias adaptadas ao cliente.
+        </p>
+      </Card>
 
       <div class="flex flex-wrap gap-2">
         <button
@@ -361,21 +391,30 @@ function resetFilters() {
           <p class="text-xs text-gray-400">Clique no card para abrir a demanda</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
-          <IdeaCard
-            v-for="idea in filteredIdeas"
-            :key="idea.id"
-            :idea="idea"
-            :status-label="statusLabels[idea.status]"
-            @click="openIdea(idea.id)"
-          />
-        </div>
-
-        <Card v-if="filteredIdeas.length === 0" class="p-8 text-center">
-          <Lightbulb class="mx-auto mb-2 h-8 w-8 text-gray-300" />
-          <p class="text-sm font-semibold text-gray-700">Nenhuma ideia encontrada.</p>
-          <p class="mt-1 text-sm text-gray-500">Ajuste os filtros para visualizar outros exemplos mockados.</p>
+        <Card v-if="isLoading" class="p-8 text-center">
+          <Loader2 class="mx-auto mb-2 h-8 w-8 animate-spin text-gray-300" />
+          <p class="text-sm font-semibold text-gray-700">Carregando ideias...</p>
         </Card>
+
+        <template v-else>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+            <IdeaCard
+              v-for="idea in filteredIdeas"
+              :key="idea.id"
+              :idea="idea"
+              :status-label="statusLabels[idea.status]"
+              @click="openIdea(idea.id)"
+            />
+          </div>
+
+          <Card v-if="filteredIdeas.length === 0" class="p-8 text-center">
+            <Lightbulb class="mx-auto mb-2 h-8 w-8 text-gray-300" />
+            <p class="text-sm font-semibold text-gray-700">Nenhuma ideia encontrada.</p>
+            <p class="mt-1 text-sm text-gray-500">
+              Use "Nova coleta" para buscar tendências virais e gerar ideias com IA.
+            </p>
+          </Card>
+        </template>
       </section>
     </div>
 
