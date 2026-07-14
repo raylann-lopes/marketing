@@ -45,7 +45,9 @@ const feedback = useFeedback()
 const searchTerm = ref('')
 const selectedClient = ref('Todos')
 const selectedNiche = ref('Todos')
-const selectedStatus = ref<IdeaStatus | 'Todos'>('Todos')
+// Abre a página listando apenas as sugestões novas — salvas/descartadas/
+// convertidas ficam acessíveis pelo filtro de status
+const selectedStatus = ref<IdeaStatus | 'Todos'>('SUGGESTED')
 const sortMode = ref<SortMode>('ALL')
 const activeIdeaId = ref<number | null>(null)
 
@@ -253,7 +255,8 @@ function resetFilters() {
   searchTerm.value = ''
   selectedClient.value = 'Todos'
   selectedNiche.value = 'Todos'
-  selectedStatus.value = 'Todos'
+  // Volta ao padrão da página (sugestões novas), não a "Todos"
+  selectedStatus.value = 'SUGGESTED'
   sortMode.value = 'ALL'
 }
 
@@ -409,9 +412,13 @@ onMounted(fetchIdeas)
 
           <Card v-if="filteredIdeas.length === 0" class="p-8 text-center">
             <Lightbulb class="mx-auto mb-2 h-8 w-8 text-gray-300" />
-            <p class="text-sm font-semibold text-gray-700">Nenhuma ideia encontrada.</p>
+            <p class="text-sm font-semibold text-gray-700">
+              {{ selectedStatus === 'SUGGESTED' && ideas.length > 0 ? 'Nenhuma sugestão nova.' : 'Nenhuma ideia encontrada.' }}
+            </p>
             <p class="mt-1 text-sm text-gray-500">
-              Use "Nova coleta" para buscar tendências virais e gerar ideias com IA.
+              {{ selectedStatus === 'SUGGESTED' && ideas.length > 0
+                ? 'Todas as ideias já foram tratadas — veja salvas e convertidas no filtro de status.'
+                : 'Use "Nova coleta" para buscar tendências virais e gerar ideias com IA.' }}
             </p>
           </Card>
         </template>

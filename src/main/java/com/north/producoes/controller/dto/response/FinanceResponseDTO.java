@@ -12,6 +12,7 @@ public record FinanceResponseDTO(
         BigDecimal value,
         String status,
         LocalDateTime expirationDate,
+        LocalDateTime paymentDate,
         String type
 ) {
     public static FinanceResponseDTO from(FinanceEntity entity) {
@@ -22,6 +23,7 @@ public record FinanceResponseDTO(
                 entity.getValue(),
                 entity.getStatus().name(),
                 entity.getExpirationDate(),
+                entity.getPaymentDate(),
                 entity.getType() != null ? entity.getType().name() : null
         );
     }

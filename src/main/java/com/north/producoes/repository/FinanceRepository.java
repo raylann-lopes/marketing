@@ -53,4 +53,20 @@ public interface FinanceRepository extends JpaRepository<FinanceEntity, Long> {
     Set<Long> findClientIdsWithEntryInMonth(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
+
+    /**
+     * Listagem com filtros opcionais para a tela de financeiro. O intervalo é
+     * sempre aplicado (o service usa limites sentinela quando não informado)
+     * para evitar parâmetros null de data no JPQL.
+     */
+    @Query("""
+            SELECT f FROM FinanceEntity f JOIN FETCH f.client
+            WHERE (:status IS NULL OR f.status = :status)
+              AND f.expirationDate BETWEEN :start AND :end
+            ORDER BY f.expirationDate ASC
+            """)
+    List<FinanceEntity> findFiltered(
+            @Param("status") FinanceStatusEnum status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }

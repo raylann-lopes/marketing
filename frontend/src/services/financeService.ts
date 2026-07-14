@@ -15,31 +15,49 @@ export type ForecastClient = {
 export type ForecastMonth = { monthKey: string; monthLabel: string; expected: number; received: number; pending: number }
 export type ForecastData = { clients: ForecastClient[]; months: ForecastMonth[]; monthlyTotal: number; annualTotal: number; year: number }
 
+// Espelha FinanceResponseDTO do backend
 export type FinanceRecord = {
   id?: string | number
-  client: string | number
+  clientId: number
   description: string
   value: number
   status: FinanceStatus | string
   expirationDate: string
+  paymentDate?: string | null
   type?: FinanceType | string | null
 }
 
+export type FinanceFilters = {
+  status?: FinanceStatus
+  from?: string // yyyy-MM-dd
+  to?: string // yyyy-MM-dd
+}
+
+// Espelha FinanceRequestDTO do backend: clientId plano, datas como
+// YYYY-MM-DD (LocalDate) e sem campo user (vem da autenticação)
 export type FinancePayload = {
-  id?: string | number
-  client: { id: number }
-  user: { id: number | null }
+  clientId: number
   description: string
   value: number
   status: FinanceStatus | string
   expirationDate: string
-  paymentDate: string
+  paymentDate?: string | null
   type?: FinanceType | string | null
 }
 
 export const financeService = {
-  async getAll(): Promise<FinanceRecord[]> {
-    return apiFetch<FinanceRecord[]>('/api/finance')
+  /**
+   * Lista registros; filtros são aplicados no backend quando informados.
+   * Hoje a tela filtra localmente (volume pequeno) — quando crescer, basta
+   * passar os filtros aqui e refazer o fetch a cada mudança.
+   */
+  async getAll(filters?: FinanceFilters): Promise<FinanceRecord[]> {
+    const params = new URLSearchParams()
+    if (filters?.status) params.set('status', filters.status)
+    if (filters?.from) params.set('from', filters.from)
+    if (filters?.to) params.set('to', filters.to)
+    const query = params.size > 0 ? `?${params}` : ''
+    return apiFetch<FinanceRecord[]>(`/api/finance${query}`)
   },
 
   // FILTRO PELO ID DO CLIENTE (FK) - Conforme solicitado!
@@ -48,21 +66,21 @@ export const financeService = {
   },
 
   async create(data: FinancePayload): Promise<FinanceRecord> {
-    return apiFetch<FinanceRecord>('/api/finance/create', {
+    return apiFetch<FinanceRecord>('/api/finance', {
       method: 'POST',
       body: JSON.stringify(data)
     })
   },
 
   async update(id: string | number, data: FinancePayload): Promise<FinanceRecord> {
-    return apiFetch<FinanceRecord>(`/api/finance/update/${id}`, {
-      method: 'PATCH',
+    return apiFetch<FinanceRecord>(`/api/finance/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data)
     })
   },
 
   async delete(id: string | number): Promise<void> {
-    return apiFetch<void>(`/api/finance/delete/${id}`, {
+    return apiFetch<void>(`/api/finance/${id}`, {
       method: 'DELETE'
     })
   },

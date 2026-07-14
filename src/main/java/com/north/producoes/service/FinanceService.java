@@ -36,6 +36,23 @@ public class FinanceService {
         return financeRepository.findAll();
     }
 
+    // Limites sentinela para o intervalo de vencimento quando não informado —
+    // evita parâmetro de data null no JPQL (problemático no Postgres)
+    private static final LocalDateTime MIN_DATE = LocalDateTime.of(1970, 1, 1, 0, 0);
+    private static final LocalDateTime MAX_DATE = LocalDateTime.of(2999, 12, 31, 23, 59);
+
+    /**
+     * Listagem com filtros opcionais de status e intervalo de vencimento.
+     * Todos os parâmetros são opcionais; sem nenhum, equivale ao findAll.
+     */
+    public List<FinanceEntity> findFiltered(FinanceStatusEnum status,
+                                            java.time.LocalDate from,
+                                            java.time.LocalDate to) {
+        LocalDateTime start = from != null ? from.atStartOfDay() : MIN_DATE;
+        LocalDateTime end = to != null ? to.atTime(23, 59, 59) : MAX_DATE;
+        return financeRepository.findFiltered(status, start, end);
+    }
+
     public List<FinanceEntity> findByStatus(FinanceStatusEnum status) {
         return financeRepository.findByStatus(status);
     }

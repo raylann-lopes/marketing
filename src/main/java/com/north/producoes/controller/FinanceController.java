@@ -37,9 +37,13 @@ public class FinanceController implements FinanceApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<List<FinanceResponseDTO>> findAll() {
+    public ResponseEntity<List<FinanceResponseDTO>> findAll(
+            @RequestParam(required = false) FinanceStatusEnum status,
+            @RequestParam(required = false) java.time.LocalDate from,
+            @RequestParam(required = false) java.time.LocalDate to) {
         return ResponseEntity.ok(
-                financeService.findAll().stream().map(FinanceResponseDTO::from).toList()
+                financeService.findFiltered(status, from, to).stream()
+                        .map(FinanceResponseDTO::from).toList()
         );
     }
 
