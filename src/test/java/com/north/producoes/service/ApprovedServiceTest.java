@@ -51,6 +51,23 @@ class ApprovedServiceTest {
     private ApprovedService approvedService;
 
     @Nested
+    @DisplayName("findByPostId() com usuário")
+    class FindByPostIdShared {
+        @Test
+        @DisplayName("role USER lê aprovação de post de outro membro (board compartilhado)")
+        void userReadsApprovalOfAnyPost() {
+            UserEntity user = new UserEntity();
+            user.setId(7L);
+            user.setRole(UserRoleEnum.USER);
+            when(approveRepository.findByPostId(10L)).thenReturn(List.of(approval(5L, post(10L))));
+
+            var result = approvedService.findByPostId(10L, user);
+
+            assertThat(result.id()).isEqualTo(5L);
+        }
+    }
+
+    @Nested
     @DisplayName("findById()")
     class FindById {
         @Test

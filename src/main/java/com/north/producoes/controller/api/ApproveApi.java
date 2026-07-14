@@ -27,7 +27,7 @@ import java.util.List;
 public interface ApproveApi {
 
     @GetMapping("/all")
-    @Operation(summary = "Lista todas as aprovações (somente ADMIN)")
+    @Operation(summary = "Lista todas as aprovações do board (equipe completa)")
     @ApiResponse(responseCode = "200", description = "Aprovações retornadas com sucesso")
     ResponseEntity<List<ApproveResponseDTO>> findAll();
 

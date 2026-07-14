@@ -38,7 +38,7 @@ class PostControllerTest {
     private PostController postController;
 
     @Test
-    @DisplayName("deve retornar todos os posts")
+    @DisplayName("deve retornar todos os posts do board para a equipe")
     void shouldReturnAllPosts() {
         // Arrange
         when(postService.findAllPost()).thenReturn(List.of(post(10L)));

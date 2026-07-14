@@ -28,8 +28,8 @@ public class ApproveController implements ApproveApi {
 
     @Override
     @GetMapping("/all")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<ApproveResponseDTO>> findAll() {
+        // Board compartilhado: toda a equipe vê as aprovações
         return ResponseEntity.ok(approvedService.findAll());
     }
 
@@ -49,9 +49,10 @@ public class ApproveController implements ApproveApi {
         return ResponseEntity.ok(approvedService.findByStatus(status));
     }
 
+    // Preparar/editar aprovação faz parte do fluxo de produção do designer
+    // (role USER) — a decisão de aprovar/rejeitar continua restrita a ADMIN
     @Override
     @PostMapping("/save")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ApproveResponseDTO> saveApprove(
             @Valid @RequestBody ApproveRequestDTO approve) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -60,7 +61,6 @@ public class ApproveController implements ApproveApi {
 
     @Override
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<ApproveResponseDTO> updateApprove(
             @PathVariable Long id,
             @Valid @RequestBody ApproveRequestDTO approve) {

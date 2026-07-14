@@ -11,7 +11,6 @@ import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import com.north.producoes.entity.enums.PostStatusEnum;
-import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.PostRepository;
@@ -242,18 +241,16 @@ public class ApprovedService {
      */
     @Transactional(readOnly = true)
     public ApproveResponseDTO findByPostId(Long postId, UserEntity currentUser) {
-        ApproveEntity approve = approveRepository.findByPostId(postId).stream()
+        if (currentUser == null) {
+            throw new AccessDeniedException("Usuário não autenticado");
+        }
+        // Board compartilhado: qualquer membro autenticado da equipe pode
+        // consultar aprovações de qualquer post (produção é colaborativa)
+        return approveRepository.findByPostId(postId).stream()
                 .findFirst()
+                .map(ApproveResponseDTO::from)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Nenhuma aprovação encontrada para o post: " + postId));
-
-        if (currentUser.getRole() != UserRoleEnum.ADMIN) {
-            boolean owns = postRepository.existsByIdAndUserId(postId, currentUser.getId());
-            if (!owns) {
-                throw new AccessDeniedException("Sem permissão para acessar esta aprovação.");
-            }
-        }
-        return ApproveResponseDTO.from(approve);
     }
 
     /** @deprecated Usar findByPostId(postId, currentUser) com verificação de ownership */

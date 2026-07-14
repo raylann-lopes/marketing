@@ -3,7 +3,9 @@ package com.north.producoes.controller;
 import com.north.producoes.controller.dto.request.ClientRequestDTO;
 import com.north.producoes.controller.dto.response.ClientResponseDTO;
 import com.north.producoes.entity.ClientEntity;
+import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
+import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.service.ClientService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,17 +39,39 @@ class ClientControllerTest {
     class Queries {
 
         @Test
-        @DisplayName("deve retornar todos os clientes")
+        @DisplayName("ADMIN vê todos os clientes com dados completos")
         void shouldReturnAllClients() {
             when(clientService.findAllClient()).thenReturn(List.of(client(1L)));
 
-            ResponseEntity<List<ClientResponseDTO>> response = clientController.findAll();
+            ResponseEntity<List<ClientResponseDTO>> response =
+                    clientController.findAll(boardUser(UserRoleEnum.ADMIN));
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody())
                     .hasSize(1)
                     .extracting(ClientResponseDTO::id)
                     .containsExactly(1L);
+        }
+
+        @Test
+        @DisplayName("role USER recebe clientes sem dados financeiros")
+        void userReceivesClientsWithoutFinancials() {
+            when(clientService.findAllClient()).thenReturn(List.of(client(1L)));
+
+            ResponseEntity<List<ClientResponseDTO>> response =
+                    clientController.findAll(boardUser(UserRoleEnum.USER));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).hasSize(1);
+            assertThat(response.getBody().getFirst().monthlyValue()).isNull();
+            assertThat(response.getBody().getFirst().name()).isNotBlank();
+        }
+
+        private UserEntity boardUser(UserRoleEnum role) {
+            UserEntity user = new UserEntity();
+            user.setId(99L);
+            user.setRole(role);
+            return user;
         }
 
         @Test

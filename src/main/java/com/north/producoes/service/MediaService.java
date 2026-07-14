@@ -9,7 +9,6 @@ import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
 import com.north.producoes.entity.enums.PostStatusEnum;
-import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.PostRepository;
@@ -135,11 +134,8 @@ public class MediaService {
 
         if (user == null) throw new AccessDeniedException("Usuário não autenticado");
 
-        if (user.getRole() == UserRoleEnum.ADMIN) return post;
-
-        if (!postRepository.existsByIdAndUserId(postId, user.getId())) {
-            throw new AccessDeniedException("Sem permissão para acessar este post");
-        }
+        // Board compartilhado: o designer (role USER) produz arte para posts
+        // criados por qualquer membro da equipe
         return post;
     }
 }

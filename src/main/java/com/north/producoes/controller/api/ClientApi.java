@@ -26,9 +26,10 @@ import java.util.List;
 public interface ClientApi {
 
     @GetMapping
-    @Operation(summary = "Lista todos os clientes")
+    @Operation(summary = "Lista todos os clientes — role USER recebe sem dados financeiros")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    ResponseEntity<List<ClientResponseDTO>> findAll();
+    ResponseEntity<List<ClientResponseDTO>> findAll(
+            @Parameter(hidden = true) @AuthenticationPrincipal UserEntity currentUser);
 
     @GetMapping("/email/{email}")
     @Operation(summary = "Busca cliente por email")

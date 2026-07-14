@@ -79,7 +79,6 @@ class MediaServiceTest {
             PostEntity post = post(10L, client(1L), user(2L, UserRoleEnum.USER));
             UserEntity user = user(2L, UserRoleEnum.USER);
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
-            when(postRepository.existsByIdAndUserId(10L, 2L)).thenReturn(true);
             when(s3Service.buildPublicUploadKey(1L, 10L, "Arte Final.png"))
                     .thenReturn("public/posts/1/10/arte-final.png");
             when(s3Service.generateUploadUrl("public/posts/1/10/arte-final.png", "image/png"))
@@ -139,7 +138,6 @@ class MediaServiceTest {
                     10L, " public/posts/1/10/art.png ", "Arte Final", null);
 
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
-            when(postRepository.existsByIdAndUserId(10L, 2L)).thenReturn(true);
             when(approveRepository.findByPostId(10L)).thenReturn(List.of());
             when(s3Service.isPublicKey("public/posts/1/10/art.png")).thenReturn(true);
             when(approveRepository.save(any(ApproveEntity.class))).thenAnswer(inv -> {
@@ -173,7 +171,6 @@ class MediaServiceTest {
             PostEntity post = post(10L, client(1L), user);
             MediaUploadCompleteRequestDTO request = new MediaUploadCompleteRequestDTO(10L, "private/art.png", "Arte", null);
             when(postRepository.findById(10L)).thenReturn(Optional.of(post));
-            when(postRepository.existsByIdAndUserId(10L, 2L)).thenReturn(true);
             when(approveRepository.findByPostId(10L)).thenReturn(List.of());
             when(s3Service.isPublicKey("private/art.png")).thenReturn(false);
             when(s3Service.getPublicPrefix()).thenReturn("public/posts");
