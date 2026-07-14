@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Plus, CheckCircle, Pencil, Trash2, ChevronLeft, ChevronRight, TrendingUp, ChevronDown } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { Plus, CheckCircle, Pencil, Trash2, ChevronLeft, ChevronRight, TrendingUp, ChevronDown, RotateCcw } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -11,7 +11,6 @@ import FinanceModal from '@/components/finance/FinanceModal.vue'
 
 import { financeService, type FinancePayload, type FinanceRecord, type ForecastData, type FinanceType } from '@/services/financeService'
 import { clientService, type Client } from '@/services/clientService'
-import { getCurrentUserId } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
 import { z } from 'zod'
@@ -28,8 +27,10 @@ const feedback = useFeedback()
 
 const periodDropdownRef = ref<HTMLElement | null>(null)
 const typeDropdownRef = ref<HTMLElement | null>(null)
+const statusDropdownRef = ref<HTMLElement | null>(null)
 const showPeriodDropdown = ref(false)
 const showTypeDropdown = ref(false)
+const showStatusDropdown = ref(false)
 
 const periodOptions = [
   { key: 'open',   label: 'Em Aberto' },
@@ -45,12 +46,21 @@ const typeOptions = [
   { key: 'VARIABLE_EXPENSE', label: 'Despesa Variável' },
 ] as const
 
+const statusOptions = [
+  { key: 'PENDING', label: 'Pendentes' },
+  { key: 'PAY',     label: 'Pagas' },
+  { key: 'all',     label: 'Todos os Status' },
+] as const
+
 function handleClickOutside(event: MouseEvent) {
   if (periodDropdownRef.value && !periodDropdownRef.value.contains(event.target as Node)) {
     showPeriodDropdown.value = false
   }
   if (typeDropdownRef.value && !typeDropdownRef.value.contains(event.target as Node)) {
     showTypeDropdown.value = false
+  }
+  if (statusDropdownRef.value && !statusDropdownRef.value.contains(event.target as Node)) {
+    showStatusDropdown.value = false
   }
 }
 
@@ -61,9 +71,17 @@ const forecastError = ref('')
 const forecastYear = ref(new Date().getFullYear())
 const transactionFilter = ref<'open' | 'future' | 'all'>('open')
 const typeFilter = ref<FinanceType | 'all'>('all')
+const statusFilter = ref<'PENDING' | 'PAY' | 'all'>('PENDING')
+const dateFrom = ref('')
+const dateTo = ref('')
 
 const currentPage = ref(1)
 const itemsPerPage = 10
+
+function clearDateFilter() {
+  dateFrom.value = ''
+  dateTo.value = ''
+}
 
 const baseTransactions = computed(() => {
   const now = new Date()
@@ -71,7 +89,7 @@ const baseTransactions = computed(() => {
   const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
   return transactions.value.filter(t => {
-    if (t.status === 'PAY') return false
+    const statusOk = statusFilter.value === 'all' || t.status === statusFilter.value
     const exp = new Date(t.expirationDate)
     const periodOk = transactionFilter.value === 'open'
       ? exp <= endOfCurrentMonth
@@ -79,16 +97,26 @@ const baseTransactions = computed(() => {
         ? exp > endOfCurrentMonth
         : true
     const typeOk = typeFilter.value === 'all' || t.type === typeFilter.value
-    return periodOk && typeOk
+    // Intervalo de vencimento (datas YYYY-MM-DD comparadas como string local)
+    const expDay = t.expirationDate?.split('T')[0] ?? ''
+    const dateOk = (!dateFrom.value || expDay >= dateFrom.value)
+      && (!dateTo.value || expDay <= dateTo.value)
+    return statusOk && periodOk && typeOk && dateOk
   }).sort((a, b) => {
     // Vencidas primeiro, depois por data
     const expA = new Date(a.expirationDate)
     const expB = new Date(b.expirationDate)
-    const aOverdue = expA < startOfCurrentMonth
-    const bOverdue = expB < startOfCurrentMonth
+    const aOverdue = expA < startOfCurrentMonth && a.status !== 'PAY'
+    const bOverdue = expB < startOfCurrentMonth && b.status !== 'PAY'
     if (aOverdue !== bOverdue) return aOverdue ? -1 : 1
     return expA.getTime() - expB.getTime()
   })
+})
+
+// Qualquer mudança de filtro volta para a primeira página — sem isso a
+// página atual pode ficar além do total e a lista aparece vazia
+watch([transactionFilter, typeFilter, statusFilter, dateFrom, dateTo, search], () => {
+  currentPage.value = 1
 })
 
 const filteredTransactions = computed(() => {
@@ -97,12 +125,7 @@ const filteredTransactions = computed(() => {
   const term = search.value.toLowerCase()
   return base.filter(t => {
     const descriptionMatch = t.description.toLowerCase().includes(term)
-    const tAny = t as Record<string, unknown>
-    const clientRaw = tAny.client
-    const clientId = typeof clientRaw === 'object' && clientRaw !== null
-      ? (clientRaw as Record<string, unknown>)?.['id'] as string | number | undefined
-      : String(t.client) as string | number | undefined
-    const clientName = getClientName(clientId).toLowerCase()
+    const clientName = getClientName(getClientId(t)).toLowerCase()
     return descriptionMatch || clientName.includes(term)
   })
 })
@@ -134,7 +157,9 @@ function getClientName(clientId: string | number | undefined) {
 }
 
 function getClientId(record: FinanceRecord): number {
-  const raw = (record as { client: { id?: string | number } | string | number }).client
+  if (record.clientId != null) return Number(record.clientId)
+  // Fallback para registros no formato antigo (client aninhado)
+  const raw = (record as unknown as { client?: { id?: string | number } | string | number }).client
   if (typeof raw === 'object' && raw !== null && raw.id != null) {
     return Number(raw.id)
   }
@@ -188,9 +213,8 @@ function openFinanceModal() {
 
 function openEditTransactionModal(t: FinanceRecord) {
   transactionToEdit.value = t
-  const rawClientId = (t as unknown as { client: { id: number } }).client?.id ?? t.client
   editTransaction.value = {
-    client: String(rawClientId),
+    client: String(getClientId(t)),
     description: t.description,
     value: t.value,
     status: t.status,
@@ -215,8 +239,14 @@ async function fetchTransactions() {
     transactions.value = list
     clients.value = Array.isArray(clientsData) ? clientsData : (((clientsData as unknown) as ApiResponse<Client>).data || [])
 
-    incomeTotal.value = list.filter((t: FinanceRecord) => t.value > 0).reduce((acc: number, t: FinanceRecord) => acc + t.value, 0)
-    expenseTotal.value = Math.abs(list.filter((t: FinanceRecord) => t.value < 0).reduce((acc: number, t: FinanceRecord) => acc + t.value, 0))
+    // Classifica pelo tipo (receita/despesa) quando informado; registros
+    // antigos sem tipo caem no critério do sinal do valor
+    const isRevenue = (t: FinanceRecord) =>
+      t.type ? String(t.type).includes('REVENUE') : t.value > 0
+    incomeTotal.value = list.filter(isRevenue)
+      .reduce((acc: number, t: FinanceRecord) => acc + Math.abs(t.value), 0)
+    expenseTotal.value = list.filter((t: FinanceRecord) => !isRevenue(t))
+      .reduce((acc: number, t: FinanceRecord) => acc + Math.abs(t.value), 0)
     netProfit.value = incomeTotal.value - expenseTotal.value
   } catch (e: unknown) {
     error.value = `Erro ao carregar dados: ${getErrorMessage(e)}`
@@ -239,17 +269,16 @@ async function handleCreateTransaction() {
 
   isSubmitting.value = true
   try {
-    const payload = {
-      client: { id: Number(newTransaction.value.client) },
-      user: { id: getCurrentUserId() },
+    const payload: FinancePayload = {
+      clientId: Number(newTransaction.value.client),
       description: newTransaction.value.description,
       value: newTransaction.value.value,
       status: newTransaction.value.status,
-      expirationDate: newTransaction.value.expirationDate + "T00:00:00",
-      paymentDate: newTransaction.value.expirationDate + "T00:00:00",
+      expirationDate: newTransaction.value.expirationDate,
+      paymentDate: newTransaction.value.status === 'PAY' ? newTransaction.value.expirationDate : null,
       type: newTransaction.value.type || null
     }
-    await financeService.create(payload as FinancePayload)
+    await financeService.create(payload)
     await fetchTransactions()
     isModalOpen.value = false
     feedback.success('Transação registrada com sucesso.')
@@ -274,18 +303,16 @@ async function handleEditTransaction() {
 
   isSubmitting.value = true
   try {
-    const payload = {
-      id: transactionToEdit.value!.id,
-      client: { id: Number(editTransaction.value.client) },
-      user: { id: getCurrentUserId() },
+    const payload: FinancePayload = {
+      clientId: Number(editTransaction.value.client),
       description: editTransaction.value.description,
       value: editTransaction.value.value,
       status: editTransaction.value.status,
-      expirationDate: editTransaction.value.expirationDate + "T00:00:00",
-      paymentDate: editTransaction.value.expirationDate + "T00:00:00",
+      expirationDate: editTransaction.value.expirationDate,
+      paymentDate: editTransaction.value.status === 'PAY' ? editTransaction.value.expirationDate : null,
       type: editTransaction.value.type || null
     }
-    await financeService.update(transactionToEdit.value!.id!, payload as FinancePayload)
+    await financeService.update(transactionToEdit.value!.id!, payload)
     await fetchTransactions()
     isEditModalOpen.value = false
     feedback.success('Transação atualizada com sucesso.')
@@ -305,17 +332,46 @@ async function handleMarkAsPaid(transaction: FinanceRecord) {
   if (!confirmed) return
 
   try {
-    const payload = {
-      ...transaction,
+    const payload: FinancePayload = {
+      clientId: getClientId(transaction),
+      description: transaction.description,
+      value: transaction.value,
       status: 'PAY',
-      client: { id: getClientId(transaction) },
-      user: { id: getCurrentUserId() }
+      expirationDate: transaction.expirationDate?.split('T')[0] ?? '',
+      paymentDate: new Date().toISOString().split('T')[0],
+      type: transaction.type || null
     }
-    await financeService.update(transaction.id!, payload as FinancePayload)
+    await financeService.update(transaction.id!, payload)
     await fetchTransactions()
     feedback.success('Conta marcada como paga.')
   } catch (e: unknown) {
     feedback.error(`Erro ao atualizar: ${getErrorMessage(e)}`)
+  }
+}
+
+async function handleUndoPayment(transaction: FinanceRecord) {
+  const confirmed = await feedback.confirm({
+    title: 'Desfazer recebimento',
+    message: 'Deseja voltar esta conta para pendente?',
+    confirmText: 'Desfazer',
+  })
+  if (!confirmed) return
+
+  try {
+    const payload: FinancePayload = {
+      clientId: getClientId(transaction),
+      description: transaction.description,
+      value: transaction.value,
+      status: 'PENDING',
+      expirationDate: transaction.expirationDate?.split('T')[0] ?? '',
+      paymentDate: null,
+      type: transaction.type || null
+    }
+    await financeService.update(transaction.id!, payload)
+    await fetchTransactions()
+    feedback.success('Conta voltou para pendente.')
+  } catch (e: unknown) {
+    feedback.error(`Erro ao desfazer: ${getErrorMessage(e)}`)
   }
 }
 
@@ -437,10 +493,17 @@ function getTypeLabel(type?: string | null) {
 }
 
 function isOverdue(t: FinanceRecord): boolean {
+  if (t.status === 'PAY') return false
   const now = new Date()
   const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const exp = new Date(t.expirationDate)
   return exp < startOfCurrentMonth
+}
+
+function statusBadge(t: FinanceRecord): { variant: 'success' | 'destructive' | 'warning'; label: string } {
+  if (t.status === 'PAY') return { variant: 'success', label: 'PAGA' }
+  if (isOverdue(t)) return { variant: 'destructive', label: 'VENCIDA' }
+  return { variant: 'warning', label: 'PENDENTE' }
 }
 </script>
 
@@ -612,12 +675,61 @@ function isOverdue(t: FinanceRecord): boolean {
           <h2 class="font-semibold text-gray-900">Contas a Receber</h2>
           <p class="text-xs text-gray-400 mt-0.5">Mensalidades pendentes dos clientes ativos</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Filtro de vencimento (intervalo) -->
+          <div class="flex items-center gap-1.5">
+            <input
+              v-model="dateFrom"
+              type="date"
+              title="Vencimento a partir de"
+              class="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs font-medium text-gray-600 focus:border-primary focus:outline-none"
+            />
+            <span class="text-xs text-gray-400">até</span>
+            <input
+              v-model="dateTo"
+              type="date"
+              title="Vencimento até"
+              class="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs font-medium text-gray-600 focus:border-primary focus:outline-none"
+            />
+            <button
+              v-if="dateFrom || dateTo"
+              class="px-2 py-1.5 text-xs font-semibold text-gray-400 hover:text-red-500 transition-colors"
+              title="Limpar intervalo de datas"
+              @click="clearDateFilter"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Filtro de status -->
+          <div class="relative" ref="statusDropdownRef">
+            <button
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              @click.stop="showStatusDropdown = !showStatusDropdown; showPeriodDropdown = false; showTypeDropdown = false"
+            >
+              {{ statusOptions.find(o => o.key === statusFilter)?.label }}
+              <ChevronDown class="w-3 h-3" />
+            </button>
+            <div
+              v-if="showStatusDropdown"
+              class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[140px] py-1"
+            >
+              <button
+                v-for="opt in statusOptions"
+                :key="opt.key"
+                :class="['w-full text-left px-4 py-2 text-xs font-semibold transition-colors', statusFilter === opt.key ? 'text-primary bg-indigo-50' : 'text-gray-600 hover:bg-gray-50']"
+                @click="statusFilter = opt.key as 'PENDING' | 'PAY' | 'all'; showStatusDropdown = false"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+
           <!-- Filtro de período -->
           <div class="relative" ref="periodDropdownRef">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              @click.stop="showPeriodDropdown = !showPeriodDropdown; showTypeDropdown = false"
+              @click.stop="showPeriodDropdown = !showPeriodDropdown; showTypeDropdown = false; showStatusDropdown = false"
             >
               {{ periodOptions.find(o => o.key === transactionFilter)?.label }}
               <ChevronDown class="w-3 h-3" />
@@ -630,7 +742,7 @@ function isOverdue(t: FinanceRecord): boolean {
                 v-for="opt in periodOptions"
                 :key="opt.key"
                 :class="['w-full text-left px-4 py-2 text-xs font-semibold transition-colors', transactionFilter === opt.key ? 'text-primary bg-indigo-50' : 'text-gray-600 hover:bg-gray-50']"
-                @click="transactionFilter = opt.key as 'open' | 'future' | 'all'; showPeriodDropdown = false; currentPage = 1"
+                @click="transactionFilter = opt.key as 'open' | 'future' | 'all'; showPeriodDropdown = false"
               >
                 {{ opt.label }}
               </button>
@@ -641,7 +753,7 @@ function isOverdue(t: FinanceRecord): boolean {
           <div class="relative" ref="typeDropdownRef">
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              @click.stop="showTypeDropdown = !showTypeDropdown; showPeriodDropdown = false"
+              @click.stop="showTypeDropdown = !showTypeDropdown; showPeriodDropdown = false; showStatusDropdown = false"
             >
               {{ typeOptions.find(o => o.key === typeFilter)?.label }}
               <ChevronDown class="w-3 h-3" />
@@ -654,7 +766,7 @@ function isOverdue(t: FinanceRecord): boolean {
                 v-for="opt in typeOptions"
                 :key="opt.key"
                 :class="['w-full text-left px-4 py-2 text-xs font-semibold transition-colors', typeFilter === opt.key ? 'text-primary bg-indigo-50' : 'text-gray-600 hover:bg-gray-50']"
-                @click="typeFilter = opt.key as FinanceType | 'all'; showTypeDropdown = false; currentPage = 1"
+                @click="typeFilter = opt.key as FinanceType | 'all'; showTypeDropdown = false"
               >
                 {{ opt.label }}
               </button>
@@ -670,22 +782,23 @@ function isOverdue(t: FinanceRecord): boolean {
           <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Cliente</th>
           <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Tipo</th>
           <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Vencimento</th>
+          <th v-if="statusFilter !== 'PENDING'" class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Pago em</th>
           <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
           <th class="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Valor</th>
           <th class="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Ações</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-if="loading"><td colspan="7" class="text-center py-8">
+        <tr v-if="loading"><td :colspan="statusFilter !== 'PENDING' ? 8 : 7" class="text-center py-8">
           <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
         </td></tr>
-        <tr v-else-if="paginatedTransactions.length === 0"><td colspan="7" class="text-center py-8 text-gray-500 text-sm italic">
-          {{ transactionFilter === 'open' ? 'Nenhuma conta em aberto.' : transactionFilter === 'future' ? 'Nenhuma conta futura.' : 'Nenhuma transação encontrada.' }}
+        <tr v-else-if="paginatedTransactions.length === 0"><td :colspan="statusFilter !== 'PENDING' ? 8 : 7" class="text-center py-8 text-gray-500 text-sm italic">
+          {{ statusFilter === 'PAY' ? 'Nenhuma conta paga no período.' : transactionFilter === 'open' ? 'Nenhuma conta em aberto.' : transactionFilter === 'future' ? 'Nenhuma conta futura.' : 'Nenhuma transação encontrada.' }}
         </td></tr>
         <tr v-else v-for="t in paginatedTransactions" :key="t.id" :class="['border-b border-gray-50 transition-colors', isOverdue(t) ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-gray-50']">
           <td class="px-5 py-4 text-sm font-medium text-gray-800">{{ t.description }}</td>
           <td class="px-5 py-4 text-sm text-gray-500">
-            {{ getClientName((t as unknown as { client: { id: number } }).client?.id ?? t.client) }}
+            {{ getClientName(getClientId(t)) }}
           </td>
           <td class="px-5 py-4">
               <span
@@ -699,9 +812,12 @@ function isOverdue(t: FinanceRecord): boolean {
           <td :class="['px-5 py-4 text-sm', isOverdue(t) ? 'text-red-600 font-semibold' : 'text-gray-500']">
             {{ formatDate(t.expirationDate) }}
           </td>
+          <td v-if="statusFilter !== 'PENDING'" class="px-5 py-4 text-sm text-gray-500">
+            {{ t.status === 'PAY' && t.paymentDate ? formatDate(t.paymentDate) : '—' }}
+          </td>
           <td class="px-5 py-4">
-            <Badge :variant="isOverdue(t) ? 'destructive' : 'warning'">
-              {{ isOverdue(t) ? 'VENCIDA' : 'PENDENTE' }}
+            <Badge :variant="statusBadge(t).variant">
+              {{ statusBadge(t).label }}
             </Badge>
           </td>
           <td :class="['px-5 py-4 text-sm font-semibold text-right', t.value >= 0 ? 'text-green-600' : 'text-red-500']">
@@ -710,11 +826,20 @@ function isOverdue(t: FinanceRecord): boolean {
           <td class="px-5 py-4">
             <div class="flex items-center justify-center gap-2">
               <button
+                v-if="t.status !== 'PAY'"
                 class="p-1.5 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
                 title="Receber"
                 @click="handleMarkAsPaid(t)"
               >
                 <CheckCircle class="w-4 h-4" />
+              </button>
+              <button
+                v-else
+                class="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors"
+                title="Desfazer recebimento"
+                @click="handleUndoPayment(t)"
+              >
+                <RotateCcw class="w-4 h-4" />
               </button>
               <button
                 class="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
