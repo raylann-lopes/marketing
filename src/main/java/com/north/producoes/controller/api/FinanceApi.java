@@ -33,9 +33,16 @@ public interface FinanceApi {
             @RequestParam(required = false) Integer year);
 
     @GetMapping
-    @Operation(summary = "Lista todos os registros financeiros")
+    @Operation(summary = "Lista registros financeiros, com filtros opcionais de status "
+            + "e intervalo de vencimento (from/to no formato yyyy-MM-dd)")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
-    ResponseEntity<List<FinanceResponseDTO>> findAll();
+    ResponseEntity<List<FinanceResponseDTO>> findAll(
+            @Parameter(description = "Filtra por status (PENDING ou PAY)")
+            @RequestParam(required = false) FinanceStatusEnum status,
+            @Parameter(description = "Vencimento a partir de (yyyy-MM-dd)")
+            @RequestParam(required = false) java.time.LocalDate from,
+            @Parameter(description = "Vencimento até (yyyy-MM-dd)")
+            @RequestParam(required = false) java.time.LocalDate to);
 
     @GetMapping("/status/{status}")
     @Operation(summary = "Busca registros financeiros por status")

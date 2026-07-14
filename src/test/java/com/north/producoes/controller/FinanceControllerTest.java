@@ -38,9 +38,9 @@ class FinanceControllerTest {
     @Test
     @DisplayName("deve retornar todos os registros financeiros")
     void shouldReturnAllFinances() {
-        when(financeService.findAll()).thenReturn(List.of(finance(10L)));
+        when(financeService.findFiltered(null, null, null)).thenReturn(List.of(finance(10L)));
 
-        ResponseEntity<List<FinanceResponseDTO>> response = financeController.findAll();
+        ResponseEntity<List<FinanceResponseDTO>> response = financeController.findAll(null, null, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
