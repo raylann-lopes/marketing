@@ -2,6 +2,7 @@ package com.north.producoes.controller;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.north.producoes.controller.api.WhatsAppWebhookApi;
 import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.PostEntity;
 import com.north.producoes.entity.enums.ApproveStatusEnum;
@@ -44,7 +45,7 @@ import java.util.Set;
 @RequestMapping("/api/webhooks/whatsapp")
 @RequiredArgsConstructor
 @Slf4j
-public class WhatsAppWebhookController {
+public class WhatsAppWebhookController implements WhatsAppWebhookApi {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

@@ -156,4 +156,14 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(InvalidClientDataException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidClientData(InvalidClientDataException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "status", 400,
+                "error", "Bad Request",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
 }

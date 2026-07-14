@@ -1,5 +1,6 @@
 package com.north.producoes.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +24,9 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    @Value("${springdoc.swagger-ui.enabled:false}")
+    private boolean swaggerEnabled;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                     JwtFilter jwtFilter) throws Exception {
@@ -36,12 +40,16 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/refresh", "/error").permitAll()
-                        // Webhook da Evolution API — autenticação via secret na URL
-                        .requestMatchers("/api/webhooks/whatsapp/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> {
+                        // /error liberado para o erro real não virar 403 mascarado
+                        auth.requestMatchers("/api/auth/login", "/api/auth/refresh", "/error").permitAll()
+                            // Webhook da Evolution API — autenticação via secret na URL
+                            .requestMatchers("/api/webhooks/whatsapp/**").permitAll();
+                        if (swaggerEnabled) {
+                            auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll();
+                        }
+                        auth.anyRequest().authenticated();
+                })
 
                 // Registra o JwtFilter para rodar antes do filtro padrão do Spring Security
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -56,6 +64,7 @@ public class SecurityConfig {
         webConfig.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost",
+                "http://localhost:8080",
                 "https://agencianorth.com",
                 "https://www.agencianorth.com"
         ));

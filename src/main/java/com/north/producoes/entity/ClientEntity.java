@@ -1,12 +1,15 @@
 package com.north.producoes.entity;
 
 import com.north.producoes.entity.enums.ClientStatusEnum;
+import com.north.producoes.integration.apify.dto.ContentIdeaTermsDTO;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -60,4 +63,14 @@ public class ClientEntity {
 
     @OneToMany(mappedBy = "client")
     private List<PostEntity> posts;
+
+    @OneToMany(mappedBy = "client")
+    private List<ContentIdeaEntity> contentIdeas;
+
+    @OneToMany(mappedBy = "client")
+    private List<ContentIdeaRunsEntity> contentIdeaRuns;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ai_terms", columnDefinition = "jsonb")
+    private ContentIdeaTermsDTO aiTerms;
 }

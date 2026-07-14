@@ -55,8 +55,6 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
     /**
      * Busca aprovação PENDING vinculada ao grupo WhatsApp do cliente.
      * Usado pelo webhook para identificar a qual post o cliente está respondendo.
-     */
-    /**
      * Retorna List (não Optional) para evitar IncorrectResultSizeDataAccessException
      * quando existem múltiplas aprovações PENDING para o mesmo grupo.
      * O chamador usa stream().findFirst().

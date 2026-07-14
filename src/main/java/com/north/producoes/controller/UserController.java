@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.UserApi;
 import com.north.producoes.controller.dto.request.AdminUserUpdateRequestDTO;
 import com.north.producoes.controller.dto.request.ChangePasswordRequestDTO;
 import com.north.producoes.controller.dto.request.UpdateRoleRequestDTO;
@@ -23,10 +24,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @AllArgsConstructor
-public class UserController {
+public class UserController implements UserApi {
 
     private final UserService userService;
 
+    @Override
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<UserResponseDTO>> findAll(
@@ -39,12 +41,14 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
+    @Override
     @GetMapping("/email/{email}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<UserResponseDTO> findUserByEmail(@PathVariable String email) {
         return ResponseEntity.ok(UserResponseDTO.from(userService.findUserByEmail(email).orElseThrow()));
     }
 
+    @Override
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<UserResponseDTO> saveUser(@Valid @RequestBody UserRequestDTO request) {
@@ -56,6 +60,7 @@ public class UserController {
                 .body(UserResponseDTO.from(userService.saveUser(user)));
     }
 
+    @Override
     @PatchMapping("/id/{id}/role")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<UserResponseDTO> updateRole(@PathVariable Long id,
@@ -67,6 +72,7 @@ public class UserController {
         return ResponseEntity.ok(UserResponseDTO.from(userService.updateRole(id, request.role())));
     }
 
+    @Override
     @PutMapping("/id/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<UserResponseDTO> adminUpdateUser(@PathVariable Long id,
@@ -74,12 +80,14 @@ public class UserController {
         return ResponseEntity.ok(UserResponseDTO.from(userService.adminUpdateUser(id, request)));
     }
 
+    @Override
     @PatchMapping("/id/{id}/activate")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<UserResponseDTO> activateUserById(@PathVariable Long id) {
         return ResponseEntity.ok(UserResponseDTO.from(userService.activateUserById(id)));
     }
 
+    @Override
     @DeleteMapping("/id/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deactivateUserById(@PathVariable Long id,
@@ -91,6 +99,7 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Override
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> findMe(@AuthenticationPrincipal UserEntity user) {
         if (user == null) {
@@ -99,8 +108,10 @@ public class UserController {
         return ResponseEntity.ok(UserResponseDTO.from(user));
     }
 
+    @Override
     @PutMapping("/me")
-    public ResponseEntity<UserResponseDTO> updateMe(@Valid @RequestBody UserRequestDTO request, @AuthenticationPrincipal UserEntity user) {
+    public ResponseEntity<UserResponseDTO> updateMe(@Valid @RequestBody UserRequestDTO request,
+                                                    @AuthenticationPrincipal UserEntity user) {
         if (user == null) {
             throw new IllegalStateException("Usuário não autenticado");
         }
@@ -108,8 +119,10 @@ public class UserController {
                 userService.updateProfile(user.getId(), request)));
     }
 
+    @Override
     @PutMapping("/me/password")
-    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request, @AuthenticationPrincipal UserEntity user) {
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request,
+                                               @AuthenticationPrincipal UserEntity user) {
         if (user == null) {
             throw new IllegalStateException("Usuário não autenticado");
         }

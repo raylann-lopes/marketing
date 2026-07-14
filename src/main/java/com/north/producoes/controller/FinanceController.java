@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.FinanceApi;
 import com.north.producoes.controller.dto.request.FinanceRequestDTO;
 import com.north.producoes.controller.dto.response.FinanceResponseDTO;
 import com.north.producoes.controller.dto.response.ForecastResponseDTO;
@@ -22,10 +23,11 @@ import java.util.List;
 @RequestMapping("/api/finance")
 @AllArgsConstructor
 @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-public class FinanceController {
+public class FinanceController implements FinanceApi {
 
     private final FinanceService financeService;
 
+    @Override
     @GetMapping("/forecast")
     public ResponseEntity<ForecastResponseDTO> getForecast(
             @RequestParam(required = false) Integer year) {
@@ -33,6 +35,7 @@ public class FinanceController {
         return ResponseEntity.ok(financeService.getForecast(targetYear));
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<List<FinanceResponseDTO>> findAll() {
         return ResponseEntity.ok(
@@ -40,6 +43,7 @@ public class FinanceController {
         );
     }
 
+    @Override
     @GetMapping("/status/{status}")
     public ResponseEntity<List<FinanceResponseDTO>> findByStatus(@PathVariable FinanceStatusEnum status) {
         return ResponseEntity.ok(
@@ -47,6 +51,7 @@ public class FinanceController {
         );
     }
 
+    @Override
     @GetMapping("/type/{type}")
     public ResponseEntity<List<FinanceResponseDTO>> findByType(@PathVariable FinanceTypeEnum type) {
         return ResponseEntity.ok(
@@ -54,6 +59,7 @@ public class FinanceController {
         );
     }
 
+    @Override
     @GetMapping("/client/{id}")
     public ResponseEntity<List<FinanceResponseDTO>> findByClient(@PathVariable Long id) {
         return ResponseEntity.ok(
@@ -61,6 +67,7 @@ public class FinanceController {
         );
     }
 
+    @Override
     @PostMapping
     public ResponseEntity<FinanceResponseDTO> saveFinance(
             @Valid @RequestBody FinanceRequestDTO request,
@@ -69,6 +76,7 @@ public class FinanceController {
                 .body(FinanceResponseDTO.from(financeService.saveFinance(request, currentUser)));
     }
 
+    @Override
     @PutMapping("/{id}")
     public ResponseEntity<FinanceResponseDTO> updateFinance(
             @PathVariable Long id,
@@ -76,6 +84,7 @@ public class FinanceController {
         return ResponseEntity.ok(FinanceResponseDTO.from(financeService.updateFinance(id, request)));
     }
 
+    @Override
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFinanceById(@PathVariable Long id) {
         financeService.deleteFinanceById(id);

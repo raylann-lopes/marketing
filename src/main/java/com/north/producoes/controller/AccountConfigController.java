@@ -1,5 +1,6 @@
 package com.north.producoes.controller;
 
+import com.north.producoes.controller.api.AccountConfigApi;
 import com.north.producoes.controller.dto.request.AccountConfigRequestDTO;
 import com.north.producoes.controller.dto.response.AccountConfigResponseDTO;
 import com.north.producoes.service.AccountConfigService;
@@ -15,10 +16,11 @@ import java.security.Principal;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/api/admin/account-config")
-public class AccountConfigController {
+public class AccountConfigController implements AccountConfigApi {
 
     private final AccountConfigService accountConfigService;
 
+    @Override
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<AccountConfigResponseDTO> configure(@Valid @RequestBody AccountConfigRequestDTO request, Principal principal) {
@@ -28,6 +30,7 @@ public class AccountConfigController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Override
     @GetMapping("/client/{clientId}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<AccountConfigResponseDTO> findByClientId(@PathVariable Long clientId) {
@@ -36,6 +39,7 @@ public class AccountConfigController {
         ));
     }
 
+    @Override
     @DeleteMapping("/client/{clientId}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<Void> deleteByClientId(@PathVariable Long clientId) {
