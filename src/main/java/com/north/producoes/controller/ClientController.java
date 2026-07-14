@@ -5,6 +5,7 @@ import com.north.producoes.controller.dto.request.ClientRequestDTO;
 import com.north.producoes.controller.dto.request.ClientStatusRequestDTO;
 import com.north.producoes.controller.dto.response.ClientResponseDTO;
 import com.north.producoes.entity.UserEntity;
+import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.service.ClientService;
 import jakarta.validation.Valid;
@@ -26,11 +27,14 @@ public class ClientController implements ClientApi {
 
     @Override
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<List<ClientResponseDTO>> findAll() {
+    public ResponseEntity<List<ClientResponseDTO>> findAll(
+            @AuthenticationPrincipal UserEntity currentUser) {
+        // O board e a criação de demandas precisam da lista para qualquer
+        // usuário; role USER recebe os clientes sem os dados financeiros
+        boolean isAdmin = currentUser.getRole() == UserRoleEnum.ADMIN;
         List<ClientResponseDTO> clients = clientService.findAllClient()
                 .stream()
-                .map(ClientResponseDTO::from)
+                .map(isAdmin ? ClientResponseDTO::from : ClientResponseDTO::fromWithoutFinancials)
                 .toList();
         return ResponseEntity.ok(clients);
     }

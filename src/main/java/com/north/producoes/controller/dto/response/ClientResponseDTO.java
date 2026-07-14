@@ -20,6 +20,16 @@ public record ClientResponseDTO(
         BigDecimal monthlyValue,
         LocalDateTime createdAt
 ) {
+    /** Variante para role USER: omite dados financeiros do cliente. */
+    public static ClientResponseDTO fromWithoutFinancials(ClientEntity entity) {
+        ClientResponseDTO full = from(entity);
+        return new ClientResponseDTO(
+                full.id(), full.name(), full.email(), full.number(),
+                full.driveLink(), full.voiceTone(), full.niche(),
+                full.whatsappGroupId(), full.whatsappGroupName(),
+                full.status(), null, full.createdAt());
+    }
+
     public static ClientResponseDTO from (ClientEntity entity) {
         return new ClientResponseDTO(
                 entity.getId(),

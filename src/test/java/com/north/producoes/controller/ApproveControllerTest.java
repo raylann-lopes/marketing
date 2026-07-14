@@ -37,7 +37,7 @@ class ApproveControllerTest {
     private ApproveController approveController;
 
     @Test
-    @DisplayName("deve retornar todas as aprovações (ADMIN)")
+    @DisplayName("deve retornar todas as aprovações do board")
     void shouldReturnAllApprovals() {
         when(approvedService.findAll()).thenReturn(List.of(ApproveResponseDTO.from(approval(5L))));
 

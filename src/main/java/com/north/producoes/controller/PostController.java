@@ -31,8 +31,8 @@ public class PostController implements PostApi {
 
     @Override
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
     public ResponseEntity<List<PostResponseDTO>> findAll() {
+        // Board compartilhado: toda a equipe (ADMIN e USER) vê todos os posts
         List<PostResponseDTO> post = postService.findAllPost()
                 .stream()
                 .map(PostResponseDTO::from)

@@ -31,7 +31,7 @@ import java.util.List;
 public interface PostApi {
 
     @GetMapping
-    @Operation(summary = "Lista todos os posts (somente ADMIN)")
+    @Operation(summary = "Lista todos os posts do board (equipe completa)")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     ResponseEntity<List<PostResponseDTO>> findAll();
 
