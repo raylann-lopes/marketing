@@ -3,6 +3,9 @@ import { CheckCircle, XCircle, X, ImageOff, Sparkles } from 'lucide-vue-next'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import { type PostApproval } from '@/services/approvalService'
+// Helpers compartilhados — antes duplicados entre card, modal e view
+import { getDemandTitle, statusLabel, statusVariant } from '@/lib/approvals'
+import { isVideo } from '@/lib/media'
 
 interface Props {
   isOpen: boolean
@@ -21,27 +24,6 @@ defineEmits<{
   (e: 'reject'): void
   (e: 'generateCaption'): void
 }>()
-
-function getDemandTitle(approval: PostApproval) {
-  return approval.post?.title || `Demanda #${approval.post?.id ?? approval.id ?? '-'}`
-}
-
-function isVideo(url: string, filename?: string) {
-  const check = (value: string) => {
-    if (!value) return false
-    const clean = (value.split('?')[0] ?? '').toLowerCase()
-    return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov')
-  }
-  return check(url) || (filename ? check(filename) : false)
-}
-
-function statusLabel(s: string) {
-  return { PENDING: 'Pendente', APPROVE: 'Aprovado', REJECT: 'Rejeitado' }[s] ?? s
-}
-
-function statusVariant(s: string): 'warning' | 'success' | 'destructive' | 'secondary' {
-  return ({ PENDING: 'warning', APPROVE: 'success', REJECT: 'destructive' } as const)[s] ?? 'secondary'
-}
 </script>
 
 <template>
@@ -146,7 +128,7 @@ function statusVariant(s: string): 'warning' | 'success' | 'destructive' | 'seco
             </div>
           </div>
 
-          <div v-else-if="approval.status === 'REJECT'" class="mt-auto pt-4 border-t border-gray-100">
+          <div v-else-if="approval.status === 'REJECTED'" class="mt-auto pt-4 border-t border-gray-100">
             <div class="flex items-center gap-2 bg-red-50 text-red-600 rounded-lg px-3 py-2">
               <XCircle class="w-4 h-4" />
               <span class="text-sm font-medium">Arte rejeitada — aguardando revisão</span>

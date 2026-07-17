@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api'
 import type { Post } from './postService'
 
 // Status espelha o backend: ApproveStatusEnum
-export type ApproveStatus = 'PENDING' | 'APPROVE' | 'REJECT'
+export type ApproveStatus = 'PENDING' | 'APPROVE' | 'REJECTED'
 
 export type PostApproval = {
   id?: string | number

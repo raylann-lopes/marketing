@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isVideo } from '@/lib/media'
 import { ref } from 'vue'
 import { X, Image, Upload, Info, Check } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
@@ -25,14 +26,6 @@ defineEmits<{
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-function isVideo(url: string, filename?: string) {
-  const check = (str: string) => {
-    if (!str) return false
-    const clean = (str.split('?')[0] ?? '').toLowerCase()
-    return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov')
-  }
-  return check(url) || (filename ? check(filename) : false)
-}
 </script>
 
 <template>
