@@ -30,7 +30,13 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
     @Query("SELECT a FROM ApproveEntity a WHERE a.whatsappStanzaId = ?1")
     Optional<ApproveEntity> findByWhatsappStanzaId(String whatsappStanzaId);
 
-    void deleteByPostId(Long postId);
+    // flush/clear automáticos: bulk delete vai direto ao banco e deixaria o
+    // persistence context com entidades órfãs — o clear evita flush de entidades
+    // já apagadas mais adiante na mesma transação (ex.: postRepository.delete(post)
+    // logo em seguida, que veria post.approve como referência a instância removida)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM ApproveEntity a WHERE a.post.id = :postId")
+    void deleteByPostId(@Param("postId") Long postId);
 
     // flush/clear automáticos: bulk delete vai direto ao banco e deixaria o
     // persistence context com entidades órfãs — o clear evita flush de entidades
