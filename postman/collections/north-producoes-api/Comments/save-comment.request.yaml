@@ -13,5 +13,5 @@ body:
   content: |-
     {
       "postId": 1,
-      "content": "Comentário de exemplo"
+      "text": "Comentário de exemplo"
     }
