@@ -239,6 +239,7 @@ class PostServiceTest {
 
             // Assert
             InOrder inOrder = inOrder(approveRepository, commentRepository, postRepository);
+            inOrder.verify(approveRepository).deleteCarouselArtsByPostId(10L);
             inOrder.verify(approveRepository).deleteByPostId(10L);
             inOrder.verify(commentRepository).deleteByPostId(10L);
             inOrder.verify(postRepository).delete(post);
