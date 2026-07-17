@@ -11,6 +11,7 @@ import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.ClientRepository;
+import com.north.producoes.repository.CommentRepository;
 import com.north.producoes.repository.PostRepository;
 import com.north.producoes.repository.UserRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final OpenAiService openAiService;
     private final ApproveRepository approveRepository;
+    private final CommentRepository commentRepository;
     private final S3Service s3Service;
 
     @Transactional(readOnly = true)
@@ -186,6 +188,7 @@ public class PostService {
         Set<String> s3Keys = collectS3Keys(post);
 
         approveRepository.deleteByPostId(id);
+        commentRepository.deleteByPostId(id);
         postRepository.delete(post);
 
         // Limpa os arquivos no S3 só depois do commit — um rollback não pode
