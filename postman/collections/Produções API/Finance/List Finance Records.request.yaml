@@ -1,5 +1,0 @@
-$kind: http-request
-name: List Finance Records
-method: GET
-url: '{{baseUrl}}/api/finance'
-order: 1000

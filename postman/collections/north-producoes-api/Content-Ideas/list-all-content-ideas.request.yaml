@@ -1,0 +1,10 @@
+$kind: http-request
+name: List All Content Ideas
+method: GET
+url: '{{baseUrl}}/api/content-ideas/all'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'

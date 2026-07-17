@@ -1,0 +1,13 @@
+$kind: http-request
+name: Get Content Ideas Terms
+method: POST
+url: '{{baseUrl}}/api/apify/content-ideas/{{id}}'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+pathVariables:
+  - key: id
+    value: '1'

@@ -1,5 +1,0 @@
-$kind: http-request
-name: List All Approvals
-method: GET
-url: '{{baseUrl}}/api/post-approvals/all'
-order: 1000

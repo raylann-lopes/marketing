@@ -1,5 +1,0 @@
-$kind: http-request
-name: List Evolution Groups
-method: GET
-url: '{{baseUrl}}/api/admin/evolution/groups'
-order: 1000

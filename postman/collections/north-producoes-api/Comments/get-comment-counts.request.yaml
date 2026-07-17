@@ -1,0 +1,10 @@
+$kind: http-request
+name: Get Comment Counts
+method: GET
+url: '{{baseUrl}}/api/comments/counts'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'

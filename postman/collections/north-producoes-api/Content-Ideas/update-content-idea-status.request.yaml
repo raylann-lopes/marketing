@@ -1,0 +1,19 @@
+$kind: http-request
+name: Update Content Idea Status
+method: PATCH
+url: '{{baseUrl}}/api/content-ideas/{{id}}/status'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+pathVariables:
+  - key: id
+    value: '1'
+body:
+  type: json
+  content: |-
+    {
+      "status": "SAVED"
+    }

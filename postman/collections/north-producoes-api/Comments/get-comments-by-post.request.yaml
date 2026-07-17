@@ -1,0 +1,13 @@
+$kind: http-request
+name: Get Comments by Post
+method: GET
+url: '{{baseUrl}}/api/comments/post/{{postId}}'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+pathVariables:
+  - key: postId
+    value: '1'

@@ -1,5 +1,0 @@
-$kind: http-request
-name: Get Posts by User
-method: GET
-url: '{{baseUrl}}/api/posts/user/{{id}}'
-order: 4000

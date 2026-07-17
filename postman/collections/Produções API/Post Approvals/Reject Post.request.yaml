@@ -1,5 +1,0 @@
-$kind: http-request
-name: Reject Post
-method: POST
-url: '{{baseUrl}}/api/post-approvals/reject/{{id}}'
-order: 5000
