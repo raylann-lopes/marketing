@@ -176,6 +176,17 @@ function getColumnTheme(columnId: string): ColumnTheme {
   return columnThemeMap[columnId] ?? (columnThemeMap['DEMAND'] as ColumnTheme)
 }
 
+// Post publicado some do kanban após 7 dias — continua existindo e
+// acessível na aba "Publicados" da tela de Aprovações, só não polui mais
+// o board. Sem data, mostra por segurança (evita sumir sem explicação).
+const PUBLISHED_VISIBLE_DAYS = 7
+function isRecentlyPublished(post: Post): boolean {
+  if (!post.scheduledAt) return true
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - PUBLISHED_VISIBLE_DAYS)
+  return new Date(post.scheduledAt) >= cutoff
+}
+
 async function fetchInitialData() {
   try {
     const [postsData, clientsData, commentCounts] = await Promise.all([
@@ -199,6 +210,7 @@ async function fetchInitialData() {
 
     columns.value.forEach((col) => (col.cards = []))
     posts.forEach((post: Post) => {
+      if (post.status === 'PUBLISHED' && !isRecentlyPublished(post)) return
       const col = columns.value.find((c) => c.id === post.status)
       if (col) col.cards.push(post)
     })
