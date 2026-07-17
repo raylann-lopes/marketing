@@ -30,7 +30,13 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
     @Query("SELECT a FROM ApproveEntity a WHERE a.whatsappStanzaId = ?1")
     Optional<ApproveEntity> findByWhatsappStanzaId(String whatsappStanzaId);
 
-    void deleteByPostId(Long postId);
+    // flush/clear automáticos: bulk delete vai direto ao banco e deixaria o
+    // persistence context com entidades órfãs — o clear evita flush de entidades
+    // já apagadas mais adiante na mesma transação (ex.: postRepository.delete(post)
+    // logo em seguida, que veria post.approve como referência a instância removida)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM ApproveEntity a WHERE a.post.id = :postId")
+    void deleteByPostId(@Param("postId") Long postId);
 
     // flush/clear automáticos: bulk delete vai direto ao banco e deixaria o
     // persistence context com entidades órfãs — o clear evita flush de entidades
@@ -51,6 +57,19 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
                 SELECT ap.id FROM ApproveEntity ap WHERE ap.post.client.id = :clientId)
             """)
     void deleteCarouselArtsByPostClientId(@Param("clientId") Long clientId);
+
+    /**
+     * Remove as artes de carrossel antes do bulk delete da aprovação de um post.
+     * Mesma razão de deleteCarouselArtsByPostClientId: bulk delete ignora o
+     * cascade do JPA.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM ApproveCarouselArtEntity a
+            WHERE a.approve.id IN (
+                SELECT ap.id FROM ApproveEntity ap WHERE ap.post.id = :postId)
+            """)
+    void deleteCarouselArtsByPostId(@Param("postId") Long postId);
 
     /**
      * Busca aprovação PENDING vinculada ao grupo WhatsApp do cliente.

@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { CheckCircle } from 'lucide-vue-next'
+import { ref, computed, onMounted, watch } from 'vue'
+import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Button from '@/components/ui/Button.vue'
 import ApprovalCard from '@/components/approvals/ApprovalCard.vue'
 import ApprovalDetailModal from '@/components/approvals/ApprovalDetailModal.vue'
 import { approvalService, type PostApproval } from '@/services/approvalService'
 import { postService } from '@/services/postService'
-import { apiFetch } from '@/lib/api'
+import { mediaService } from '@/services/mediaService'
+import { postIdOf } from '@/lib/approvals'
 import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
 
@@ -27,16 +28,20 @@ const loadingPreview = ref(false)
 const loadingCaption = ref(false)
 const isDetailOpen = ref(false)
 
-// Filter
-const activeFilter = ref<'ALL' | 'PENDING' | 'APPROVE' | 'REJECT'>('ALL')
+// Filter — PUBLISHED não é status de aprovação, é status do post; tratado à parte
+const activeFilter = ref<'ALL' | 'PENDING' | 'APPROVE' | 'REJECTED' | 'PUBLISHED'>('ALL')
 
 const filtered = computed(() => {
   let list = approvals.value
-  if (activeFilter.value !== 'ALL') list = list.filter(a => a.status === activeFilter.value)
+  if (activeFilter.value === 'PUBLISHED') {
+    list = list.filter(a => a.post?.status === 'PUBLISHED')
+  } else if (activeFilter.value !== 'ALL') {
+    list = list.filter(a => a.status === activeFilter.value)
+  }
   if (search.value) {
     const q = search.value.toLowerCase()
     list = list.filter(a =>
-      (a.post?.title || `Demanda #${a.post?.id ?? a.id ?? '-'}`).toLowerCase().includes(q) ||
+      (a.post?.title || `Demanda #${postIdOf(a) ?? '-'}`).toLowerCase().includes(q) ||
       a.post?.theme?.toLowerCase().includes(q) ||
       a.caption?.toLowerCase().includes(q)
     )
@@ -48,15 +53,44 @@ const counts = computed(() => ({
   ALL: approvals.value.length,
   PENDING: approvals.value.filter(a => a.status === 'PENDING').length,
   APPROVE: approvals.value.filter(a => a.status === 'APPROVE').length,
-  REJECT: approvals.value.filter(a => a.status === 'REJECT').length,
+  REJECTED: approvals.value.filter(a => a.status === 'REJECTED').length,
+  PUBLISHED: approvals.value.filter(a => a.post?.status === 'PUBLISHED').length,
 }))
+
+// Paginação — cards menores permitem mais por tela, mas sem limite a lista
+// cresceria pra sempre (aprovações nunca são excluídas automaticamente)
+const currentPage = ref(1)
+const itemsPerPage = 24
+const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / itemsPerPage)))
+const paginatedApprovals = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filtered.value.slice(start, start + itemsPerPage)
+})
+function nextPage() {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+function prevPage() {
+  if (currentPage.value > 1) currentPage.value--
+}
+watch([activeFilter, search], () => {
+  currentPage.value = 1
+})
 
 async function fetchApprovals() {
   loading.value = true
   error.value = ''
   try {
-    const data = await approvalService.getAll()
-    approvals.value = Array.isArray(data) ? data : []
+    // A API de aprovações retorna só postId — busca os posts em paralelo e
+    // anexa cada um à sua aprovação para exibir título/tema/objetivo no modal
+    const [data, posts] = await Promise.all([
+      approvalService.getAll(),
+      postService.getAll().catch(() => []),
+    ])
+    const postById = new Map(posts.map((p) => [String(p.id), p]))
+    approvals.value = (Array.isArray(data) ? data : []).map((a) => ({
+      ...a,
+      post: a.post ?? postById.get(String(postIdOf(a))),
+    }))
     await fetchPreviewUrls(approvals.value)
   } catch (e: unknown) {
     error.value = getErrorMessage(e, 'Erro ao carregar aprovações')
@@ -66,7 +100,7 @@ async function fetchApprovals() {
 }
 
 function getApprovalKey(approval: PostApproval) {
-  return String(approval.id ?? approval.post?.id ?? approval.artS3Key)
+  return String(approval.id ?? postIdOf(approval) ?? approval.artS3Key)
 }
 
 function getPreviewUrl(approval: PostApproval) {
@@ -76,10 +110,11 @@ function getPreviewUrl(approval: PostApproval) {
 async function fetchPreviewUrls(list: PostApproval[]) {
   const pairs = await Promise.all(
     list.map(async (approval) => {
-      if (!approval.post?.id) return [getApprovalKey(approval), ''] as const
+      const postId = postIdOf(approval)
+      if (!postId) return [getApprovalKey(approval), ''] as const
       try {
-        const res = await apiFetch<{ mediaUrl: string }>(`/api/media/art-url?postId=${approval.post.id}`)
-        return [getApprovalKey(approval), res.mediaUrl || ''] as const
+        const urls = await mediaService.getArtPreviewUrls(postId)
+        return [getApprovalKey(approval), urls[0] || ''] as const
       } catch {
         return [getApprovalKey(approval), ''] as const
       }
@@ -101,11 +136,12 @@ async function openDetail(approval: PostApproval) {
     return
   }
 
-  if (approval.post?.id) {
+  const postId = postIdOf(approval)
+  if (postId) {
     loadingPreview.value = true
     try {
-      const res = await apiFetch<{ mediaUrl: string }>(`/api/media/art-url?postId=${approval.post.id}`)
-      artPreviewUrl.value = res.mediaUrl
+      const urls = await mediaService.getArtPreviewUrls(postId)
+      artPreviewUrl.value = urls[0] || ''
     } catch {
       artPreviewUrl.value = ''
     } finally {
@@ -114,40 +150,45 @@ async function openDetail(approval: PostApproval) {
   }
 }
 
-async function handleApprove(postId: string | number) {
+/**
+ * Aprova ou rejeita e atualiza o item localmente — refazer o fetch da lista
+ * re-dispararia todas as N requests de preview para mudar um único status.
+ */
+async function changeApprovalStatus(postId: string | number | undefined, action: 'approve' | 'reject') {
+  if (!postId) return
   try {
-    await approvalService.approve(postId)
-    await fetchApprovals()
-    if (isDetailOpen.value && selectedApproval.value?.post?.id === postId) {
+    const updated = action === 'approve'
+      ? await approvalService.approve(postId)
+      : await approvalService.reject(postId)
+
+    const index = approvals.value.findIndex(a => postIdOf(a) === postId)
+    if (index !== -1 && approvals.value[index]) {
+      // Preserva o post anexado e as URLs de preview já em cache
+      approvals.value[index] = { ...approvals.value[index], ...updated, post: approvals.value[index].post }
+    }
+
+    if (isDetailOpen.value && selectedApproval.value && postIdOf(selectedApproval.value) === postId) {
       isDetailOpen.value = false
     }
-    feedback.success('Arte aprovada com sucesso.')
+    if (action === 'approve') feedback.success('Arte aprovada com sucesso.')
+    else feedback.info('Arte marcada como rejeitada.')
   } catch (e: unknown) {
-    feedback.error(getErrorMessage(e, 'Erro ao aprovar'))
+    feedback.error(getErrorMessage(e, action === 'approve' ? 'Erro ao aprovar' : 'Erro ao rejeitar'))
   }
 }
 
-async function handleReject(postId: string | number) {
-  try {
-    await approvalService.reject(postId)
-    await fetchApprovals()
-    if (isDetailOpen.value && selectedApproval.value?.post?.id === postId) {
-      isDetailOpen.value = false
-    }
-    feedback.info('Arte marcada como rejeitada.')
-  } catch (e: unknown) {
-    feedback.error(getErrorMessage(e, 'Erro ao rejeitar'))
-  }
-}
+const handleApprove = (postId: string | number | undefined) => changeApprovalStatus(postId, 'approve')
+const handleReject = (postId: string | number | undefined) => changeApprovalStatus(postId, 'reject')
 
 async function handleGenerateCaption() {
-  if (!selectedApproval.value?.post?.id) return
-  
+  const postId = postIdOf(selectedApproval.value ?? ({} as PostApproval))
+  if (!postId) return
+
   loadingCaption.value = true
   try {
     const updatedApproval = await postService.generateCaption(
-      selectedApproval.value.post.id,
-      selectedApproval.value.artS3Key
+      postId,
+      selectedApproval.value!.artS3Key
     )
     if (selectedApproval.value) {
       selectedApproval.value.caption = updatedApproval.caption
@@ -179,9 +220,9 @@ onMounted(fetchApprovals)
     </div>
 
     <!-- Filter tabs -->
-    <div class="flex gap-2 mb-6">
+    <div class="flex gap-2 mb-6 flex-wrap">
       <button
-        v-for="tab in (['ALL', 'PENDING', 'APPROVE', 'REJECT'] as const)"
+        v-for="tab in (['ALL', 'PENDING', 'APPROVE', 'REJECTED', 'PUBLISHED'] as const)"
         :key="tab"
         @click="activeFilter = tab"
         :class="[
@@ -191,7 +232,7 @@ onMounted(fetchApprovals)
             : 'bg-white text-gray-500 border-gray-200 hover:border-primary/30 hover:text-primary'
         ]"
       >
-        {{ { ALL: 'Todos', PENDING: 'Pendentes', APPROVE: 'Aprovados', REJECT: 'Rejeitados' }[tab] }}
+        {{ { ALL: 'Todos', PENDING: 'Pendentes', APPROVE: 'Aprovados', REJECTED: 'Rejeitados', PUBLISHED: 'Publicados' }[tab] }}
         <span :class="['ml-1.5 text-xs px-1.5 py-0.5 rounded-full', activeFilter === tab ? 'bg-white/20' : 'bg-gray-100']">
           {{ counts[tab] }}
         </span>
@@ -216,17 +257,43 @@ onMounted(fetchApprovals)
     </div>
 
     <!-- Grid -->
-    <div v-else class="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div v-else class="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
       <ApprovalCard
-        v-for="approval in filtered"
+        v-for="approval in paginatedApprovals"
         :key="approval.id"
         :approval="approval"
         :preview-url="getPreviewUrl(approval)"
         :is-admin="isAdmin"
         @click="openDetail(approval)"
-        @approve="handleApprove(approval.post!.id!)"
-        @reject="handleReject(approval.post!.id!)"
+        @approve="handleApprove(postIdOf(approval))"
+        @reject="handleReject(postIdOf(approval))"
       />
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="!loading && !error && filtered.length > itemsPerPage" class="mt-4 flex items-center justify-between">
+      <p class="text-xs text-gray-500">
+        Mostrando <span class="font-semibold">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> a
+        <span class="font-semibold">{{ Math.min(currentPage * itemsPerPage, filtered.length) }}</span> de
+        <span class="font-semibold">{{ filtered.length }}</span> aprovações
+      </p>
+      <div class="flex items-center gap-2">
+        <button
+          @click="prevPage"
+          :disabled="currentPage === 1"
+          class="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-primary hover:border-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          <ChevronLeft class="w-4 h-4" />
+        </button>
+        <span class="text-xs font-bold text-gray-700 mx-2">Página {{ currentPage }} de {{ totalPages }}</span>
+        <button
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
+          class="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-primary hover:border-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          <ChevronRight class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Detail modal -->
@@ -238,8 +305,8 @@ onMounted(fetchApprovals)
       :loading-caption="loadingCaption"
       :is-admin="isAdmin"
       @close="isDetailOpen = false"
-      @approve="handleApprove(selectedApproval!.post!.id!)"
-      @reject="handleReject(selectedApproval!.post!.id!)"
+      @approve="handleApprove(postIdOf(selectedApproval!))"
+      @reject="handleReject(postIdOf(selectedApproval!))"
       @generate-caption="handleGenerateCaption"
     />
   </AppLayout>

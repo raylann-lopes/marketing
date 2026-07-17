@@ -91,11 +91,13 @@ const baseTransactions = computed(() => {
   return transactions.value.filter(t => {
     const statusOk = statusFilter.value === 'all' || t.status === statusFilter.value
     const exp = new Date(t.expirationDate)
-    const periodOk = transactionFilter.value === 'open'
+    // Contas pagas ignoram o recorte de período: pagas adiantadas têm
+    // vencimento futuro e sumiriam no período padrão "Em Aberto"
+    const periodOk = t.status === 'PAY' || (transactionFilter.value === 'open'
       ? exp <= endOfCurrentMonth
       : transactionFilter.value === 'future'
         ? exp > endOfCurrentMonth
-        : true
+        : true)
     const typeOk = typeFilter.value === 'all' || t.type === typeFilter.value
     // Intervalo de vencimento (datas YYYY-MM-DD comparadas como string local)
     const expDay = t.expirationDate?.split('T')[0] ?? ''
@@ -131,6 +133,12 @@ const filteredTransactions = computed(() => {
 })
 
 const totalPages = computed(() => Math.ceil(filteredTransactions.value.length / itemsPerPage))
+
+// A lista também encolhe por mutação de dados (receber/excluir o último
+// item da página) — clampa a página atual ao novo total
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) currentPage.value = Math.max(1, pages)
+})
 
 const paginatedTransactions = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
@@ -173,22 +181,67 @@ const isSubmitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const editFieldErrors = ref<Record<string, string>>({})
 
-const newTransaction = ref({
+// Data de hoje no fuso LOCAL — toISOString() é UTC e após as 21h (UTC-3)
+// gravaria o dia seguinte em paymentDate/expirationDate
+function todayLocal(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+type TransactionForm = {
+  client: string
+  description: string
+  value: number
+  status: string
+  expirationDate: string
+  type: FinanceType | ''
+}
+
+/**
+ * Ponto único de montagem do FinancePayload — a regra "paymentDate só
+ * quando PAY" vivia replicada em 4 handlers e podia divergir.
+ */
+function buildFinancePayload(form: TransactionForm, paymentDate?: string | null): FinancePayload {
+  return {
+    clientId: Number(form.client),
+    description: form.description,
+    value: form.value,
+    status: form.status,
+    expirationDate: form.expirationDate,
+    paymentDate: paymentDate !== undefined
+      ? paymentDate
+      : form.status === 'PAY' ? form.expirationDate : null,
+    type: form.type || null
+  }
+}
+
+function formFromRecord(t: FinanceRecord, status: string): TransactionForm {
+  return {
+    client: String(getClientId(t)),
+    description: t.description,
+    value: t.value,
+    status,
+    expirationDate: t.expirationDate?.split('T')[0] ?? '',
+    type: (t.type as FinanceType | '') ?? ''
+  }
+}
+
+const newTransaction = ref<TransactionForm>({
   client: '',
   description: '',
   value: 0,
   status: 'PENDING',
-  expirationDate: new Date().toISOString().split('T')[0] || '',
-  type: '' as FinanceType | ''
+  expirationDate: todayLocal(),
+  type: ''
 })
 
-const editTransaction = ref({
+const editTransaction = ref<TransactionForm>({
   client: '',
   description: '',
   value: 0,
   status: 'PENDING',
-  expirationDate: new Date().toISOString().split('T')[0] || '',
-  type: '' as FinanceType | ''
+  expirationDate: todayLocal(),
+  type: ''
 })
 
 const financeSchema = z.object({
@@ -204,7 +257,7 @@ function openFinanceModal() {
     description: '',
     value: 0,
     status: 'PENDING',
-    expirationDate: new Date().toISOString().split('T')[0] || '',
+    expirationDate: todayLocal(),
     type: ''
   }
   fieldErrors.value = {}
@@ -213,41 +266,48 @@ function openFinanceModal() {
 
 function openEditTransactionModal(t: FinanceRecord) {
   transactionToEdit.value = t
-  editTransaction.value = {
-    client: String(getClientId(t)),
-    description: t.description,
-    value: t.value,
-    status: t.status,
-    expirationDate: t.expirationDate?.split('T')[0] ?? new Date().toISOString().split('T')[0] ?? '',
-    type: (t.type as FinanceType | '') ?? ''
-  }
+  editTransaction.value = formFromRecord(t, String(t.status))
+  if (!editTransaction.value.expirationDate) editTransaction.value.expirationDate = todayLocal()
   editFieldErrors.value = {}
   isEditModalOpen.value = true
+}
+
+// Classifica pelo tipo (receita/despesa) quando informado; registros
+// antigos sem tipo caem no critério do sinal do valor
+function recomputeTotals() {
+  const list = transactions.value
+  const isRevenue = (t: FinanceRecord) =>
+    t.type ? String(t.type).includes('REVENUE') : t.value > 0
+  incomeTotal.value = list.filter(isRevenue)
+    .reduce((acc: number, t: FinanceRecord) => acc + Math.abs(t.value), 0)
+  expenseTotal.value = list.filter((t: FinanceRecord) => !isRevenue(t))
+    .reduce((acc: number, t: FinanceRecord) => acc + Math.abs(t.value), 0)
+  netProfit.value = incomeTotal.value - expenseTotal.value
+}
+
+/** Substitui (ou remove, com updated=null) um registro localmente e refaz os totais. */
+function patchTransactionLocally(id: string | number, updated: FinanceRecord | null) {
+  transactions.value = updated
+    ? transactions.value.map(t => (String(t.id) === String(id) ? updated : t))
+    : transactions.value.filter(t => String(t.id) !== String(id))
+  recomputeTotals()
 }
 
 async function fetchTransactions() {
   loading.value = true
   error.value = ''
   try {
+    // Clientes são carregados junto só na carga inicial; mutações de conta
+    // atualizam localmente sem refazer estas requests
     const [financeData, clientsData] = await Promise.all([
       financeService.getAll(),
       clientService.getAll()
     ])
 
     interface ApiResponse<T> { data?: T[] }
-    const list = Array.isArray(financeData) ? financeData : (((financeData as unknown) as ApiResponse<FinanceRecord>).data || [])
-    transactions.value = list
+    transactions.value = Array.isArray(financeData) ? financeData : (((financeData as unknown) as ApiResponse<FinanceRecord>).data || [])
     clients.value = Array.isArray(clientsData) ? clientsData : (((clientsData as unknown) as ApiResponse<Client>).data || [])
-
-    // Classifica pelo tipo (receita/despesa) quando informado; registros
-    // antigos sem tipo caem no critério do sinal do valor
-    const isRevenue = (t: FinanceRecord) =>
-      t.type ? String(t.type).includes('REVENUE') : t.value > 0
-    incomeTotal.value = list.filter(isRevenue)
-      .reduce((acc: number, t: FinanceRecord) => acc + Math.abs(t.value), 0)
-    expenseTotal.value = list.filter((t: FinanceRecord) => !isRevenue(t))
-      .reduce((acc: number, t: FinanceRecord) => acc + Math.abs(t.value), 0)
-    netProfit.value = incomeTotal.value - expenseTotal.value
+    recomputeTotals()
   } catch (e: unknown) {
     error.value = `Erro ao carregar dados: ${getErrorMessage(e)}`
   } finally {
@@ -269,16 +329,8 @@ async function handleCreateTransaction() {
 
   isSubmitting.value = true
   try {
-    const payload: FinancePayload = {
-      clientId: Number(newTransaction.value.client),
-      description: newTransaction.value.description,
-      value: newTransaction.value.value,
-      status: newTransaction.value.status,
-      expirationDate: newTransaction.value.expirationDate,
-      paymentDate: newTransaction.value.status === 'PAY' ? newTransaction.value.expirationDate : null,
-      type: newTransaction.value.type || null
-    }
-    await financeService.create(payload)
+    await financeService.create(buildFinancePayload(newTransaction.value))
+    // Refetch necessário no create: tipos FIXED_* geram 12 réplicas no backend
     await fetchTransactions()
     isModalOpen.value = false
     feedback.success('Transação registrada com sucesso.')
@@ -303,17 +355,9 @@ async function handleEditTransaction() {
 
   isSubmitting.value = true
   try {
-    const payload: FinancePayload = {
-      clientId: Number(editTransaction.value.client),
-      description: editTransaction.value.description,
-      value: editTransaction.value.value,
-      status: editTransaction.value.status,
-      expirationDate: editTransaction.value.expirationDate,
-      paymentDate: editTransaction.value.status === 'PAY' ? editTransaction.value.expirationDate : null,
-      type: editTransaction.value.type || null
-    }
-    await financeService.update(transactionToEdit.value!.id!, payload)
-    await fetchTransactions()
+    const id = transactionToEdit.value!.id!
+    const updated = await financeService.update(id, buildFinancePayload(editTransaction.value))
+    patchTransactionLocally(id, updated)
     isEditModalOpen.value = false
     feedback.success('Transação atualizada com sucesso.')
   } catch (e: unknown) {
@@ -332,17 +376,9 @@ async function handleMarkAsPaid(transaction: FinanceRecord) {
   if (!confirmed) return
 
   try {
-    const payload: FinancePayload = {
-      clientId: getClientId(transaction),
-      description: transaction.description,
-      value: transaction.value,
-      status: 'PAY',
-      expirationDate: transaction.expirationDate?.split('T')[0] ?? '',
-      paymentDate: new Date().toISOString().split('T')[0],
-      type: transaction.type || null
-    }
-    await financeService.update(transaction.id!, payload)
-    await fetchTransactions()
+    const payload = buildFinancePayload(formFromRecord(transaction, 'PAY'), todayLocal())
+    const updated = await financeService.update(transaction.id!, payload)
+    patchTransactionLocally(transaction.id!, updated)
     feedback.success('Conta marcada como paga.')
   } catch (e: unknown) {
     feedback.error(`Erro ao atualizar: ${getErrorMessage(e)}`)
@@ -358,17 +394,9 @@ async function handleUndoPayment(transaction: FinanceRecord) {
   if (!confirmed) return
 
   try {
-    const payload: FinancePayload = {
-      clientId: getClientId(transaction),
-      description: transaction.description,
-      value: transaction.value,
-      status: 'PENDING',
-      expirationDate: transaction.expirationDate?.split('T')[0] ?? '',
-      paymentDate: null,
-      type: transaction.type || null
-    }
-    await financeService.update(transaction.id!, payload)
-    await fetchTransactions()
+    const payload = buildFinancePayload(formFromRecord(transaction, 'PENDING'), null)
+    const updated = await financeService.update(transaction.id!, payload)
+    patchTransactionLocally(transaction.id!, updated)
     feedback.success('Conta voltou para pendente.')
   } catch (e: unknown) {
     feedback.error(`Erro ao desfazer: ${getErrorMessage(e)}`)
@@ -386,7 +414,7 @@ async function handleDelete(id: string | number) {
 
   try {
     await financeService.delete(id)
-    await fetchTransactions()
+    patchTransactionLocally(id, null)
     feedback.success('Registro excluído com sucesso.')
   } catch (e: unknown) {
     feedback.error(`Erro ao excluir: ${getErrorMessage(e)}`)

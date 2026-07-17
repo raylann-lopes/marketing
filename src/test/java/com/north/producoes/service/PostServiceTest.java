@@ -10,6 +10,7 @@ import com.north.producoes.entity.enums.PostStatusEnum;
 import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.ClientRepository;
+import com.north.producoes.repository.CommentRepository;
 import com.north.producoes.repository.PostRepository;
 import com.north.producoes.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +54,9 @@ class PostServiceTest {
 
     @Mock
     private ApproveRepository approveRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
 
     @Mock
     private S3Service s3Service;
@@ -234,8 +238,10 @@ class PostServiceTest {
             postService.deletePostById(10L);
 
             // Assert
-            InOrder inOrder = inOrder(approveRepository, postRepository);
+            InOrder inOrder = inOrder(approveRepository, commentRepository, postRepository);
+            inOrder.verify(approveRepository).deleteCarouselArtsByPostId(10L);
             inOrder.verify(approveRepository).deleteByPostId(10L);
+            inOrder.verify(commentRepository).deleteByPostId(10L);
             inOrder.verify(postRepository).delete(post);
             // Sem transação ativa no teste, a limpeza do S3 é imediata
             verify(s3Service).deleteObjects(org.mockito.ArgumentMatchers.anyCollection());

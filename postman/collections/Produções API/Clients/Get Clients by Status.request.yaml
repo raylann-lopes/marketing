@@ -1,5 +1,0 @@
-$kind: http-request
-name: Get Clients by Status
-method: GET
-url: '{{baseUrl}}/api/clients/status/{{status}}'
-order: 4000

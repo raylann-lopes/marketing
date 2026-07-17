@@ -9,6 +9,7 @@ import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.AccountConfigRepository;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.ClientRepository;
+import com.north.producoes.repository.CommentRepository;
 import com.north.producoes.repository.FinanceRepository;
 import com.north.producoes.repository.PostRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class ClientService {
     private final PostRepository postRepository;
     private final FinanceRepository financeRepository;
     private final AccountConfigRepository accountConfigRepository;
+    private final CommentRepository commentRepository;
 
     @Lazy
     @Setter(onMethod_ = @Autowired)
@@ -101,6 +103,7 @@ public class ClientService {
         // Ordem importa: filhos antes dos pais — bulk delete não aciona cascade JPA
         approveRepository.deleteCarouselArtsByPostClientId(id);
         approveRepository.deleteByPostClientId(id);
+        commentRepository.deleteByPostClientId(id);
         postRepository.deleteCarouselImagesByClientId(id);
         postRepository.deleteByClientId(id);
         financeRepository.deleteByClientId(id);

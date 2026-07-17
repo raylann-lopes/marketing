@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button.vue'
 import { postService, type Post, type PostStatus, getPostClientId, type PostFormData } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
 import { approvalService, type PostApproval } from '@/services/approvalService'
+import { commentService } from '@/services/commentService'
 import { mediaService } from '@/services/mediaService'
 import { getCurrentUserId } from '@/lib/api'
 import { useFeedback } from '@/lib/feedback'
@@ -14,6 +15,7 @@ import draggable from 'vuedraggable'
 // Components
 import BoardCard from '@/components/board/BoardCard.vue'
 import PostModal from '@/components/board/PostModal.vue'
+import CommentModal from '@/components/board/CommentModal.vue'
 import ApprovalModal from '@/components/board/ApprovalModal.vue'
 import ArtPreviewModal from '@/components/board/ArtPreviewModal.vue'
 import ReferenceModal from '@/components/board/ReferenceModal.vue'
@@ -67,6 +69,13 @@ const isModalOpen = ref(false)
 const isSubmitting = ref(false)
 const postToEdit = ref<Post | null>(null)
 
+const isCommentModalOpen = ref(false)
+const selectedPostForComments = ref<Post | null>(null)
+function openCommentModal(post: Post) {
+  selectedPostForComments.value = post
+  isCommentModalOpen.value = true
+}
+
 // Modal States
 const isApprovalModalOpen = ref(false)
 const existingApprovalId = ref<string | number | null>(null)
@@ -89,7 +98,7 @@ const referenceData = ref({
 
 const feedback = useFeedback()
 const approvalsByPostId = ref<Record<string, PostApproval>>({})
-const expandedCardsByPostId = ref<Record<string, boolean>>({})
+const commentCountByPostId = ref<Record<string, number>>({})
 
 const isArtPreviewModalOpen = ref(false)
 const artPreviewMode = ref<ArtPreviewMode>('preview')
@@ -167,12 +176,27 @@ function getColumnTheme(columnId: string): ColumnTheme {
   return columnThemeMap[columnId] ?? (columnThemeMap['DEMAND'] as ColumnTheme)
 }
 
+// Post publicado some do kanban após 7 dias — continua existindo e
+// acessível na aba "Publicados" da tela de Aprovações, só não polui mais
+// o board. Sem data, mostra por segurança (evita sumir sem explicação).
+const PUBLISHED_VISIBLE_DAYS = 7
+function isRecentlyPublished(post: Post): boolean {
+  if (!post.scheduledAt) return true
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - PUBLISHED_VISIBLE_DAYS)
+  return new Date(post.scheduledAt) >= cutoff
+}
+
 async function fetchInitialData() {
   try {
-    const [postsData, clientsData] = await Promise.all([
+    const [postsData, clientsData, commentCounts] = await Promise.all([
       postService.getAll(),
       clientService.getAll(),
+      commentService.getCounts().catch(() => []),
     ])
+    commentCountByPostId.value = Object.fromEntries(
+      commentCounts.map((c) => [String(c.postId), c.count]),
+    )
 
     interface ApiResponse<T> {
       data?: T[]
@@ -186,6 +210,7 @@ async function fetchInitialData() {
 
     columns.value.forEach((col) => (col.cards = []))
     posts.forEach((post: Post) => {
+      if (post.status === 'PUBLISHED' && !isRecentlyPublished(post)) return
       const col = columns.value.find((c) => c.id === post.status)
       if (col) col.cards.push(post)
     })
@@ -206,22 +231,6 @@ const paginatedColumns = computed(() => {
 function getClientName(clientId?: number) {
   if (!clientId) return 'Sem cliente'
   return clients.value.find((c) => c.id === clientId)?.name || 'Cliente'
-}
-
-function formatDueDate(dateStr?: string) {
-  if (!dateStr) return 'Sem prazo'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-}
-
-function isOverdue(post: Post) {
-  if (!post.scheduledAt) return false
-  return new Date(post.scheduledAt) < new Date() && post.status !== 'PUBLISHED'
-}
-
-function getPriorityInfo(post: Post) {
-  if (post.isUrgent) return { label: 'URGENTE', className: 'text-red-600 bg-red-50 border-red-100' }
-  return { label: 'Normal', className: 'text-gray-600 bg-gray-50 border-gray-100' }
 }
 
 async function handleBoardChange(evt: DraggableChangeEvent<Post>, columnId: string) {
@@ -568,12 +577,6 @@ async function viewReference(post: Post) {
   }
 }
 
-function isCardExpanded(post: Post) {
-  return Boolean(post.id && expandedCardsByPostId.value[post.id])
-}
-function toggleCardExpanded(post: Post) {
-  if (post.id) expandedCardsByPostId.value[post.id] = !expandedCardsByPostId.value[post.id]
-}
 function mapApprovalsByPostId(list: PostApproval[]) {
   approvalsByPostId.value = Object.fromEntries(
     list.filter((a) => a.postId).map((a) => [String(a.postId), a]),
@@ -582,13 +585,13 @@ function mapApprovalsByPostId(list: PostApproval[]) {
 function getApprovalByPost(post: Post) {
   return post.id ? approvalsByPostId.value[post.id] : null
 }
-function getApprovalStatusLabel(post: Post) {
-  const app = getApprovalByPost(post)
-  if (!app) return { text: 'Não preparada', className: 'text-amber-700' }
-  if (post.status === 'REJECTED' || app.status === 'REJECT')
-    return { text: 'Rejeitado', className: 'text-red-700' }
-  if (app.whatsappSentAt) return { text: 'Enviada', className: 'text-emerald-700' }
-  return { text: 'Pronta', className: 'text-blue-700' }
+function getCommentCount(post: Post): number {
+  return post.id ? commentCountByPostId.value[post.id] || 0 : 0
+}
+function incrementCommentCount() {
+  const postId = selectedPostForComments.value?.id
+  if (!postId) return
+  commentCountByPostId.value[postId] = (commentCountByPostId.value[postId] || 0) + 1
 }
 function getUserOrFallback(): number {
   return Number(getCurrentUserId()) || 1
@@ -657,19 +660,13 @@ onMounted(() => {
                 :card="card"
                 :column-id="String(col.id)"
                 :column-theme="getColumnTheme(String(col.id))"
-                :is-expanded="isCardExpanded(card)"
                 :approval="getApprovalByPost(card)"
                 :client-name="getClientName(Number(getPostClientId(card)))"
-                :overdue="isOverdue(card)"
-                :priority-info="getPriorityInfo(card)"
-                :due-date-label="formatDueDate(card.scheduledAt)"
-                :responsible-label="'Equipe North'"
-                :post-type-label="'Social Media'"
-                :approval-status="getApprovalStatusLabel(card)"
+                :comment-count="getCommentCount(card)"
                 :rejection-message="getApprovalByPost(card)?.rejectionReason || 'Rejeitado'"
                 :is-sending-approval="false"
                 @preview="openArtPreviewModal(card)"
-                @toggle-expand="toggleCardExpanded(card)"
+                @open-comments="openCommentModal(card)"
                 @edit="((postToEdit = card), (isModalOpen = true))"
                 @prepare-approval="openApprovalModal(card)"
                 @internal-review="openArtPreviewModal(card, 'internal-review')"
@@ -692,6 +689,12 @@ onMounted(() => {
       @close="isModalOpen = false"
       @save="handleSavePost"
       @delete="handleDeletePost"
+    />
+    <CommentModal
+      :is-open="isCommentModalOpen"
+      :post="selectedPostForComments"
+      @close="isCommentModalOpen = false"
+      @sent="incrementCommentCount"
     />
     <ApprovalModal
       :is-open="isApprovalModalOpen"

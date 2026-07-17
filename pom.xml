@@ -34,6 +34,8 @@
 		<jjwt.version>0.13.0</jjwt.version>
 		<mcp.sdk.version>1.1.1</mcp.sdk.version>
 		<postgresql.version>42.7.11</postgresql.version>
+		<sentry.skipSourceBundle>true</sentry.skipSourceBundle>
+		<sentry.authToken></sentry.authToken>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -41,6 +43,13 @@
 				<groupId>software.amazon.awssdk</groupId>
 				<artifactId>bom</artifactId>
 				<version>${aws.sdk.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>io.sentry</groupId>
+				<artifactId>sentry-bom</artifactId>
+				<version>8.49.0</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -70,6 +79,22 @@
 	</dependencyManagement>
 
 	<dependencies>
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-spring-boot-4-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-logback</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-jdbc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-async-profiler</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
@@ -214,7 +239,44 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>io.sentry</groupId>
+				<artifactId>sentry-maven-plugin</artifactId>
+				<version>0.11.0</version>
+				<extensions>true</extensions>
+				<configuration>
+					<debugSentryCli>true</debugSentryCli>
+					<org>wizeflow-solutions-k6</org>
+					<project>java</project>
+					<!-- O plugin lerá a variável de ambiente configurada no Passo 1 -->
+					<authToken>${sentry.authToken}</authToken>
+					<skipSourceBundle>${sentry.skipSourceBundle}</skipSourceBundle>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<!-- Gera o bundle do código-fonte e faz o upload para o Sentry -->
+							<goal>uploadSourceBundle</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<id>sentry-upload</id>
+			<activation>
+				<property>
+					<name>env.SENTRY_AUTH_TOKEN</name>
+				</property>
+			</activation>
+			<properties>
+				<sentry.skipSourceBundle>false</sentry.skipSourceBundle>
+				<sentry.authToken>${env.SENTRY_AUTH_TOKEN}</sentry.authToken>
+			</properties>
+		</profile>
+	</profiles>
 
 </project>

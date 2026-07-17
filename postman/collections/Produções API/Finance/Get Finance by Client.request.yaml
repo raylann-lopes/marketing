@@ -1,5 +1,0 @@
-$kind: http-request
-name: Get Finance by Client
-method: GET
-url: '{{baseUrl}}/api/finance/client/{{id}}'
-order: 3000

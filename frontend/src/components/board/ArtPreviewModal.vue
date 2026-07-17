@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isVideo } from '@/lib/media'
 import { ref, watch } from 'vue'
 import { X, Eye, XCircle, Send, MessageSquare, Check, Maximize, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
@@ -53,14 +54,6 @@ defineEmits<{
   (e: 'update:internalRevisionNotes', val: string): void
 }>()
 
-function isVideo(url: string, filename?: string) {
-  const check = (str: string) => {
-    if (!str) return false
-    const clean = (str.split('?')[0] ?? '').toLowerCase()
-    return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov')
-  }
-  return check(url) || (filename ? check(filename) : false)
-}
 
 function formatSentAt(sentAt?: string) {
   if (!sentAt) return ''

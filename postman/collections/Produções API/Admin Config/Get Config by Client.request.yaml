@@ -1,5 +1,0 @@
-$kind: http-request
-name: Get Config by Client
-method: GET
-url: '{{baseUrl}}/api/admin/config/client/{{clientId}}'
-order: 2000

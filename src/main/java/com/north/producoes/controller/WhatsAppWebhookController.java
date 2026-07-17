@@ -194,12 +194,18 @@ public class WhatsAppWebhookController implements WhatsAppWebhookApi {
     // ─── Ações ─────────────────────────────────────────────────────────────────
 
     private void handleApprove(ApproveEntity approval) {
+        // O voto vem do grupo do WhatsApp do cliente, sem identificar a
+        // pessoa — mostra o nome da empresa em vez de um placeholder genérico
+        PostEntity post = approval.getPost();
+        String approver = (post != null && post.getClient() != null)
+                ? post.getClient().getName()
+                : "whatsapp-client";
+
         approval.setStatus(ApproveStatusEnum.APPROVE);
         approval.setApprovedAt(LocalDateTime.now());
-        approval.setApprovedUser("whatsapp-client");
+        approval.setApprovedUser(approver);
         approveRepository.save(approval);
 
-        PostEntity post = approval.getPost();
         if (post == null) return;
 
         LocalDateTime now = LocalDateTime.now();
