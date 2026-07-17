@@ -12,8 +12,8 @@ import {
   PlusCircle,
   Settings,
   LogOut,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
   ShieldCheck,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
@@ -68,27 +68,34 @@ function toggleSidebar() {
 <template>
   <aside
     :class="[
-      'min-h-screen bg-[#EEF2FF] flex flex-col shrink-0 transition-all duration-200',
+      'relative min-h-screen bg-[#EEF2FF] flex flex-col shrink-0 transition-all duration-200',
       isCollapsed ? 'w-16' : 'w-60',
     ]"
   >
+    <!-- Toggle — bolinha fixa na borda da sidebar, sempre visível -->
+    <button
+      type="button"
+      :title="isCollapsed ? 'Abrir menu' : 'Fechar menu'"
+      :aria-label="isCollapsed ? 'Abrir menu lateral' : 'Fechar menu lateral'"
+      class="absolute -right-3 top-[60px] z-10 flex h-6 w-6 items-center justify-center rounded-full border border-indigo-100 bg-white text-gray-400 shadow-sm transition-colors hover:border-primary/30 hover:text-primary"
+      @click="toggleSidebar"
+    >
+      <ChevronRight v-if="isCollapsed" class="h-3.5 w-3.5" />
+      <ChevronLeft v-else class="h-3.5 w-3.5" />
+    </button>
+
     <!-- Logo -->
-    <div :class="['pt-6 pb-4', isCollapsed ? 'px-2' : 'px-6']">
-      <div :class="['flex items-start gap-2', isCollapsed ? 'justify-center' : 'justify-between']">
-        <div v-if="!isCollapsed" class="flex flex-col gap-0.5">
-          <img :src="logoUrl" alt="North Produções" class="h-9 object-contain object-left" />
-          <span class="text-xs font-semibold text-[#6B21A8] tracking-wide">North Produções</span>
-        </div>
-        <button
-          type="button"
-          :title="isCollapsed ? 'Abrir menu' : 'Fechar menu'"
-          :aria-label="isCollapsed ? 'Abrir menu lateral' : 'Fechar menu lateral'"
-          class="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-indigo-100/70 hover:text-primary"
-          @click="toggleSidebar"
+    <div :class="['pt-6 pb-4', isCollapsed ? 'px-2' : 'px-5']">
+      <div :class="['flex items-center', isCollapsed ? 'justify-center' : 'gap-2.5']">
+        <div
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-indigo-100/80"
         >
-          <PanelLeftOpen v-if="isCollapsed" class="h-4 w-4" />
-          <PanelLeftClose v-else class="h-4 w-4" />
-        </button>
+          <img :src="logoUrl" alt="North Produções" class="h-7 w-7 object-contain" />
+        </div>
+        <div v-if="!isCollapsed" class="flex min-w-0 flex-col leading-tight">
+          <span class="truncate text-[15px] font-bold tracking-tight text-gray-900">North</span>
+          <span class="truncate text-[10px] font-semibold uppercase tracking-wider text-gray-400">Produções</span>
+        </div>
       </div>
     </div>
 
