@@ -44,7 +44,8 @@ services:
       - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL:-}
       - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
-      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN:-}
+      # SENTRY_AUTH_TOKEN não vai pro container: só é usado em build-time
+      # pelo plugin Maven (upload de source bundle), nunca em runtime
       - SENTRY_AUTO_INIT=${SENTRY_AUTO_INIT:-false}
       - JAVA_OPTS=${JAVA_OPTS:-}
       - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-none}
