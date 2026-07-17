@@ -7,8 +7,12 @@ COPY src ./src
 RUN mvn package -Dmaven.test.skip=true
 RUN wget -q https://repo1.maven.org/maven2/io/sentry/sentry-opentelemetry-agent/8.49.0/sentry-opentelemetry-agent-8.49.0.jar -O sentry-opentelemetry-agent.jar
 
-FROM eclipse-temurin:21-jre-alpine
-RUN apk add --no-cache tzdata
+# jre-jammy (glibc) em vez de jre-alpine (musl) — o binário nativo do
+# async-profiler (usado pelo sentry-async-profiler) só é compilado pra
+# glibc; em musl ele falha ao carregar e o profiling fica mudo no Sentry
+FROM eclipse-temurin:21-jre-jammy
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 COPY --from=builder /app/sentry-opentelemetry-agent.jar sentry-opentelemetry-agent.jar
