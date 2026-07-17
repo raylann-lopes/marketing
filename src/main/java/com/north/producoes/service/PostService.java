@@ -187,6 +187,8 @@ public class PostService {
 
         Set<String> s3Keys = collectS3Keys(post);
 
+        // Ordem importa: filhos antes dos pais — bulk delete não aciona cascade JPA
+        approveRepository.deleteCarouselArtsByPostId(id);
         approveRepository.deleteByPostId(id);
         commentRepository.deleteByPostId(id);
         postRepository.delete(post);

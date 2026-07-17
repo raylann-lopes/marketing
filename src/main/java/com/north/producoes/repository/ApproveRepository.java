@@ -59,6 +59,19 @@ public interface ApproveRepository extends JpaRepository<ApproveEntity, Long> {
     void deleteCarouselArtsByPostClientId(@Param("clientId") Long clientId);
 
     /**
+     * Remove as artes de carrossel antes do bulk delete da aprovação de um post.
+     * Mesma razão de deleteCarouselArtsByPostClientId: bulk delete ignora o
+     * cascade do JPA.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM ApproveCarouselArtEntity a
+            WHERE a.approve.id IN (
+                SELECT ap.id FROM ApproveEntity ap WHERE ap.post.id = :postId)
+            """)
+    void deleteCarouselArtsByPostId(@Param("postId") Long postId);
+
+    /**
      * Busca aprovação PENDING vinculada ao grupo WhatsApp do cliente.
      * Usado pelo webhook para identificar a qual post o cliente está respondendo.
      * Retorna List (não Optional) para evitar IncorrectResultSizeDataAccessException
