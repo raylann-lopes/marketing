@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import {
   Eye,
-  ChevronDown,
+  MessageCircle,
   Pencil,
   Sparkles,
   Image,
@@ -10,7 +10,6 @@ import {
   Send,
   Clock,
 } from 'lucide-vue-next'
-import Avatar from '@/components/ui/Avatar.vue'
 import { type Post } from '@/services/postService'
 import type { PostApproval } from '@/services/approvalService'
 
@@ -27,15 +26,9 @@ interface Props {
   card: Post
   columnId: string
   columnTheme: ColumnTheme
-  isExpanded: boolean
   approval?: PostApproval | null
   clientName: string
-  overdue: boolean
-  priorityInfo: { label: string; className: string }
-  dueDateLabel: string
-  responsibleLabel: string
-  postTypeLabel: string
-  approvalStatus: { text: string; className: string }
+  commentCount?: number
   rejectionMessage: string
   isSendingApproval: boolean
 }
@@ -44,7 +37,7 @@ const props = defineProps<Props>()
 
 defineEmits<{
   (e: 'preview'): void
-  (e: 'toggleExpand'): void
+  (e: 'openComments'): void
   (e: 'edit'): void
   (e: 'prepareApproval'): void
   (e: 'internalReview'): void
@@ -71,6 +64,11 @@ function formatSentAt(dateStr?: string) {
 const canShowReference = computed(() =>
   ['DEMAND', 'IN_PRODUCTION', 'FINISHED'].includes(props.columnId),
 )
+
+const commentBadgeLabel = computed(() => {
+  const count = props.commentCount ?? 0
+  return count > 9 ? '9+' : String(count)
+})
 </script>
 
 <template>
@@ -104,29 +102,41 @@ const canShowReference = computed(() =>
           <Image class="w-3 h-3 text-amber-600" />
         </div>
       </div>
-      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            @click.stop="$emit('preview')"
+            class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+            title="Visualizar imagem"
+          >
+            <Eye class="w-3.5 h-3.5" />
+          </button>
+          <button
+            @click.stop="$emit('edit')"
+            class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+            title="Editar"
+          >
+            <Pencil class="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <!-- Por último = no canto do card. Sem comentário, some/aparece com o
+             hover igual os outros; com comentário, fica sempre visível ali no
+             canto, sem sobrar espaço em branco à direita dele. -->
         <button
-          @click.stop="$emit('preview')"
-          class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-          title="Visualizar imagem"
+          @click.stop="$emit('openComments')"
+          :class="[
+            'relative p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors',
+            commentCount ? '' : 'opacity-0 group-hover:opacity-100',
+          ]"
+          title="Comentários"
         >
-          <Eye class="w-3.5 h-3.5" />
-        </button>
-        <button
-          @click.stop="$emit('toggleExpand')"
-          class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-          :title="isExpanded ? 'Ocultar dados' : 'Expandir dados'"
-        >
-          <ChevronDown
-            :class="['w-3.5 h-3.5 transition-transform', isExpanded ? 'rotate-180' : '']"
-          />
-        </button>
-        <button
-          @click.stop="$emit('edit')"
-          class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
-          title="Editar"
-        >
-          <Pencil class="w-3.5 h-3.5" />
+          <MessageCircle class="w-3.5 h-3.5" />
+          <span
+            v-if="commentCount"
+            class="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-[3px] rounded-full bg-primary text-white text-[8px] font-bold flex items-center justify-center leading-none"
+          >
+            {{ commentBadgeLabel }}
+          </span>
         </button>
       </div>
     </div>
@@ -170,55 +180,6 @@ const canShowReference = computed(() =>
         <span class="font-bold text-indigo-600 uppercase text-[9px] mr-1">Programado:</span>
         {{ formatSentAt(card.scheduledAt) }}
       </p>
-    </div>
-
-    <div v-if="isExpanded" class="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-      <div class="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
-        <p class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Etapa</p>
-        <p class="mt-0.5 font-semibold text-gray-700 truncate">{{ columnId }}</p>
-      </div>
-      <div class="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
-        <p class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Prioridade</p>
-        <p :class="['mt-0.5 font-semibold truncate', priorityInfo.className.split(' ')[0]]">
-          {{ priorityInfo.label }}
-        </p>
-      </div>
-      <div class="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
-        <p class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Responsável</p>
-        <p class="mt-0.5 font-semibold text-gray-700 truncate">{{ responsibleLabel }}</p>
-      </div>
-      <div class="rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
-        <p class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Prazo</p>
-        <p :class="['mt-0.5 font-semibold truncate', overdue ? 'text-red-600' : 'text-gray-700']">
-          {{ dueDateLabel }}
-        </p>
-      </div>
-      <div class="col-span-2 rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <p class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Tipo</p>
-            <p class="mt-0.5 font-semibold text-gray-700 truncate">{{ postTypeLabel }}</p>
-          </div>
-          <Avatar
-            v-if="card.userId"
-            :name="'U' + card.userId"
-            size="sm"
-            class="w-6 h-6 shrink-0 text-[10px]"
-          />
-          <div
-            v-else
-            class="w-6 h-6 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 border border-gray-200"
-          >
-            -
-          </div>
-        </div>
-      </div>
-      <div class="col-span-2 rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5">
-        <p class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Aprovação</p>
-        <p :class="['mt-0.5 font-semibold truncate', approvalStatus.className]">
-          {{ approvalStatus.text }}
-        </p>
-      </div>
     </div>
 
     <!-- Botões de ação na Demanda -->
