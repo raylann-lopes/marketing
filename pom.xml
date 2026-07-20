@@ -35,7 +35,7 @@
 		<mcp.sdk.version>1.1.1</mcp.sdk.version>
 		<postgresql.version>42.7.11</postgresql.version>
 		<sentry.skipSourceBundle>true</sentry.skipSourceBundle>
-		<sentry.authToken></sentry.authToken>
+		<sentry.authToken/>
 	</properties>
 	<dependencyManagement>
 		<dependencies>

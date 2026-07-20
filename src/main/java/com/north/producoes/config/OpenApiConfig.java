@@ -20,7 +20,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("North Produções API")
                         .description("API para gerenciamento de clientes, posts e financeiro da agência North Produções")
-                        .version("1.0.0")
+                        .version("2.1.0")
                         .contact(new Contact()
                                 .name("North Produções")))
                 .addSecurityItem(new SecurityRequirement().addList(schemeName))
