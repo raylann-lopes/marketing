@@ -39,9 +39,9 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
   >
     <div
-      class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-300"
+      class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300"
     >
-      <div class="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
+      <div class="shrink-0 flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
         <div class="flex items-center gap-3">
           <div
             class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary"
@@ -64,7 +64,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
           <X class="w-5 h-5" />
         </button>
       </div>
-      <div class="grid grid-cols-2 gap-6 p-6">
+      <div class="grid grid-cols-2 gap-6 p-6 overflow-y-auto flex-1 min-h-0">
         <!-- Coluna 1: Upload da Arte -->
         <div class="space-y-4">
           <div class="flex items-center justify-between">
@@ -181,7 +181,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
         </div>
       </div>
 
-      <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
+      <div class="shrink-0 p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
         <Button variant="outline" class="flex-1 h-12 rounded-xl font-bold" @click="$emit('close')"
           >Cancelar</Button
         >

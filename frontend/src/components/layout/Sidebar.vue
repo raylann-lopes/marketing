@@ -17,15 +17,20 @@ import {
   ShieldCheck,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { setCurrentUserId } from '@/lib/api'
+import { useIsMobile } from '@/lib/breakpoint'
 import logoUrl from '@/assets/logo.png'
 
 const router = useRouter()
 const role = localStorage.getItem('role') || sessionStorage.getItem('role')
 const isAdmin = role === 'ADMIN'
+const { isMobile } = useIsMobile()
 const SIDEBAR_COLLAPSED_KEY = 'north_sidebar_collapsed'
-const isCollapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true')
+// Sem preferência salva ainda, começa fechada em telas pequenas — depois
+// que o usuário alterna manualmente, a escolha fica salva e vale pra sempre
+const savedCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+const isCollapsed = ref(savedCollapsed !== null ? savedCollapsed === 'true' : isMobile.value)
 
 type NavItem = {
   label: string
@@ -58,6 +63,12 @@ if (isAdmin) {
   navItems.push({ label: 'Financeiro', to: '/finance', icon: CreditCard })
   navItems.push({ label: 'Usuários', to: '/admin/users', icon: ShieldCheck })
 }
+
+// Calendário não coube no celular (view própria já bloqueia o acesso) —
+// removido do menu no mobile para não oferecer um link morto
+const visibleNavItems = computed(() =>
+  isMobile.value ? navItems.filter(item => item.to !== '/calendar') : navItems,
+)
 
 function toggleSidebar() {
   isCollapsed.value = !isCollapsed.value
@@ -101,7 +112,7 @@ function toggleSidebar() {
 
     <!-- Nav -->
     <nav :class="['flex-1 space-y-1', isCollapsed ? 'px-2' : 'px-3']">
-      <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" v-slot="{ isActive }">
+      <RouterLink v-for="item in visibleNavItems" :key="item.to" :to="item.to" v-slot="{ isActive }">
         <div
           :title="isCollapsed ? item.label : undefined"
           :class="[
