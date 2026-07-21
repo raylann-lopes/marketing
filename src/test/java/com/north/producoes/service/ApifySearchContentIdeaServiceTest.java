@@ -3,6 +3,10 @@ package com.north.producoes.service;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.exception.AiIntegrationException;
 import com.north.producoes.integration.apify.ApifyClient;
+import com.north.producoes.integration.apify.dto.ApifyInstagramPostResponseDTO;
+import com.north.producoes.integration.apify.dto.ApifyInstagramRunRequestDTO;
+import com.north.producoes.integration.apify.dto.ApifyRunDataDTO;
+import com.north.producoes.integration.apify.dto.ApifyRunResponseDTO;
 import com.north.producoes.integration.apify.dto.ContentIdeaTermsDTO;
 import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.ContentIdeaRunsRepository;
@@ -11,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -121,6 +126,97 @@ class ApifySearchContentIdeaServiceTest {
 
             assertThatThrownBy(() -> apifySearchContentIdeaService.generateIdeas(client))
                     .isInstanceOf(AiIntegrationException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("searchInstagramSignals() / coleta de sinais")
+    class CollectSignals {
+
+        private ClientEntity clientWithTerms(List<String> hashtags, List<String> searchTerms) {
+            ClientEntity client = new ClientEntity();
+            client.setId(10L);
+            client.setNiche("Odontologia");
+            client.setAiTerms(new ContentIdeaTermsDTO(hashtags, searchTerms));
+            return client;
+        }
+
+        private ApifyRunResponseDTO runResponse(String status) {
+            return new ApifyRunResponseDTO(new ApifyRunDataDTO("run-1", status, "dataset-1"));
+        }
+
+        private ApifyInstagramPostResponseDTO post(String owner, int likes, int comments) {
+            return new ApifyInstagramPostResponseDTO(
+                    "id", "Image", "shortcode", "legenda do post", List.of(), List.of(),
+                    "url", comments, likes, null, null, "2026-01-01T00:00:00Z", owner, owner);
+        }
+
+        @Test
+        @DisplayName("deve buscar por hashtag via directUrls quando o cliente tem hashtags")
+        void shouldSearchByHashtagUrls() {
+            ClientEntity client = clientWithTerms(
+                    List.of("#Odontologia Estética!", "clareamento"), List.of());
+            when(contentIdeaRunsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(apifyClient.runInstagramScraper(any())).thenReturn(runResponse("SUCCEEDED"));
+            when(apifyClient.getRun("run-1")).thenReturn(runResponse("SUCCEEDED"));
+            when(apifyClient.getDatasetItems("dataset-1"))
+                    .thenReturn(List.of(post("perfil_nicho", 100, 10)));
+
+            List<?> signals = apifySearchContentIdeaService.searchInstagramSignals(client);
+
+            assertThat(signals).hasSize(1);
+            ArgumentCaptor<ApifyInstagramRunRequestDTO> captor =
+                    ArgumentCaptor.forClass(ApifyInstagramRunRequestDTO.class);
+            verify(apifyClient, times(1)).runInstagramScraper(captor.capture());
+            ApifyInstagramRunRequestDTO sent = captor.getValue();
+            assertThat(sent.search()).isNull();
+            assertThat(sent.searchType()).isNull();
+            assertThat(sent.directUrls()).containsExactlyInAnyOrder(
+                    "https://www.instagram.com/explore/tags/odontologiaestetica/",
+                    "https://www.instagram.com/explore/tags/clareamento/");
+        }
+
+        @Test
+        @DisplayName("deve cair no fallback de busca por perfil quando hashtag não retorna sinais")
+        void shouldFallBackToProfileSearchWhenHashtagIsEmpty() {
+            ClientEntity client = clientWithTerms(List.of("nichoraro"), List.of("perfil do nicho"));
+            when(contentIdeaRunsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(apifyClient.runInstagramScraper(any())).thenReturn(runResponse("SUCCEEDED"));
+            when(apifyClient.getRun("run-1")).thenReturn(runResponse("SUCCEEDED"));
+            // Primeira chamada (hashtag) vazia, segunda (perfil) com resultado
+            when(apifyClient.getDatasetItems("dataset-1"))
+                    .thenReturn(List.of())
+                    .thenReturn(List.of(post("perfil_nicho", 50, 5)));
+
+            List<?> signals = apifySearchContentIdeaService.searchInstagramSignals(client);
+
+            assertThat(signals).hasSize(1);
+            ArgumentCaptor<ApifyInstagramRunRequestDTO> captor =
+                    ArgumentCaptor.forClass(ApifyInstagramRunRequestDTO.class);
+            verify(apifyClient, times(2)).runInstagramScraper(captor.capture());
+            ApifyInstagramRunRequestDTO hashtagCall = captor.getAllValues().get(0);
+            ApifyInstagramRunRequestDTO profileCall = captor.getAllValues().get(1);
+            assertThat(hashtagCall.directUrls()).isNotEmpty();
+            assertThat(profileCall.searchType()).isEqualTo("user");
+            assertThat(profileCall.search()).isEqualTo("perfil do nicho");
+        }
+
+        @Test
+        @DisplayName("deve ir direto pro fallback de perfil quando cliente não tem hashtags")
+        void shouldSkipHashtagWhenNoneConfigured() {
+            ClientEntity client = clientWithTerms(List.of(), List.of("perfil do nicho"));
+            when(contentIdeaRunsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(apifyClient.runInstagramScraper(any())).thenReturn(runResponse("SUCCEEDED"));
+            when(apifyClient.getRun("run-1")).thenReturn(runResponse("SUCCEEDED"));
+            when(apifyClient.getDatasetItems("dataset-1"))
+                    .thenReturn(List.of(post("perfil_nicho", 50, 5)));
+
+            apifySearchContentIdeaService.searchInstagramSignals(client);
+
+            ArgumentCaptor<ApifyInstagramRunRequestDTO> captor =
+                    ArgumentCaptor.forClass(ApifyInstagramRunRequestDTO.class);
+            verify(apifyClient, times(1)).runInstagramScraper(captor.capture());
+            assertThat(captor.getValue().searchType()).isEqualTo("user");
         }
     }
 }

@@ -32,8 +32,10 @@ public class ApifyClient {
     public ApifyRunResponseDTO runInstagramScraper(ApifyInstagramRunRequestDTO request) {
         validateConfig();
 
-        if (request == null || !StringUtils.hasText(request.search())) {
-            throw new ApifyIntegrationException("Termo de busca para Apify e obrigatorio.");
+        boolean hasSearch = request != null && StringUtils.hasText(request.search());
+        boolean hasDirectUrls = request != null && request.directUrls() != null && !request.directUrls().isEmpty();
+        if (!hasSearch && !hasDirectUrls) {
+            throw new ApifyIntegrationException("Termo de busca ou directUrls para Apify e obrigatorio.");
         }
 
         try {
