@@ -12,8 +12,10 @@ import ClientModal from '@/components/clients/ClientModal.vue'
 import { clientService, type Client } from '@/services/clientService'
 import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
+import { useIsMobile } from '@/lib/breakpoint'
 import { z } from 'zod'
 
+const { isMobile } = useIsMobile()
 const search = ref('')
 const clients = ref<Client[]>([])
 const loading = ref(true)
@@ -294,7 +296,7 @@ function openClientWorkspace(client: Client) {
 
 <template>
   <AppLayout v-model:search="search" topbar-placeholder="Buscar clientes por nome ou nicho...">
-    <div class="flex gap-6 h-[calc(100vh-140px)]">
+    <div class="flex flex-col md:flex-row gap-6 md:h-[calc(100vh-140px)]">
 
       <!-- Table -->
       <div class="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-0">
@@ -306,7 +308,7 @@ function openClientWorkspace(client: Client) {
           <div class="flex items-center gap-3">
             <Button class="gap-2" @click="openModal">
               <span class="text-base leading-none">+</span>
-              Novo Cliente
+              <span class="hidden md:inline">Novo Cliente</span>
             </Button>
           </div>
         </div>
@@ -324,8 +326,8 @@ function openClientWorkspace(client: Client) {
           <p class="text-gray-500">Nenhum cliente encontrado.</p>
         </div>
 
-        <div v-else class="flex-1">
-          <table class="w-full">
+        <div v-else class="flex-1 overflow-y-auto">
+          <table v-if="!isMobile" class="w-full">
             <thead>
               <tr class="border-b border-gray-100">
                 <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Cliente</th>
@@ -367,6 +369,28 @@ function openClientWorkspace(client: Client) {
               </tr>
             </tbody>
           </table>
+
+          <div v-else class="divide-y divide-gray-50">
+            <div
+              v-for="client in paginatedClients"
+              :key="client.id"
+              :class="[
+                'p-4 flex items-center gap-3 cursor-pointer transition-colors active:bg-purple-50',
+                selectedClient?.id === client.id ? 'bg-purple-50' : ''
+              ]"
+              @click="selectClient(client)"
+            >
+              <Avatar :name="client.name" size="md" class="shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-800 truncate">{{ client.name }}</p>
+                <p class="text-xs text-gray-400 truncate mt-0.5">{{ client.number || 'Sem telefone' }}</p>
+                <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <Badge variant="secondary" class="text-[10px]">{{ client.niche || 'Sem nicho' }}</Badge>
+                  <Badge :variant="client.status === 'ACTIVE' ? 'success' : 'warning'" class="text-[10px]">{{ client.status }}</Badge>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Pagination Footer -->
@@ -396,9 +420,20 @@ function openClientWorkspace(client: Client) {
         </div>
       </div>
 
-      <!-- Detail sidebar -->
-      <transition name="slide">
-        <div v-if="selectedClient" class="w-80 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col shrink-0 overflow-hidden">
+      <!-- Detail sidebar: sidebar in-flow no desktop, drawer sobreposto no mobile -->
+      <Teleport to="body" :disabled="!isMobile">
+        <div
+          v-if="isMobile && selectedClient"
+          class="fixed inset-0 z-40 bg-black/40"
+          @click="selectedClient = null"
+        />
+        <transition :name="isMobile ? 'drawer' : 'slide'">
+          <div
+            v-if="selectedClient"
+            :class="isMobile
+              ? 'fixed inset-y-0 right-0 z-50 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col overflow-hidden'
+              : 'w-80 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col shrink-0 overflow-hidden'"
+          >
           <div class="flex items-center justify-end gap-2 p-3 border-b border-gray-100">
             <button
               class="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
@@ -499,8 +534,9 @@ function openClientWorkspace(client: Client) {
               </div>
             </div>
           </div>
-        </div>
-      </transition>
+          </div>
+        </transition>
+      </Teleport>
     </div>
 
     <ClientModal
@@ -528,4 +564,7 @@ function openClientWorkspace(client: Client) {
 <style scoped>
 .slide-enter-active, .slide-leave-active { transition: all 0.2s ease; }
 .slide-enter-from, .slide-leave-to { opacity: 0; transform: translateX(20px); }
+
+.drawer-enter-active, .drawer-leave-active { transition: transform 0.25s ease; }
+.drawer-enter-from, .drawer-leave-to { transform: translateX(100%); }
 </style>

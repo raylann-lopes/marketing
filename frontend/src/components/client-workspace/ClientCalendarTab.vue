@@ -9,6 +9,9 @@ import {
 } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
+import { useIsMobile } from '@/lib/breakpoint'
+
+const { isMobile } = useIsMobile()
 
 type UploadStatus = 'PLANNED' | 'UPLOADED' | 'APPROVED'
 
@@ -74,7 +77,7 @@ function statusLabel(status: UploadStatus) {
 
 <template>
   <div class="grid gap-6 lg:grid-cols-[1fr_360px]">
-    <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+    <section v-if="!isMobile" class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
       <div class="mb-5 flex items-center justify-between">
         <h2 class="text-xl font-bold text-gray-900">{{ currentMonthLabel }}</h2>
         <div class="flex items-center gap-2">
