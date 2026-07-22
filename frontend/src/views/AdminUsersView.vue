@@ -160,9 +160,9 @@ onMounted(fetchUsers)
         <h1 class="text-3xl font-bold text-gray-900">Usuários</h1>
         <p class="text-gray-500 mt-1">Gerencie quem tem acesso ao sistema.</p>
       </div>
-      <Button @click="showForm = true" :disabled="showForm">
+      <Button class="gap-2" @click="showForm = true" :disabled="showForm">
         <UserPlus class="w-4 h-4" />
-        Novo Usuário
+        <span class="hidden md:inline">Novo Usuário</span>
       </Button>
     </div>
 

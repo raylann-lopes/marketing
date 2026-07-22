@@ -103,7 +103,7 @@ const commentBadgeLabel = computed(() => {
         </div>
       </div>
       <div class="flex items-center gap-1">
-        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div class="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <button
             @click.stop="$emit('preview')"
             class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
@@ -126,7 +126,7 @@ const commentBadgeLabel = computed(() => {
           @click.stop="$emit('openComments')"
           :class="[
             'relative p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors',
-            commentCount ? '' : 'opacity-0 group-hover:opacity-100',
+            commentCount ? '' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100',
           ]"
           title="Comentários"
         >

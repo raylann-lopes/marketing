@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { X, ChevronDown, RefreshCw } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { type Client } from '@/services/clientService'
@@ -42,6 +43,37 @@ function updateField(key: keyof TransactionForm, value: string | number) {
 function isFixed(type: string) {
   return type === 'FIXED_EXPENSE' || type === 'FIXED_REVENUE'
 }
+
+const isClientDropdownOpen = ref(false)
+const clientButtonRef = ref<HTMLElement | null>(null)
+const clientDropdownPosition = ref({ top: 0, left: 0, width: 0 })
+
+const selectedClientName = computed(() =>
+  props.clients.find(c => String(c.id) === String(props.transaction.client))?.name
+)
+
+function toggleClientDropdown() {
+  if (isClientDropdownOpen.value) {
+    isClientDropdownOpen.value = false
+    return
+  }
+  const rect = clientButtonRef.value!.getBoundingClientRect()
+  clientDropdownPosition.value = { top: rect.bottom + 4, left: rect.left, width: rect.width }
+  isClientDropdownOpen.value = true
+}
+
+function selectClient(id: string | number) {
+  updateField('client', String(id))
+  isClientDropdownOpen.value = false
+}
+
+function handleClientDropdownOutsideClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (!target.closest('.client-dropdown')) isClientDropdownOpen.value = false
+}
+
+onMounted(() => document.addEventListener('click', handleClientDropdownOutsideClick))
+onUnmounted(() => document.removeEventListener('click', handleClientDropdownOutsideClick))
 </script>
 
 <template>
@@ -79,15 +111,15 @@ function isFixed(type: string) {
         <!-- Cliente -->
         <div class="space-y-1.5">
           <label class="text-xs font-semibold text-gray-500 uppercase">Cliente</label>
-          <div class="relative">
-            <select
-              :value="transaction.client"
-              @change="updateField('client', ($event.target as HTMLSelectElement).value)"
-              :class="['w-full p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer', fieldErrors.client ? 'border-red-500' : 'border-gray-200']"
+          <div class="relative client-dropdown">
+            <button
+              type="button"
+              ref="clientButtonRef"
+              @click.stop="toggleClientDropdown"
+              :class="['w-full flex items-center justify-between gap-2 p-2.5 pr-10 rounded-lg border bg-gray-50 text-sm text-left', fieldErrors.client ? 'border-red-500' : 'border-gray-200']"
             >
-              <option value="">Selecione um cliente</option>
-              <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
+              <span :class="selectedClientName ? 'text-gray-800' : 'text-gray-400'">{{ selectedClientName || 'Selecione um cliente' }}</span>
+            </button>
             <ChevronDown class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           </div>
           <p v-if="fieldErrors.client" class="text-[10px] text-red-500 font-medium">{{ fieldErrors.client }}</p>
@@ -156,5 +188,30 @@ function isFixed(type: string) {
         </Button>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="isClientDropdownOpen"
+        class="client-dropdown fixed z-[60] rounded-lg border border-gray-200 bg-white shadow-xl py-1 max-h-56 overflow-y-auto"
+        :style="{
+          top: clientDropdownPosition.top + 'px',
+          left: clientDropdownPosition.left + 'px',
+          width: clientDropdownPosition.width + 'px',
+        }"
+      >
+        <button
+          v-for="c in clients"
+          :key="c.id"
+          type="button"
+          @click.stop="selectClient(c.id!)"
+          :class="[
+            'w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50',
+            String(transaction.client) === String(c.id) ? 'font-bold text-primary' : 'text-gray-700',
+          ]"
+        >
+          {{ c.name }}
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>

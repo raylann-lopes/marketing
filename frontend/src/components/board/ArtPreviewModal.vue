@@ -74,10 +74,10 @@ function formatSentAt(sentAt?: string) {
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
   >
     <div
-      class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in duration-300"
+      class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300"
     >
       <!-- Header -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
+      <div class="shrink-0 flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
         <div class="flex items-center gap-3">
           <div
             :class="[
@@ -113,7 +113,7 @@ function formatSentAt(sentAt?: string) {
         </button>
       </div>
 
-      <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto flex-1 min-h-0">
         <!-- Coluna 1: Visualização da Mídia -->
         <div class="space-y-4">
           <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -292,7 +292,7 @@ function formatSentAt(sentAt?: string) {
       </div>
 
       <!-- Footer -->
-      <div class="p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
+      <div class="shrink-0 p-6 bg-gray-50 border-t border-gray-100 flex gap-4">
         <Button
           variant="outline"
           class="flex-1 h-12 rounded-xl font-bold border-gray-200"

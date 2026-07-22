@@ -19,8 +19,8 @@ defineEmits<{
     v-if="isOpen"
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
   >
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-      <div class="flex items-center justify-between p-5 border-b border-gray-100">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div class="shrink-0 flex items-center justify-between p-5 border-b border-gray-100">
         <div class="flex items-center gap-2.5 min-w-0">
           <div class="w-9 h-9 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
             <MessageCircle class="w-4 h-4" />
@@ -34,7 +34,7 @@ defineEmits<{
           <X class="w-5 h-5" />
         </button>
       </div>
-      <div class="p-5">
+      <div class="p-5 overflow-y-auto flex-1 min-h-0">
         <CommentThread :post-id="post?.id" @sent="$emit('sent')" />
       </div>
     </div>

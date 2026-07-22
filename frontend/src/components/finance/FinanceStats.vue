@@ -18,7 +18,7 @@ const statsConfig = [
 </script>
 
 <template>
-  <div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <Card v-for="stat in statsConfig" :key="stat.label" class="p-5 flex items-center gap-4">
       <div :class="['w-12 h-12 rounded-xl flex items-center justify-center', stat.bg]">
         <component :is="stat.icon" :class="['w-6 h-6', stat.color]" />

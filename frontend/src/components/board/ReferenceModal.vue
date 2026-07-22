@@ -30,10 +30,10 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in duration-300">
-      
+    <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300">
+
       <!-- Header -->
-      <div class="flex items-center justify-between p-7 border-b border-gray-100 bg-gray-50/50">
+      <div class="shrink-0 flex items-center justify-between p-7 border-b border-gray-100 bg-gray-50/50">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-sm">
             <Image class="w-6 h-6" />
@@ -47,7 +47,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
         </div>
         <button @click="$emit('close')" class="p-3 hover:bg-white rounded-2xl text-gray-400 transition-all shadow-sm hover:shadow-md"><X class="w-6 h-6" /></button>
       </div>
-      <div class="grid grid-cols-2 gap-8 p-7">
+      <div class="grid grid-cols-2 gap-8 p-7 overflow-y-auto flex-1 min-h-0">
         <!-- Coluna 1: Upload da Referência -->
         <div class="space-y-4">
           <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -132,7 +132,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
       </div>
 
       <!-- Footer -->
-      <div class="p-7 bg-gray-50 border-t border-gray-100 flex gap-4">
+      <div class="shrink-0 p-7 bg-gray-50 border-t border-gray-100 flex gap-4">
         <Button variant="outline" class="flex-1 h-14 rounded-2xl font-bold border-gray-200 text-gray-500" @click="$emit('close')">CANCELAR</Button>
         <Button
           class="flex-[2] h-14 rounded-2xl font-bold gap-2 shadow-xl shadow-amber-600/20 bg-amber-600 hover:bg-amber-700 text-white"

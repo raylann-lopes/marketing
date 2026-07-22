@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="flex items-center gap-3 ml-auto">
-      <div ref="notificationsRef" class="relative">
+      <div ref="notificationsRef" class="relative hidden md:block">
         <Button
           variant="ghost"
           size="icon"

@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { useFeedback } from '@/lib/feedback'
+import { useIsMobile } from '@/lib/breakpoint'
 
 import ClientDetailsTab from '@/components/client-workspace/ClientDetailsTab.vue'
 import ClientCalendarTab from '@/components/client-workspace/ClientCalendarTab.vue'
@@ -54,12 +55,22 @@ type ClientSnapshot = {
 
 type RecordMap<T> = Record<string, T>
 
+const { isMobile } = useIsMobile()
 const activeTab = ref<WorkspaceTabId>('details')
 const tabItems: { id: WorkspaceTabId; label: string; helper: string }[] = [
   { id: 'details', label: 'Dados do Cliente', helper: 'Briefing essencial para posts' },
   { id: 'calendar', label: 'Posts e Agendamento', helper: 'Planejar e acompanhar agenda' },
   { id: 'ai', label: 'Recomendações IA', helper: 'Análise simples baseada no nicho' },
 ]
+
+// Calendário mensal não cabe em telas pequenas — a aba nem aparece no celular
+const visibleTabItems = computed(() =>
+  isMobile.value ? tabItems.filter(t => t.id !== 'calendar') : tabItems,
+)
+
+watch(isMobile, (mobile) => {
+  if (mobile && activeTab.value === 'calendar') activeTab.value = 'details'
+})
 
 const today = new Date()
 const currentDate = ref(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -438,7 +449,7 @@ function selectToday() {
       <section class="rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
         <div class="flex gap-2 overflow-x-auto">
           <button
-            v-for="tab in tabItems"
+            v-for="tab in visibleTabItems"
             :key="tab.id"
             @click="activeTab = tab.id"
             :class="[

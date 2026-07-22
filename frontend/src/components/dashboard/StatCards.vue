@@ -13,7 +13,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div class="grid grid-cols-4 gap-4">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     <Card class="p-5 transition-all hover:shadow-md cursor-default">
       <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Clientes Ativos</p>
       <div class="flex items-baseline gap-2 mt-2">

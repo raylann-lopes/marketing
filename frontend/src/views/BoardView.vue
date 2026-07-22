@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { Plus } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { Plus, ChevronDown } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Button from '@/components/ui/Button.vue'
 import { postService, type Post, type PostStatus, getPostClientId, type PostFormData } from '@/services/postService'
@@ -10,6 +10,7 @@ import { commentService } from '@/services/commentService'
 import { mediaService } from '@/services/mediaService'
 import { getCurrentUserId } from '@/lib/api'
 import { useFeedback } from '@/lib/feedback'
+import { useIsMobile } from '@/lib/breakpoint'
 import draggable from 'vuedraggable'
 
 // Components
@@ -63,6 +64,32 @@ const columns = ref<BoardColumn[]>([
   { id: 'SCHEDULE', label: 'Agendado', color: 'bg-indigo-500', cards: [] },
   { id: 'PUBLISHED', label: 'Publicado', color: 'bg-purple-600', cards: [] },
 ])
+
+const { isMobile } = useIsMobile()
+const activeColumnId = ref<string>('DEMAND')
+
+// O painel do dropdown "Mover para" é renderizado via Teleport pro <body>
+// (fixed, posição calculada do botão) — assim ele não conta como conteúdo
+// da lista rolável dos cards, que antes esticava o scroll da página toda
+// vez que o dropdown abria.
+const activeMoveCard = ref<Post | null>(null)
+const moveDropdownPosition = ref({ top: 0, left: 0, width: 0 })
+
+function toggleMoveDropdown(card: Post, event: MouseEvent) {
+  if (activeMoveCard.value?.id === card.id) {
+    activeMoveCard.value = null
+    return
+  }
+  const button = event.currentTarget as HTMLElement
+  const rect = button.getBoundingClientRect()
+  moveDropdownPosition.value = { top: rect.bottom + 4, left: rect.left, width: rect.width }
+  activeMoveCard.value = card
+}
+
+function handleMoveDropdownOutsideClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (!target.closest('.move-dropdown')) activeMoveCard.value = null
+}
 
 const clients = ref<Client[]>([])
 const isModalOpen = ref(false)
@@ -248,6 +275,35 @@ async function handleBoardChange(evt: DraggableChangeEvent<Post>, columnId: stri
     } catch {
       fetchInitialData()
     }
+  }
+}
+
+// Equivalente ao handleBoardChange, mas disparado pelo <select> do modo
+// mobile em vez de soltar um card arrastado — sem drag entre colunas fora
+// de tela, o usuário escolhe o destino direto.
+async function moveCardToColumn(card: Post, targetColumnId: string) {
+  if (card.status === targetColumnId) return
+  const fromColumn = columns.value.find((c) => c.id === card.status)
+  const toColumn = columns.value.find((c) => c.id === targetColumnId)
+  if (!fromColumn || !toColumn) return
+
+  const originalStatus = card.status
+  fromColumn.cards = fromColumn.cards.filter((c) => c.id !== card.id)
+  toColumn.cards.push(card)
+  card.status = targetColumnId
+
+  try {
+    const payload = {
+      ...card,
+      status: targetColumnId,
+      clientId: Number(getPostClientId(card)),
+      userId: Number(getUserOrFallback()),
+    }
+    await postService.update(card.id!, payload as unknown as Post)
+  } catch {
+    card.status = originalStatus
+    feedback.error('Erro ao mover a demanda.')
+    fetchInitialData()
   }
 }
 
@@ -618,6 +674,11 @@ async function generateAICaption() {
 
 onMounted(() => {
   fetchInitialData()
+  document.addEventListener('click', handleMoveDropdownOutsideClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleMoveDropdownOutsideClick)
 })
 </script>
 
@@ -628,12 +689,13 @@ onMounted(() => {
         <h1 class="text-3xl font-bold text-gray-900">Board de Produção</h1>
         <p class="text-gray-500 mt-1">Fluxo operacional North Produções.</p>
       </div>
-      <Button class="gap-2" @click="((isModalOpen = true), (postToEdit = null))"
-        ><Plus class="w-4 h-4" /> Nova Demanda</Button
+      <Button class="gap-2 shrink-0" @click="((isModalOpen = true), (postToEdit = null))"
+        ><Plus class="w-4 h-4" /> <span class="hidden md:inline">Nova Demanda</span></Button
       >
     </div>
 
-    <div class="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-220px)]">
+    <!-- Desktop: colunas lado a lado com drag-and-drop -->
+    <div v-if="!isMobile" class="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-220px)]">
       <div
         v-for="(col, colIdx) in paginatedColumns"
         :key="col.id"
@@ -679,6 +741,111 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Mobile: uma coluna por vez via abas, sem drag (não dá pra arrastar
+         entre colunas fora de tela) — troca de etapa via select explícito -->
+    <div v-else>
+      <div class="flex gap-2 overflow-x-auto pb-2 mb-3 -mx-1 px-1">
+        <button
+          v-for="col in paginatedColumns"
+          :key="col.id"
+          type="button"
+          @click="activeColumnId = String(col.id)"
+          :class="[
+            'shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold uppercase border transition-colors',
+            activeColumnId === col.id
+              ? 'bg-primary text-white border-primary'
+              : 'bg-white text-gray-600 border-gray-200',
+          ]"
+        >
+          {{ col.label }}
+          <span
+            :class="[
+              'rounded-full px-1.5 py-0.5 text-[10px]',
+              activeColumnId === col.id ? 'bg-white/20' : 'bg-gray-100 text-gray-400',
+            ]"
+            >{{ col.totalCards }}</span
+          >
+        </button>
+      </div>
+
+      <div class="space-y-3 overflow-y-auto pb-4" style="max-height: calc(100vh - 280px)">
+        <div
+          v-for="card in paginatedColumns.find((c) => c.id === activeColumnId)?.cards ?? []"
+          :key="card.id"
+        >
+          <BoardCard
+            :card="card"
+            :column-id="String(activeColumnId)"
+            :column-theme="getColumnTheme(String(activeColumnId))"
+            :approval="getApprovalByPost(card)"
+            :client-name="getClientName(Number(getPostClientId(card)))"
+            :comment-count="getCommentCount(card)"
+            :rejection-message="getApprovalByPost(card)?.rejectionReason || 'Rejeitado'"
+            :is-sending-approval="false"
+            @preview="openArtPreviewModal(card)"
+            @open-comments="openCommentModal(card)"
+            @edit="((postToEdit = card), (isModalOpen = true))"
+            @prepare-approval="openApprovalModal(card)"
+            @internal-review="openArtPreviewModal(card, 'internal-review')"
+            @add-reference="openReferenceUpload(card)"
+            @view-reference="viewReference(card)"
+            @resend="handleSendApprovalFromFinished(card, true)"
+          />
+          <!-- Dropdown próprio em vez de <select> nativo: o picker do SO
+               renderiza fora de posição quando embutido num scroller
+               horizontal como a barra de abas acima -->
+          <div class="move-dropdown mt-1.5 px-1">
+            <button
+              type="button"
+              @click.stop="toggleMoveDropdown(card, $event)"
+              class="w-full flex items-center justify-between gap-2 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600"
+            >
+              <span
+                >Mover para:
+                <strong class="text-gray-800">{{
+                  paginatedColumns.find((c) => c.id === card.status)?.label ?? card.status
+                }}</strong></span
+              >
+              <ChevronDown class="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            </button>
+          </div>
+        </div>
+        <p
+          v-if="!(paginatedColumns.find((c) => c.id === activeColumnId)?.cards ?? []).length"
+          class="text-center text-sm text-gray-400 py-10"
+        >
+          Nenhuma demanda nesta etapa.
+        </p>
+      </div>
+    </div>
+
+    <!-- Painel do dropdown "Mover para" — fora da lista rolável via Teleport,
+         posição calculada do botão no momento do clique -->
+    <Teleport to="body">
+      <div
+        v-if="activeMoveCard"
+        class="move-dropdown fixed z-50 rounded-lg border border-gray-200 bg-white shadow-xl py-1 max-h-56 overflow-y-auto"
+        :style="{
+          top: moveDropdownPosition.top + 'px',
+          left: moveDropdownPosition.left + 'px',
+          width: moveDropdownPosition.width + 'px',
+        }"
+      >
+        <button
+          v-for="col in paginatedColumns"
+          :key="col.id"
+          type="button"
+          @click.stop="((moveCardToColumn(activeMoveCard!, String(col.id))), (activeMoveCard = null))"
+          :class="[
+            'w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50',
+            activeMoveCard.status === col.id ? 'font-bold text-primary' : 'text-gray-600',
+          ]"
+        >
+          {{ col.label }}
+        </button>
+      </div>
+    </Teleport>
 
     <PostModal
       :is-open="isModalOpen"

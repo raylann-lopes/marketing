@@ -115,25 +115,25 @@ onMounted(async () => {
 
 <template>
   <AppLayout>
-    <div class="flex items-start justify-between mb-6">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900">Olá {{ userName }}.</h1>
-        <p class="text-gray-500 mt-1">Aqui está o que está acontecendo na empresa hoje.</p>
+    <div class="flex items-start justify-between mb-6 gap-3">
+      <div class="min-w-0">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 truncate">Olá {{ userName }}.</h1>
+        <p class="text-gray-500 mt-1 text-sm md:text-base">Aqui está o que está acontecendo na empresa hoje.</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 md:gap-3 shrink-0">
         <Button variant="outline" class="gap-2" @click="router.push('/clients')">
           <UserPlus class="w-4 h-4" />
-          Novo Cliente
+          <span class="hidden md:inline">Novo Cliente</span>
         </Button>
         <Button class="gap-2" @click="router.push('/board')">
           <Plus class="w-4 h-4" />
-          Novo Post
+          <span class="hidden md:inline">Novo Post</span>
         </Button>
       </div>
     </div>
 
-    <div class="grid grid-cols-3 gap-6">
-      <div class="col-span-2 space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-6">
         <StatCards
           :total-clients="totalClients"
           :posts-this-month="postsThisMonth"

@@ -13,8 +13,10 @@ import { financeService, type FinancePayload, type FinanceRecord, type ForecastD
 import { clientService, type Client } from '@/services/clientService'
 import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
+import { useIsMobile } from '@/lib/breakpoint'
 import { z } from 'zod'
 
+const { isMobile } = useIsMobile()
 const loading = ref(false)
 const error = ref('')
 const transactions = ref<FinanceRecord[]>([])
@@ -544,7 +546,7 @@ function statusBadge(t: FinanceRecord): { variant: 'success' | 'destructive' | '
       </div>
       <Button v-if="activeTab === 'transactions'" class="gap-2" @click="openFinanceModal">
         <Plus class="w-4 h-4" />
-        Nova Transação
+        <span class="hidden md:inline">Nova Transação</span>
       </Button>
     </div>
 
@@ -803,7 +805,7 @@ function statusBadge(t: FinanceRecord): { variant: 'success' | 'destructive' | '
         </div>
         <p v-if="error" class="text-xs text-red-500 font-medium">{{ error }}</p>
       </div>
-      <table class="w-full">
+      <table v-if="!isMobile" class="w-full">
         <thead>
         <tr class="border-b border-gray-100">
           <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase">Descrição</th>
@@ -888,6 +890,80 @@ function statusBadge(t: FinanceRecord): { variant: 'success' | 'destructive' | '
         </tr>
         </tbody>
       </table>
+
+      <div v-else>
+        <div v-if="loading" class="text-center py-8">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+        </div>
+        <p v-else-if="paginatedTransactions.length === 0" class="text-center py-8 text-gray-500 text-sm italic px-5">
+          {{ statusFilter === 'PAY' ? 'Nenhuma conta paga no período.' : transactionFilter === 'open' ? 'Nenhuma conta em aberto.' : transactionFilter === 'future' ? 'Nenhuma conta futura.' : 'Nenhuma transação encontrada.' }}
+        </p>
+        <div v-else class="divide-y divide-gray-50">
+          <div
+            v-for="t in paginatedTransactions"
+            :key="t.id"
+            :class="['p-4', isOverdue(t) ? 'bg-red-50/40' : '']"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-gray-800 truncate">{{ t.description }}</p>
+                <p class="text-xs text-gray-500 mt-0.5 truncate">{{ getClientName(getClientId(t)) }}</p>
+              </div>
+              <p :class="['text-sm font-semibold shrink-0 text-right', t.value >= 0 ? 'text-green-600' : 'text-red-500']">
+                {{ t.value >= 0 ? '+' : '' }}{{ formatCurrency(t.value) }}
+              </p>
+            </div>
+            <div class="flex items-center flex-wrap gap-1.5 mt-2">
+              <span
+                v-if="getTypeLabel(t.type)"
+                :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full', getTypeLabel(t.type)!.class]"
+              >
+                {{ getTypeLabel(t.type)!.label }}
+              </span>
+              <Badge :variant="statusBadge(t).variant">{{ statusBadge(t).label }}</Badge>
+              <span :class="['text-[11px]', isOverdue(t) ? 'text-red-600 font-semibold' : 'text-gray-400']">
+                Vence {{ formatDate(t.expirationDate) }}
+              </span>
+              <span v-if="statusFilter !== 'PENDING' && t.status === 'PAY' && t.paymentDate" class="text-[11px] text-gray-400">
+                · Pago {{ formatDate(t.paymentDate) }}
+              </span>
+            </div>
+            <div class="flex items-center gap-1 mt-3 -ml-1.5">
+              <button
+                v-if="t.status !== 'PAY'"
+                class="p-1.5 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
+                title="Receber"
+                @click="handleMarkAsPaid(t)"
+              >
+                <CheckCircle class="w-4 h-4" />
+              </button>
+              <button
+                v-else
+                class="p-1.5 hover:bg-amber-50 rounded-lg text-amber-600 transition-colors"
+                title="Desfazer recebimento"
+                @click="handleUndoPayment(t)"
+              >
+                <RotateCcw class="w-4 h-4" />
+              </button>
+              <button
+                class="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
+                title="Editar"
+                @click="openEditTransactionModal(t)"
+              >
+                <Pencil class="w-4 h-4" />
+              </button>
+              <button
+                class="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors"
+                title="Excluir"
+                @click="handleDelete(t.id!)"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="filteredTransactions.length > itemsPerPage" class="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
         <p class="text-xs text-gray-500">
           Mostrando <span class="font-semibold">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> a

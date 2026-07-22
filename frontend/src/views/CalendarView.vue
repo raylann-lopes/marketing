@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { postService, type Post, type PostFormData } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
 import { getCurrentUserId } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
+import { useIsMobile } from '@/lib/breakpoint'
 import { z } from 'zod'
 
 import CalendarSidebar from '@/components/calendar/CalendarSidebar.vue'
@@ -16,6 +17,7 @@ import PostModal from '@/components/board/PostModal.vue'
 const route = useRoute()
 const today = new Date()
 const feedback = useFeedback()
+const { isMobile } = useIsMobile()
 
 const initialDate = (() => {
   const q = route.query.date
@@ -209,7 +211,15 @@ const selectedDayPosts = computed(() => {
 
 <template>
   <AppLayout topbar-placeholder="Buscar no calendário...">
-    <div class="flex gap-6 h-[calc(100vh-140px)]">
+    <div v-if="isMobile" class="flex flex-col items-center justify-center text-center py-20 px-6 bg-white rounded-xl border border-gray-100 shadow-sm">
+      <CalendarDays class="w-10 h-10 text-gray-300 mb-3" />
+      <p class="text-sm font-semibold text-gray-700">Calendário disponível no computador</p>
+      <p class="text-xs text-gray-400 mt-1 max-w-xs">
+        A visualização completa do calendário não coube na tela do celular. Acesse pelo computador para ver e navegar pelos dias, ou use o botão abaixo para criar um novo post.
+      </p>
+    </div>
+
+    <div v-else class="flex gap-6 h-[calc(100vh-140px)]">
 
       <!-- Calendar -->
       <div class="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col">
