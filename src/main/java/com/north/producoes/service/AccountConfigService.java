@@ -54,6 +54,18 @@ public class AccountConfigService {
         return accountConfigRepository.save(config);
     }
 
+    @Transactional
+    public AccountConfigEntity linkMetaAdAccount(Long clientId, String metaAdAccountId) {
+        AccountConfigEntity config = findByClientId(clientId);
+        if (config.getMetaAdAccountId() != null && !config.getMetaAdAccountId().isBlank()) {
+            throw new ResourceAlreadyExistsException(
+                    "Conta de anuncios ja vinculada para o cliente ID " + clientId
+            );
+        }
+        config.setMetaAdAccountId(normalizeAdAccountId(metaAdAccountId));
+        return accountConfigRepository.save(config);
+    }
+
     public AccountConfigEntity findByClientId(Long clientId) {
         return accountConfigRepository.findByClientId(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -84,5 +96,16 @@ public class AccountConfigService {
 
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeAdAccountId(String value) {
+        String normalized = normalize(value);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.startsWith("act_")) {
+            normalized = normalized.substring("act_".length());
+        }
+        return normalized;
     }
 }

@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public record AccountConfigResponseDTO(
         Long id,
         Long clientId,
+        String metaAdAccountId,
         String accessTokenMasked,
         String configuredBy,
         LocalDateTime configuredAt
@@ -22,6 +23,7 @@ public record AccountConfigResponseDTO(
         return new AccountConfigResponseDTO(
                 entity.getId(),
                 entity.getClient().getId(),
+                entity.getMetaAdAccountId(),
                 maskToken(entity.getAccessToken()),
                 entity.getConfiguredBy(),
                 entity.getConfiguredAt()
