@@ -1,0 +1,13 @@
+$kind: http-request
+name: Get Meta Ads Insights
+method: GET
+url: '{{baseUrl}}/api/admin/meta/ad-account/clients/{{clientId}}/insights'
+order: 3000
+pathVariables:
+  - key: clientId
+    value: '{{clientId}}'
+queryParams:
+  - key: dateStart
+    value: '{{dateStart}}'
+  - key: dateStop
+    value: '{{dateStop}}'

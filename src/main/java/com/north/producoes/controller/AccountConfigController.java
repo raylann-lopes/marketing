@@ -2,6 +2,7 @@ package com.north.producoes.controller;
 
 import com.north.producoes.controller.api.AccountConfigApi;
 import com.north.producoes.controller.dto.request.AccountConfigRequestDTO;
+import com.north.producoes.controller.dto.request.MetaAdsAccountLinkRequestDTO;
 import com.north.producoes.controller.dto.response.AccountConfigResponseDTO;
 import com.north.producoes.service.AccountConfigService;
 import jakarta.validation.Valid;
@@ -37,6 +38,18 @@ public class AccountConfigController implements AccountConfigApi {
         return ResponseEntity.ok(AccountConfigResponseDTO.from(
                 accountConfigService.findByClientId(clientId)
         ));
+    }
+
+    @Override
+    @PatchMapping("/client/{clientId}/meta-ad-account")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    public ResponseEntity<AccountConfigResponseDTO> linkMetaAdAccount(
+            @PathVariable Long clientId,
+            @Valid @RequestBody MetaAdsAccountLinkRequestDTO request) {
+        AccountConfigResponseDTO config = AccountConfigResponseDTO.from(
+                accountConfigService.linkMetaAdAccount(clientId, request.metaAdAccountId())
+        );
+        return ResponseEntity.ok(config);
     }
 
     @Override

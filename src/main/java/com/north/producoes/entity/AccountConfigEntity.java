@@ -36,4 +36,7 @@ public class AccountConfigEntity {
 
     @Column(name = "configured_at", nullable = false)
     private LocalDateTime configuredAt;
+
+    @Column(name = "meta_ad_account_id", length = 64)
+    private String metaAdAccountId;
 }

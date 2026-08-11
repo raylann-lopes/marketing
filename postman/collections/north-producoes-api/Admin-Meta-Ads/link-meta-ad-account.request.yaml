@@ -1,0 +1,14 @@
+$kind: http-request
+name: Link Meta Ads Account
+method: PATCH
+url: '{{baseUrl}}/api/admin/account-config/client/{{clientId}}/meta-ad-account'
+order: 2000
+pathVariables:
+  - key: clientId
+    value: '{{clientId}}'
+body:
+  type: json
+  content: |-
+    {
+      "metaAdAccountId": "{{metaAdAccountId}}"
+    }

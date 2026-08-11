@@ -9,6 +9,7 @@ import { setCurrentUserId } from '@/lib/api'
 import { clientService, type Client } from '@/services/clientService'
 import { accountConfigService, type AccountConfig, type MetaInstagramAccount } from '@/services/accountConfigService'
 import { evolutionGroupService, type EvolutionGroup } from '@/services/evolutionGroupService'
+import { metaAdsService, type MetaAdsAccount } from '@/services/metaAdsService'
 
 import ProfileForm from '@/components/settings/ProfileForm.vue'
 import PasswordForm from '@/components/settings/PasswordForm.vue'
@@ -44,6 +45,10 @@ const loadingMetaAccounts = ref(false)
 const evolutionGroups = ref<EvolutionGroup[]>([])
 const selectedEvolutionGroupId = ref('')
 const loadingEvolutionGroups = ref(false)
+const metaAdsAccounts = ref<MetaAdsAccount[]>([])
+const selectedMetaAdsAccountId = ref('')
+const loadingMetaAdsAccounts = ref(false)
+const savingMetaAdsAccount = ref(false)
 const savingIntegrations = ref(false)
 
 const selectedClientConfig = computed(() => {
@@ -65,9 +70,16 @@ const selectedGroupClient = computed(() => {
   return clients.value.find(client => String(client.id) === String(selectedClientId.value)) ?? null
 })
 
+const selectedClientHasWhatsapp = computed(() => Boolean(selectedGroupClient.value?.whatsappGroupId))
+
 const selectedEvolutionGroup = computed(() => {
   if (!selectedEvolutionGroupId.value) return null
   return evolutionGroups.value.find(group => group.groupId === selectedEvolutionGroupId.value) ?? null
+})
+
+const selectedMetaAdsAccount = computed(() => {
+  if (!selectedMetaAdsAccountId.value) return null
+  return metaAdsAccounts.value.find(account => account.accountId === selectedMetaAdsAccountId.value) ?? null
 })
 
 const selectedClientConnectionSummary = computed(() => {
@@ -81,6 +93,9 @@ const selectedClientConnectionSummary = computed(() => {
   }
   if (whatsappGroupName) {
     connections.push(`WhatsApp: ${whatsappGroupName}`)
+  }
+  if (selectedClientConfig.value?.metaAdAccountId) {
+    connections.push('Meta Ads configurado')
   }
 
   return connections.length > 0 ? connections.join(' | ') : 'Nenhuma conexão cadastrada para este cliente.'
@@ -143,6 +158,23 @@ async function fetchEvolutionGroups() {
   }
 }
 
+async function fetchMetaAdsAccounts() {
+  accountSuccess.value = ''
+  error.value = ''
+  loadingMetaAdsAccounts.value = true
+
+  try {
+    metaAdsAccounts.value = await metaAdsService.getAdAccounts()
+    if (metaAdsAccounts.value.length === 0) {
+      accountSuccess.value = 'Nenhuma conta de anúncios foi retornada pela Meta.'
+    }
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Erro ao buscar contas de anúncios da Meta'
+  } finally {
+    loadingMetaAdsAccounts.value = false
+  }
+}
+
 async function handleLinkClientIntegrations() {
   accountSuccess.value = ''
   error.value = ''
@@ -151,15 +183,15 @@ async function handleLinkClientIntegrations() {
     error.value = 'Selecione um cliente.'
     return
   }
-  if (!selectedMetaAccount.value) {
+  if (!selectedClientConfig.value && !selectedMetaAccount.value) {
     error.value = 'Selecione uma conta retornada pela Meta.'
     return
   }
-  if (selectedClientConfig.value) {
-    error.value = 'Este cliente já possui configuração cadastrada. O backend atual não permite edição por esta tela.'
+  if (selectedClientHasWhatsapp.value) {
+    error.value = 'Este cliente já possui WhatsApp vinculado.'
     return
   }
-  if (selectedMetaAccount.value.alreadyLinked) {
+  if (!selectedClientConfig.value && selectedMetaAccount.value?.alreadyLinked) {
     error.value = 'Esta conta Instagram já está vinculada a outro cliente.'
     return
   }
@@ -172,34 +204,38 @@ async function handleLinkClientIntegrations() {
     return
   }
 
-  const accountToLink = selectedMetaAccount.value
   const groupToLink = selectedEvolutionGroup.value
+  const accountToLink = selectedMetaAccount.value
   const clientId = Number(selectedClientId.value)
   const selectedClient = clients.value.find(client => String(client.id) === selectedClientId.value)
+  const hadInstagramLinked = Boolean(selectedClientConfig.value)
 
   savingIntegrations.value = true
   try {
-    const config = await accountConfigService.linkMetaInstagramAccount({
-      clientId,
-      pageId: accountToLink.pageId,
-      igUserId: accountToLink.igUserId,
-    })
+    if (!selectedClientConfig.value && accountToLink) {
+      const config = await accountConfigService.linkMetaInstagramAccount({
+        clientId,
+        pageId: accountToLink.pageId,
+        igUserId: accountToLink.igUserId,
+      })
+      clientConfigs.value = new Map(clientConfigs.value).set(config.clientId, config)
+
+      metaAccounts.value = metaAccounts.value.map(account => {
+        if (account.pageId !== accountToLink.pageId || account.igUserId !== accountToLink.igUserId) {
+          return account
+        }
+        return {
+          ...account,
+          alreadyLinked: true,
+          linkedClientId: config.clientId,
+          linkedClientName: selectedClient?.name ?? account.linkedClientName,
+        }
+      })
+    }
+
     const linkedGroup = await evolutionGroupService.linkGroupToClient({
       clientId,
       groupId: groupToLink.groupId,
-    })
-
-    clientConfigs.value.set(config.clientId, config)
-    metaAccounts.value = metaAccounts.value.map(account => {
-      if (account.pageId !== accountToLink.pageId || account.igUserId !== accountToLink.igUserId) {
-        return account
-      }
-      return {
-        ...account,
-        alreadyLinked: true,
-        linkedClientId: config.clientId,
-        linkedClientName: selectedClient?.name ?? account.linkedClientName,
-      }
     })
 
     clients.value = clients.value.map(client => {
@@ -225,7 +261,9 @@ async function handleLinkClientIntegrations() {
       return group
     })
 
-    accountSuccess.value = `Instagram e WhatsApp vinculados ao cliente ${selectedClient?.name ?? clientId}.`
+    accountSuccess.value = hadInstagramLinked
+      ? `WhatsApp vinculado ao cliente ${selectedClient?.name ?? clientId}.`
+      : `Instagram e WhatsApp vinculados ao cliente ${selectedClient?.name ?? clientId}.`
     selectedMetaAccountKey.value = ''
     selectedEvolutionGroupId.value = ''
     setTimeout(() => { accountSuccess.value = '' }, 5000)
@@ -233,6 +271,46 @@ async function handleLinkClientIntegrations() {
     error.value = e instanceof Error ? e.message : 'Erro ao vincular integrações do cliente'
   } finally {
     savingIntegrations.value = false
+  }
+}
+
+async function handleLinkMetaAdsAccount() {
+  accountSuccess.value = ''
+  error.value = ''
+
+  if (!selectedClientId.value) {
+    error.value = 'Selecione um cliente.'
+    return
+  }
+  if (!selectedClientConfig.value) {
+    error.value = 'Configure o Instagram do cliente antes de vincular Meta Ads.'
+    return
+  }
+  if (selectedClientConfig.value.metaAdAccountId) {
+    error.value = 'Este cliente já possui Meta Ads vinculado.'
+    return
+  }
+  if (!selectedMetaAdsAccount.value) {
+    error.value = 'Selecione uma conta de anúncios.'
+    return
+  }
+
+  const clientId = Number(selectedClientId.value)
+  const selectedClient = clients.value.find(client => String(client.id) === selectedClientId.value)
+
+  savingMetaAdsAccount.value = true
+  try {
+    const config = await accountConfigService.linkMetaAdsAccount(clientId, {
+      metaAdAccountId: selectedMetaAdsAccount.value.accountId,
+    })
+    clientConfigs.value = new Map(clientConfigs.value).set(config.clientId, config)
+    selectedMetaAdsAccountId.value = ''
+    accountSuccess.value = `Meta Ads vinculado ao cliente ${selectedClient?.name ?? clientId}.`
+    setTimeout(() => { accountSuccess.value = '' }, 5000)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Erro ao vincular Meta Ads'
+  } finally {
+    savingMetaAdsAccount.value = false
   }
 }
 
@@ -319,6 +397,7 @@ watch(selectedClientId, (clientId) => {
   error.value = ''
   selectedMetaAccountKey.value = ''
   selectedEvolutionGroupId.value = ''
+  selectedMetaAdsAccountId.value = ''
 
   if (clientId) {
     fetchAccountConfig(Number(clientId))
@@ -331,6 +410,11 @@ watch(selectedMetaAccountKey, () => {
 })
 
 watch(selectedEvolutionGroupId, () => {
+  accountSuccess.value = ''
+  error.value = ''
+})
+
+watch(selectedMetaAdsAccountId, () => {
   accountSuccess.value = ''
   error.value = ''
 })
@@ -400,19 +484,27 @@ watch(selectedEvolutionGroupId, () => {
           :clients="clients"
           :meta-accounts="metaAccounts"
           :evolution-groups="evolutionGroups"
+          :meta-ads-accounts="metaAdsAccounts"
           v-model:selected-client-id="selectedClientId"
           v-model:selected-meta-account-key="selectedMetaAccountKey"
           v-model:selected-evolution-group-id="selectedEvolutionGroupId"
+          v-model:selected-meta-ads-account-id="selectedMetaAdsAccountId"
           :loading-meta-accounts="loadingMetaAccounts"
           :loading-evolution-groups="loadingEvolutionGroups"
+          :loading-meta-ads-accounts="loadingMetaAdsAccounts"
           :saving-integrations="savingIntegrations"
+          :saving-meta-ads-account="savingMetaAdsAccount"
           :selected-client-config="selectedClientConfig"
+          :selected-client-has-whatsapp="selectedClientHasWhatsapp"
           :selected-client-connection-summary="selectedClientConnectionSummary"
           :selected-meta-account="selectedMetaAccount"
           :selected-evolution-group="selectedEvolutionGroup"
+          :selected-meta-ads-account="selectedMetaAdsAccount"
           @fetch-meta-accounts="fetchMetaAccounts"
           @fetch-evolution-groups="fetchEvolutionGroups"
+          @fetch-meta-ads-accounts="fetchMetaAdsAccounts"
           @link-integrations="handleLinkClientIntegrations"
+          @link-meta-ads-account="handleLinkMetaAdsAccount"
         />
       </div>
     </div>

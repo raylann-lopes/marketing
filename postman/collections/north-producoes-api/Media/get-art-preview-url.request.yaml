@@ -1,8 +1,8 @@
 $kind: http-request
 name: Get Art Preview URL
 method: GET
-url: '{{baseUrl}}/api/media/art-url'
+url: '{{baseUrl}}/api/media/preview/{{postId}}'
 order: 3000
-queryParams:
+pathVariables:
   - key: postId
     value: '{{postId}}'

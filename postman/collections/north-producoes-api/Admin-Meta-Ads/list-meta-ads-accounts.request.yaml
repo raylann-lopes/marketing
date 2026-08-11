@@ -1,0 +1,5 @@
+$kind: http-request
+name: List Meta Ads Accounts
+method: GET
+url: '{{baseUrl}}/api/admin/meta/ad-account'
+order: 1000

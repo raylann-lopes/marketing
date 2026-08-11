@@ -1,8 +1,8 @@
 $kind: http-request
 name: Approve Post
-method: POST
-url: '{{baseUrl}}/api/post-approvals/approve/{{id}}'
+method: PATCH
+url: '{{baseUrl}}/api/post-approvals/approve/{{postId}}'
 order: 4000
 pathVariables:
-  - key: id
-    value: '{{id}}'
+  - key: postId
+    value: '{{postId}}'
