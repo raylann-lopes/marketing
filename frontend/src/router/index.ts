@@ -13,8 +13,9 @@ const routes: RouteRecordRaw[] = [
   { path: '/ideas', component: () => import('@/views/ContentIdeasView.vue') },
   {
     path: '/client-reports',
-    component: () => import('@/views/UnderConstructionView.vue'),
+    component: () => import('@/views/ClientReportsView.vue'),
     meta: {
+      requiresAdmin: true,
       title: 'Relatórios do Cliente',
       description: 'Área reservada para relatórios e comparativos de resultados.',
     },
