@@ -9,13 +9,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Cliente HTTP para a Meta Graph API.
- *
+ * <p>
  * Segurança: o access_token é enviado exclusivamente no header
  * "Authorization: Bearer" — NUNCA como query parameter — para evitar
  * que apareça em logs de proxy/load balancer ou no histórico do navegador.
@@ -54,7 +56,7 @@ public class MetaGraphClient {
     }
 
     public MetaContainerIdResponseDTO createContainer(String igUserId, String imageUrl,
-                                                       String caption, String clientAccessToken) {
+                                                      String caption, String clientAccessToken) {
         validateToken(clientAccessToken);
         try {
             return metaGraphRestClient.post()
@@ -98,7 +100,7 @@ public class MetaGraphClient {
     }
 
     public MetaContainerStatusResponseDTO checkContainerStatus(String igContainerId,
-                                                                String clientAccessToken) {
+                                                               String clientAccessToken) {
         validateToken(clientAccessToken);
         try {
             return metaGraphRestClient.get()
@@ -113,7 +115,7 @@ public class MetaGraphClient {
     }
 
     public MetaContainerIdResponseDTO publish(String igUserId, String creationId,
-                                               String clientAccessToken) {
+                                              String clientAccessToken) {
         validateToken(clientAccessToken);
         try {
             return metaGraphRestClient.post()
@@ -157,13 +159,20 @@ public class MetaGraphClient {
                     .uri(uriBuilder -> uriBuilder
                             .path("/{apiVersion}/act_{adAccountId}/insights")
                             .queryParam("fields", AD_ACCOUNT_INSIGHTS_FIELDS)
-                            .queryParam("time_range", timeRangeJson)
+                            .queryParam("time_range", "{timeRangeJson}")
                             .queryParam("level", "account")
-                            .build(apiVersion, normalizedAdAccountId))
+                            .build(Map.of("apiVersion", apiVersion,
+                                          "adAccountId", normalizedAdAccountId,
+                                          "timeRangeJson", timeRangeJson)))
                     .header("Authorization", "Bearer " + accessToken)
                     .retrieve()
                     .body(MetaAdsInsightsResponseDTO.class);
-        }catch (RestClientException ex) {
+        } catch (RestClientResponseException ex) {
+            throw new MetaGraphIntegrationException(
+                    "Falha ao obter insights da conta de anuncio. Meta retornou: " + ex.getResponseBodyAsString(),
+                    ex
+            );
+        } catch (RestClientException ex) {
             throw new MetaGraphIntegrationException("Falha ao obter insights da conta de anuncio.", ex);
         }
     }
