@@ -26,6 +26,12 @@ variables:
     value: '1'
   - key: clientId
     value: '1'
+  - key: metaAdAccountId
+    value: '1234567890'
+  - key: dateStart
+    value: '2026-07-01'
+  - key: dateStop
+    value: '2026-07-31'
   - key: filename
     value: 'arte.jpg'
   - key: contentType
