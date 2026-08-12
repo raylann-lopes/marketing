@@ -138,6 +138,13 @@ EVOLUTION_API_BASE_URL=https://sua-instancia.evolution.com
 EVOLUTION_API_KEY=sua_chave
 EVOLUTION_API_INSTANCE=nome_da_instancia
 EVOLUTION_WEBHOOK_SECRET=uuid_aleatorio
+EVOLUTION_TASKS_INSTANCE=nome_da_instancia_de_tarefas
+EVOLUTION_TASKS_API_KEY=token_da_instancia_de_tarefas
+EVOLUTION_TASKS_WEBHOOK_SECRET=outro_uuid_aleatorio
+WHATSAPP_TASK_DEFAULT_USER_ID=id_do_admin_responsavel
+WHATSAPP_TASK_ZONE_ID=America/Sao_Paulo
+WHATSAPP_TASK_ALLOWED_NUMBERS=5511999999999,5511888888888
+WHATSAPP_TASK_MAX_AUDIO_BYTES=20000000
 
 # Apify
 APIFY_API_TOKEN=seu_token
@@ -202,6 +209,17 @@ docker compose -f docker-compose.local.yml up --build -d
 * `POST /api/post-approvals/save` (ADMIN) - Disparo de aprovação
 * `POST /api/webhooks/whatsapp/{secret}` (Webhook) - Recebe eventos Evolution
 
+### ✅ Tarefas via WhatsApp
+* `POST /api/webhooks/whatsapp/tasks/{secret}` (Webhook) - Interpreta texto ou áudio com IA e cria uma tarefa
+
+Na instância exclusiva de tarefas da Evolution API, configure o evento `MESSAGES_UPSERT` com a URL:
+
+```text
+https://seu-dominio.com/api/webhooks/whatsapp/tasks/SEU_EVOLUTION_TASKS_WEBHOOK_SECRET
+```
+
+O número de aprovações continua usando o webhook anterior. A instância de tarefas deve ter o mesmo nome definido em `EVOLUTION_TASKS_INSTANCE`, e seu token próprio deve ser informado em `EVOLUTION_TASKS_API_KEY`.
+
 ### ☁️ Upload (Mídia S3)
 * `GET /api/media/upload-url` (AUTH) - Gera Presigned URL de envio
 * `POST /api/media/upload-complete` (AUTH) - Confirmação
@@ -224,6 +242,7 @@ Gerenciado via **Flyway Migrations** (PostgreSQL).
 | `tb_client` | Informações de faturamento e persona para IA |
 | `tb_posts` | Core business e agendamento de conteúdos |
 | `tb_post_approvals` | Log e controle de estado do WhatsApp (Evolution API) |
+| `tb_task` | Agenda e tarefas manuais ou criadas pelo WhatsApp |
 | `tb_finance` | Lançamentos IN/OUT agrupados por status e categoria |
 | `tb_account_config` | Contas Meta vinculadas para automação social |
 | `tb_refresh_tokens` | Segurança do sistema de JWT contínuo |

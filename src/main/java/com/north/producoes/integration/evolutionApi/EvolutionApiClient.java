@@ -6,12 +6,16 @@ import com.north.producoes.integration.evolutionApi.dto.EvolutionSendMediaDTO;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionSendPollDTO;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionSendTextDTO;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionSentMessageDTO;
+import com.north.producoes.integration.evolutionApi.dto.EvolutionMediaDownloadRequestDTO;
+import com.north.producoes.integration.evolutionApi.dto.EvolutionMediaDownloadResponseDTO;
+import com.north.producoes.integration.evolutionApi.dto.EvolutionWebhookEventDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -51,18 +55,47 @@ public class EvolutionApiClient {
      * @return stanza ID da mensagem enviada
      */
     public String sendTextToGroup(String groupId, String text) {
-        validate();
+        return sendText(groupId, instance, text);
+    }
+
+    public String sendText(String recipient, String targetInstance, String text) {
+        return sendText(recipient, targetInstance, apiKey, text);
+    }
+
+    public String sendText(String recipient, String targetInstance, String targetApiKey, String text) {
+        validate(targetInstance, targetApiKey);
         try {
             EvolutionSentMessageDTO response = evolutionApiRestClient.post()
-                    .uri("/message/sendText/{instance}", instance)
-                    .header("apikey", apiKey)
-                    .body(new EvolutionSendTextDTO(groupId, text))
+                    .uri("/message/sendText/{instance}", targetInstance)
+                    .header("apikey", targetApiKey)
+                    .body(new EvolutionSendTextDTO(recipient, text))
                     .retrieve()
                     .body(EvolutionSentMessageDTO.class);
 
             return response != null && response.key() != null ? response.key().id() : null;
+        } catch (RestClientResponseException ex) {
+            throw evolutionError("enviar mensagem de texto", ex);
         } catch (RestClientException ex) {
             throw new EvolutionApiIntegrationException("Falha ao enviar mensagem de texto na Evolution API.", ex);
+        }
+    }
+
+    public EvolutionMediaDownloadResponseDTO downloadMedia(
+            EvolutionWebhookEventDTO.Key messageKey,
+            String targetInstance,
+            String targetApiKey) {
+        validate(targetInstance, targetApiKey);
+        try {
+            return evolutionApiRestClient.post()
+                    .uri("/chat/getBase64FromMediaMessage/{instance}", targetInstance)
+                    .header("apikey", targetApiKey)
+                    .body(EvolutionMediaDownloadRequestDTO.from(messageKey))
+                    .retrieve()
+                    .body(EvolutionMediaDownloadResponseDTO.class);
+        } catch (RestClientResponseException ex) {
+            throw evolutionError("baixar mídia", ex);
+        } catch (RestClientException ex) {
+            throw new EvolutionApiIntegrationException("Falha ao baixar mídia na Evolution API.", ex);
         }
     }
 
@@ -127,11 +160,32 @@ public class EvolutionApiClient {
     }
 
     private void validate() {
-        if (!StringUtils.hasText(apiKey)) {
+        validate(instance, apiKey);
+    }
+
+    private void validate(String targetInstance) {
+        validate(targetInstance, apiKey);
+    }
+
+    private void validate(String targetInstance, String targetApiKey) {
+        if (!StringUtils.hasText(targetApiKey)) {
             throw new EvolutionApiIntegrationException("API key para Evolution API nao configurada.");
         }
-        if (!StringUtils.hasText(instance)) {
+        if (!StringUtils.hasText(targetInstance)) {
             throw new EvolutionApiIntegrationException("Instancia para Evolution API nao configurada.");
         }
+    }
+
+    private EvolutionApiIntegrationException evolutionError(String operation, RestClientResponseException ex) {
+        String body = ex.getResponseBodyAsString();
+        String normalizedBody = StringUtils.hasText(body) ? body.replaceAll("[\\r\\n]+", " ") : "";
+        String safeBody = StringUtils.hasText(normalizedBody)
+                ? normalizedBody.substring(0, Math.min(normalizedBody.length(), 300))
+                : "sem detalhes";
+        return new EvolutionApiIntegrationException(
+                "Falha ao %s na Evolution API (HTTP %d): %s"
+                        .formatted(operation, ex.getStatusCode().value(), safeBody),
+                ex
+        );
     }
 }
