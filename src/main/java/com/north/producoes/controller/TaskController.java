@@ -31,7 +31,7 @@ public class TaskController implements TaskApi {
 
     @Override
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<TaskResponseDTO>> findTask(@RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "20") int size,
                                                           @RequestParam(required = false) TaskStatusEnum status,
@@ -55,7 +55,7 @@ public class TaskController implements TaskApi {
 
     @Override
     @PostMapping("/create")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TaskResponseDTO> createTask(@Valid @RequestBody TaskRequestDTO request, @AuthenticationPrincipal UserEntity currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(taskService.createTask(request, currentUser));
@@ -63,25 +63,22 @@ public class TaskController implements TaskApi {
 
     @Override
     @PatchMapping("update/status/{taskId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TaskResponseDTO> updateTaskStatus(
             @PathVariable Long taskId,
-            @Valid @RequestBody TaskStatusUpdateRequestDTO request) {
-        if (taskId == null){
-            throw new IllegalArgumentException("Tarefa nao encontrada");
-        }
+            @Valid @RequestBody TaskStatusUpdateRequestDTO request,
+            @AuthenticationPrincipal UserEntity currentUser) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(taskService.updateTask(taskId, request));
+                .body(taskService.updateTask(taskId, request, currentUser));
     }
 
     @Override
     @DeleteMapping("delete/{taskId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ADMIN')")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long taskId) {
-        if (taskId == null){
-            throw new IllegalArgumentException("Tarefa nao encontrada");
-        }
-        taskService.deleteTask(taskId);
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> deleteTask(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserEntity currentUser) {
+        taskService.deleteTask(taskId, currentUser);
         return ResponseEntity.noContent().build();
     }
 

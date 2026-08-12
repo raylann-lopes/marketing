@@ -5,13 +5,19 @@ import com.north.producoes.entity.ApproveEntity;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.PostCarouselImageEntity;
 import com.north.producoes.entity.PostEntity;
+import com.north.producoes.entity.TaskEntity;
 import com.north.producoes.entity.UserEntity;
 import com.north.producoes.entity.enums.PostFormatEnum;
 import com.north.producoes.entity.enums.PostStatusEnum;
+import com.north.producoes.entity.enums.TaskPriorityEnum;
+import com.north.producoes.entity.enums.TaskSourceEnum;
+import com.north.producoes.entity.enums.TaskStatusEnum;
+import com.north.producoes.entity.enums.TaskTypeEnum;
 import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.repository.ApproveRepository;
 import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.PostRepository;
+import com.north.producoes.repository.TaskRepository;
 import com.north.producoes.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -22,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +53,7 @@ class DeletionIntegrityTest {
     @Autowired private UserRepository userRepository;
     @Autowired private PostRepository postRepository;
     @Autowired private ApproveRepository approveRepository;
+    @Autowired private TaskRepository taskRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -53,6 +61,7 @@ class DeletionIntegrityTest {
     private ClientEntity client;
     private PostEntity post;
     private ApproveEntity approve;
+    private TaskEntity task;
 
     @BeforeEach
     void seedFullGraph() {
@@ -69,6 +78,19 @@ class DeletionIntegrityTest {
         client.setNiche("Saude");
         client.setVoiceTone("Formal");
         client = clientRepository.save(client);
+
+        task = new TaskEntity();
+        task.setTitle("Cobrar fotos");
+        task.setDescription("Preservar após excluir o cliente");
+        task.setClient(client);
+        task.setClientName(client.getName());
+        task.setUser(user);
+        task.setDateExpires(LocalDate.now().plusDays(1));
+        task.setType(TaskTypeEnum.COBRANCA);
+        task.setPriority(TaskPriorityEnum.NORMAL);
+        task.setStatus(TaskStatusEnum.PENDING);
+        task.setSource(TaskSourceEnum.MANUAL);
+        task = taskRepository.save(task);
 
         post = new PostEntity();
         post.setTitle("Post carrossel");
@@ -118,6 +140,9 @@ class DeletionIntegrityTest {
         assertThat(approveRepository.existsById(approve.getId())).isFalse();
         assertThat(countCarouselArts()).isZero();
         assertThat(countCarouselImages()).isZero();
+        TaskEntity preservedTask = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(preservedTask.getClient()).isNull();
+        assertThat(preservedTask.getClientName()).isEqualTo("Cliente Integridade");
     }
 
     @Test

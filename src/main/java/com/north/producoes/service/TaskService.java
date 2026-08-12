@@ -10,6 +10,7 @@ import com.north.producoes.entity.enums.TaskPriorityEnum;
 import com.north.producoes.entity.enums.TaskSourceEnum;
 import com.north.producoes.entity.enums.TaskStatusEnum;
 import com.north.producoes.entity.enums.TaskTypeEnum;
+import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -74,17 +74,7 @@ public class TaskService {
 
     @Transactional
     public TaskResponseDTO createTask(TaskRequestDTO request, UserEntity currentUser) {
-        return saveTask(request, currentUser, null);
-    }
-
-    @Transactional
-    public TaskResponseDTO createWhatsAppTask(
-            TaskRequestDTO request,
-            UserEntity currentUser,
-            String sourceReference) {
-        return taskRepository.findBySourceReference(sourceReference)
-                .map(TaskResponseDTO::from)
-                .orElseGet(() -> saveTask(request, currentUser, sourceReference));
+        return saveTask(request, currentUser, null, TaskSourceEnum.MANUAL);
     }
 
     @Transactional
@@ -96,26 +86,33 @@ public class TaskService {
             throw new IllegalArgumentException("Nenhuma tarefa informada para criação.");
         }
 
-        return taskRepository.findBySourceReference(messageId)
-                .map(existing -> List.of(TaskResponseDTO.from(existing)))
-                .orElseGet(() -> java.util.stream.IntStream.range(0, requests.size())
-                        .mapToObj(index -> saveTask(
-                                requests.get(index),
-                                currentUser,
-                                index == 0 ? messageId : messageId + ":" + (index + 1)))
-                        .toList());
+        List<TaskEntity> existingTasks = findAllBySourceMessageIdEntities(messageId);
+        if (!existingTasks.isEmpty()) {
+            return existingTasks.stream().map(TaskResponseDTO::from).toList();
+        }
+
+        return java.util.stream.IntStream.range(0, requests.size())
+                .mapToObj(index -> saveTask(
+                        requests.get(index),
+                        currentUser,
+                        index == 0 ? messageId : messageId + ":" + (index + 1),
+                        TaskSourceEnum.WHATSAPP))
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public Optional<TaskResponseDTO> findBySourceReference(String sourceReference) {
-        if (sourceReference == null || sourceReference.isBlank()) return Optional.empty();
-        return taskRepository.findBySourceReference(sourceReference).map(TaskResponseDTO::from);
+    public List<TaskResponseDTO> findAllBySourceMessageId(String messageId) {
+        if (messageId == null || messageId.isBlank()) return List.of();
+        return findAllBySourceMessageIdEntities(messageId).stream()
+                .map(TaskResponseDTO::from)
+                .toList();
     }
 
     private TaskResponseDTO saveTask(
             TaskRequestDTO request,
             UserEntity currentUser,
-            String sourceReference) {
+            String sourceReference,
+            TaskSourceEnum source) {
         TaskEntity task = new TaskEntity();
         task.setUser(currentUser);
         task.setTitle(request.title());
@@ -124,14 +121,14 @@ public class TaskService {
         task.setTimeExpires(request.timeExpires());
         task.setType(request.type() != null ? request.type() : TaskTypeEnum.TAREFA);
         task.setPriority(request.priority() != null ? request.priority() : TaskPriorityEnum.NORMAL);
-        task.setStatus(request.status() != null ? request.status() : TaskStatusEnum.PENDING);
-        task.setSource(request.source() != null ? request.source() : TaskSourceEnum.MANUAL);
+        task.setStatus(TaskStatusEnum.PENDING);
+        task.setSource(source);
         task.setSourceReference(sourceReference);
         task.setCreatedAt(LocalDateTime.now());
 
         if (request.clientId() != null) {
             ClientEntity client = clientRepository.findById(request.clientId())
-                    .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado"));
             task.setClient(client);
             task.setClientName(client.getName());
         } else {
@@ -143,9 +140,12 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponseDTO updateTask(Long taskId, TaskStatusUpdateRequestDTO request ) {
-        var task = taskRepository.findById(taskId).orElseThrow(
-                () -> new IllegalArgumentException("Tarefa nao encontrada")
+    public TaskResponseDTO updateTask(
+            Long taskId,
+            TaskStatusUpdateRequestDTO request,
+            UserEntity currentUser) {
+        var task = taskRepository.findByIdAndUserId(taskId, currentUser.getId()).orElseThrow(
+                () -> new ResourceNotFoundException("Tarefa não encontrada")
         );
         if (request.status() == null) {
             throw new IllegalArgumentException("Status da tarefa é obrigatório");
@@ -155,11 +155,17 @@ public class TaskService {
     }
 
     @Transactional
-    public void deleteTask(Long taskId){
-        var task = taskRepository.findById(taskId).orElseThrow(
-                () -> new IllegalArgumentException("Tarefa nao encontrada")
+    public void deleteTask(Long taskId, UserEntity currentUser){
+        var task = taskRepository.findByIdAndUserId(taskId, currentUser.getId()).orElseThrow(
+                () -> new ResourceNotFoundException("Tarefa não encontrada")
         );
         taskRepository.delete(task);
+    }
+
+    private List<TaskEntity> findAllBySourceMessageIdEntities(String messageId) {
+        return taskRepository.findBySourceReferenceOrSourceReferenceStartingWithOrderByIdAsc(
+                messageId,
+                messageId + ":");
     }
 
 }

@@ -1,6 +1,7 @@
 package com.north.producoes.service;
 
 import com.north.producoes.controller.dto.request.TaskRequestDTO;
+import com.north.producoes.controller.dto.request.TaskStatusUpdateRequestDTO;
 import com.north.producoes.controller.dto.response.TaskResponseDTO;
 import com.north.producoes.entity.TaskEntity;
 import com.north.producoes.entity.UserEntity;
@@ -8,6 +9,7 @@ import com.north.producoes.entity.enums.TaskPriorityEnum;
 import com.north.producoes.entity.enums.TaskSourceEnum;
 import com.north.producoes.entity.enums.TaskStatusEnum;
 import com.north.producoes.entity.enums.TaskTypeEnum;
+import com.north.producoes.exception.ResourceNotFoundException;
 import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.TaskRepository;
 import org.junit.jupiter.api.Test;
@@ -90,50 +92,13 @@ class TaskServiceTest {
     }
 
     @Test
-    void shouldPersistEvolutionMessageIdWhenCreatingWhatsAppTask() {
-        UserEntity owner = new UserEntity();
-        owner.setId(1L);
-        when(taskRepository.findBySourceReference("MSG-1")).thenReturn(Optional.empty());
-        when(taskRepository.save(any(TaskEntity.class))).thenAnswer(invocation -> {
-            TaskEntity task = invocation.getArgument(0);
-            task.setId(100L);
-            return task;
-        });
-
-        TaskResponseDTO result = taskService.createWhatsAppTask(request(), owner, "MSG-1");
-
-        ArgumentCaptor<TaskEntity> taskCaptor = ArgumentCaptor.forClass(TaskEntity.class);
-        verify(taskRepository).save(taskCaptor.capture());
-        assertThat(taskCaptor.getValue().getSourceReference()).isEqualTo("MSG-1");
-        assertThat(taskCaptor.getValue().getSource()).isEqualTo(TaskSourceEnum.WHATSAPP);
-        assertThat(result.id()).isEqualTo(100L);
-    }
-
-    @Test
-    void shouldReturnExistingTaskWithoutSavingDuplicate() {
-        TaskEntity existing = new TaskEntity();
-        existing.setId(100L);
-        existing.setTitle("Cobrar fotos");
-        existing.setDateExpires(LocalDate.of(2026, 8, 12));
-        existing.setType(TaskTypeEnum.COBRANCA);
-        existing.setPriority(TaskPriorityEnum.NORMAL);
-        existing.setStatus(TaskStatusEnum.PENDING);
-        existing.setSource(TaskSourceEnum.WHATSAPP);
-        existing.setSourceReference("MSG-1");
-        when(taskRepository.findBySourceReference("MSG-1")).thenReturn(Optional.of(existing));
-
-        TaskResponseDTO result = taskService.createWhatsAppTask(request(), new UserEntity(), "MSG-1");
-
-        assertThat(result.id()).isEqualTo(100L);
-        verify(taskRepository, never()).save(any());
-    }
-
-    @Test
     void shouldCreateWhatsAppTasksWithUniqueReferencesForTheSameMessage() {
         UserEntity owner = new UserEntity();
         owner.setId(1L);
         AtomicLong sequence = new AtomicLong(100L);
-        when(taskRepository.findBySourceReference("MSG-1")).thenReturn(Optional.empty());
+        when(taskRepository.findBySourceReferenceOrSourceReferenceStartingWithOrderByIdAsc(
+                "MSG-1", "MSG-1:"))
+                .thenReturn(List.of());
         when(taskRepository.save(any(TaskEntity.class))).thenAnswer(invocation -> {
             TaskEntity task = invocation.getArgument(0);
             task.setId(sequence.getAndIncrement());
@@ -151,6 +116,70 @@ class TaskServiceTest {
         assertThat(results).extracting(TaskResponseDTO::id).containsExactly(100L, 101L);
     }
 
+    @Test
+    void shouldSetManualSourceAndPendingStatusOnManualCreation() {
+        UserEntity owner = new UserEntity();
+        owner.setId(1L);
+        when(taskRepository.save(any(TaskEntity.class))).thenAnswer(invocation -> {
+            TaskEntity task = invocation.getArgument(0);
+            task.setId(100L);
+            return task;
+        });
+
+        taskService.createTask(request(), owner);
+
+        ArgumentCaptor<TaskEntity> taskCaptor = ArgumentCaptor.forClass(TaskEntity.class);
+        verify(taskRepository).save(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getSource()).isEqualTo(TaskSourceEnum.MANUAL);
+        assertThat(taskCaptor.getValue().getStatus()).isEqualTo(TaskStatusEnum.PENDING);
+        assertThat(taskCaptor.getValue().getSourceReference()).isNull();
+    }
+
+    @Test
+    void shouldReturnTheWholeExistingBatchOnWhatsAppRedelivery() {
+        TaskEntity first = task(100L, "MSG-1");
+        TaskEntity second = task(101L, "MSG-1:2");
+        when(taskRepository.findBySourceReferenceOrSourceReferenceStartingWithOrderByIdAsc(
+                "MSG-1", "MSG-1:"))
+                .thenReturn(List.of(first, second));
+
+        List<TaskResponseDTO> result = taskService.createWhatsAppTasks(
+                List.of(request(), request()), new UserEntity(), "MSG-1");
+
+        assertThat(result).extracting(TaskResponseDTO::id).containsExactly(100L, 101L);
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldUpdateOnlyTaskOwnedByCurrentUser() {
+        UserEntity owner = new UserEntity();
+        owner.setId(1L);
+        TaskEntity task = task(100L, null);
+        when(taskRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(task));
+        when(taskRepository.save(task)).thenReturn(task);
+
+        TaskResponseDTO result = taskService.updateTask(
+                100L,
+                new TaskStatusUpdateRequestDTO(TaskStatusEnum.DONE),
+                owner);
+
+        assertThat(result.status()).isEqualTo(TaskStatusEnum.DONE);
+        verify(taskRepository).findByIdAndUserId(100L, 1L);
+    }
+
+    @Test
+    void shouldHideTaskOwnedByAnotherUser() {
+        UserEntity owner = new UserEntity();
+        owner.setId(2L);
+        when(taskRepository.findByIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.deleteTask(100L, owner))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Tarefa não encontrada");
+
+        verify(taskRepository, never()).delete(any());
+    }
+
     private TaskRequestDTO request() {
         return new TaskRequestDTO(
                 null,
@@ -160,9 +189,20 @@ class TaskServiceTest {
                 LocalDate.of(2026, 8, 12),
                 LocalTime.of(10, 0),
                 TaskTypeEnum.COBRANCA,
-                TaskPriorityEnum.NORMAL,
-                TaskStatusEnum.PENDING,
-                TaskSourceEnum.WHATSAPP
+                TaskPriorityEnum.NORMAL
         );
+    }
+
+    private TaskEntity task(Long id, String sourceReference) {
+        TaskEntity task = new TaskEntity();
+        task.setId(id);
+        task.setTitle("Cobrar fotos");
+        task.setDateExpires(LocalDate.of(2026, 8, 12));
+        task.setType(TaskTypeEnum.COBRANCA);
+        task.setPriority(TaskPriorityEnum.NORMAL);
+        task.setStatus(TaskStatusEnum.PENDING);
+        task.setSource(TaskSourceEnum.WHATSAPP);
+        task.setSourceReference(sourceReference);
+        return task;
     }
 }

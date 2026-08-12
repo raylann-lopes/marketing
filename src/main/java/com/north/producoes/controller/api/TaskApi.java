@@ -31,8 +31,13 @@ public interface TaskApi {
     ResponseEntity<TaskResponseDTO> createTask(@Valid @RequestBody TaskRequestDTO request, @AuthenticationPrincipal UserEntity currentUser);
 
     @PatchMapping("update/status/{taskId}")
-    ResponseEntity<TaskResponseDTO> updateTaskStatus(@PathVariable Long taskId, @RequestBody TaskStatusUpdateRequestDTO request);
+    ResponseEntity<TaskResponseDTO> updateTaskStatus(
+            @PathVariable Long taskId,
+            @RequestBody TaskStatusUpdateRequestDTO request,
+            @AuthenticationPrincipal UserEntity currentUser);
 
     @DeleteMapping("delete/{taskId}")
-    ResponseEntity<Void> deleteTask(@PathVariable Long taskId);
+    ResponseEntity<Void> deleteTask(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserEntity currentUser);
 }

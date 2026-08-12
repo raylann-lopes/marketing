@@ -1,11 +1,12 @@
 package com.north.producoes.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.north.producoes.integration.evolutionApi.dto.EvolutionWebhookEventDTO;
+import com.north.producoes.service.WhatsAppTaskInboxService;
 import com.north.producoes.service.WhatsAppTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import java.security.MessageDigest;
 public class WhatsAppTaskWebhookController {
 
     private final ObjectMapper objectMapper;
+    private final WhatsAppTaskInboxService inboxService;
     private final WhatsAppTaskService whatsAppTaskService;
 
     @Value("${evolution.webhook.tasks-secret:}")
@@ -54,10 +56,11 @@ public class WhatsAppTaskWebhookController {
                 log.info("[TaskWebhook] Evento recebido | type={} | messageId={}",
                         event.data().messageType(), event.data().key().id());
             }
-            whatsAppTaskService.processEvent(event);
-        } catch (Exception ex) {
+            inboxService.enqueue(rawBody, event)
+                    .ifPresent(whatsAppTaskService::processStoredEvent);
+        } catch (JsonProcessingException ex) {
             // O webhook é confirmado para evitar reenvios indefinidos de um payload inválido.
-            log.error("[TaskWebhook] Falha ao processar evento: {}", ex.getMessage(), ex);
+            log.error("[TaskWebhook] Payload inválido: {}", ex.getMessage(), ex);
         }
 
         return ResponseEntity.ok().build();

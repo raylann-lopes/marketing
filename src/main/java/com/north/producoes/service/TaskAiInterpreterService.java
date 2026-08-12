@@ -18,7 +18,7 @@ import java.util.List;
 @Service
 public class TaskAiInterpreterService {
 
-    private static final int MAX_TASKS_PER_MESSAGE = 10;
+    private static final int MAX_TASKS_PER_MESSAGE = 20;
 
     private static final String SYSTEM_INSTRUCTION = """
             Você transforma uma mensagem de WhatsApp em uma ou mais tarefas de agenda.
@@ -31,7 +31,7 @@ public class TaskAiInterpreterService {
             Regras:
             - Crie um item separado para cada compromisso ou ação distinta solicitada na mensagem.
             - Não divida uma única ação em várias tarefas apenas porque ela possui detalhes ou etapas.
-            - Retorne no máximo 10 tarefas, respeitando a ordem em que aparecem na mensagem.
+            - Retorne no máximo 20 tarefas, respeitando a ordem em que aparecem na mensagem.
             - Identifique primeiro a ação principal, o resultado esperado, o contexto e eventuais instruções.
             - title deve começar com um verbo de ação, ter uma única linha, entre 3 e 8 palavras e no máximo 60 caracteres.
             - Se a mensagem mencionar uma empresa, marca ou cliente, sempre coloque o nome citado em clientName e remova-o do title.
@@ -126,7 +126,8 @@ public class TaskAiInterpreterService {
             throw new AiIntegrationException("A IA não informou nenhuma tarefa.");
         }
         if (results.size() > MAX_TASKS_PER_MESSAGE) {
-            throw new AiIntegrationException("A IA retornou mais de 10 tarefas para uma única mensagem.");
+            throw new AiIntegrationException(
+                    "A IA retornou mais de " + MAX_TASKS_PER_MESSAGE + " tarefas para uma única mensagem.");
         }
 
         for (int index = 0; index < results.size(); index++) {

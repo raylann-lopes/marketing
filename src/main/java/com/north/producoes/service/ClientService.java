@@ -12,6 +12,7 @@ import com.north.producoes.repository.ClientRepository;
 import com.north.producoes.repository.CommentRepository;
 import com.north.producoes.repository.FinanceRepository;
 import com.north.producoes.repository.PostRepository;
+import com.north.producoes.repository.TaskRepository;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class ClientService {
     private final FinanceRepository financeRepository;
     private final AccountConfigRepository accountConfigRepository;
     private final CommentRepository commentRepository;
+    private final TaskRepository taskRepository;
 
     @Lazy
     @Setter(onMethod_ = @Autowired)
@@ -108,6 +110,7 @@ public class ClientService {
         postRepository.deleteByClientId(id);
         financeRepository.deleteByClientId(id);
         accountConfigRepository.deleteByClientId(id);
+        taskRepository.unlinkClient(id);
         clientRepository.deleteById(id);
     }
 

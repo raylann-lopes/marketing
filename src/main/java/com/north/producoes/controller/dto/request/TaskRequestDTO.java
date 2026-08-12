@@ -1,8 +1,6 @@
 package com.north.producoes.controller.dto.request;
 
 import com.north.producoes.entity.enums.TaskPriorityEnum;
-import com.north.producoes.entity.enums.TaskSourceEnum;
-import com.north.producoes.entity.enums.TaskStatusEnum;
 import com.north.producoes.entity.enums.TaskTypeEnum;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -24,7 +22,5 @@ public record TaskRequestDTO(
         LocalDate dateExpires,
         LocalTime timeExpires,
         TaskTypeEnum type,
-        TaskPriorityEnum priority,
-        TaskStatusEnum status,
-        TaskSourceEnum source
+        TaskPriorityEnum priority
 ) {}

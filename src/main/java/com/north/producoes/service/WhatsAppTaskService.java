@@ -1,13 +1,13 @@
 package com.north.producoes.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.north.producoes.controller.dto.request.TaskRequestDTO;
 import com.north.producoes.controller.dto.response.TaskResponseDTO;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.UserEntity;
+import com.north.producoes.entity.WhatsAppTaskEventEntity;
 import com.north.producoes.entity.enums.ClientStatusEnum;
 import com.north.producoes.entity.enums.TaskPriorityEnum;
-import com.north.producoes.entity.enums.TaskSourceEnum;
-import com.north.producoes.entity.enums.TaskStatusEnum;
 import com.north.producoes.entity.enums.TaskTypeEnum;
 import com.north.producoes.entity.enums.UserRoleEnum;
 import com.north.producoes.integration.evolutionApi.EvolutionApiClient;
@@ -22,6 +22,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -31,8 +32,6 @@ import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -42,7 +41,6 @@ public class WhatsAppTaskService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
-    private final Set<String> messagesInProgress = ConcurrentHashMap.newKeySet();
 
     private final TaskAiInterpreterService taskAiInterpreterService;
     private final TaskService taskService;
@@ -50,6 +48,8 @@ public class WhatsAppTaskService {
     private final ClientRepository clientRepository;
     private final EvolutionApiClient evolutionApiClient;
     private final TaskAudioTranscriptionService taskAudioTranscriptionService;
+    private final WhatsAppTaskInboxService inboxService;
+    private final ObjectMapper objectMapper;
 
     @Value("${evolution.api.tasks-instance:}")
     private String tasksInstance;
@@ -66,10 +66,48 @@ public class WhatsAppTaskService {
     @Value("${task.whatsapp.allowed-numbers:}")
     private String allowedNumbers;
 
+    @Value("${task.whatsapp.max-attempts:3}")
+    private int maxAttempts;
+
+    @Value("${task.whatsapp.retry-delay-ms:60000}")
+    private long retryDelayMs;
+
+    @Value("${task.whatsapp.processing-timeout-ms:600000}")
+    private long processingTimeoutMs;
+
     @Async
+    public void processStoredEvent(Long eventId) {
+        Duration processingTimeout = Duration.ofMillis(processingTimeoutMs);
+        if (!inboxService.reserve(eventId, maxAttempts, processingTimeout)) return;
+
+        String recipient = null;
+        try {
+            WhatsAppTaskEventEntity storedEvent = inboxService.findById(eventId);
+            EvolutionWebhookEventDTO event = objectMapper.readValue(
+                    storedEvent.getPayload(),
+                    EvolutionWebhookEventDTO.class);
+            recipient = extractRecipient(event);
+            processEvent(event);
+            inboxService.markCompleted(eventId);
+        } catch (Exception ex) {
+            WhatsAppTaskEventEntity failedEvent = inboxService.markFailed(
+                    eventId,
+                    ex.getMessage(),
+                    Duration.ofMillis(retryDelayMs));
+            log.error("[TaskWebhook] Falha ao processar evento {} na tentativa {}: {}",
+                    eventId, failedEvent.getAttempts(), ex.getMessage(), ex);
+            if (failedEvent.getAttempts() >= maxAttempts && StringUtils.hasText(recipient)) {
+                sendFailure(recipient);
+            }
+        }
+    }
+
     public void processEvent(EvolutionWebhookEventDTO event) {
         if (event == null || !"messages.upsert".equals(event.event())) return;
-        if (!StringUtils.hasText(tasksInstance) || !tasksInstance.equals(event.instance())) {
+        if (!StringUtils.hasText(tasksInstance)) {
+            throw new IllegalStateException("EVOLUTION_TASKS_INSTANCE não configurado.");
+        }
+        if (!tasksInstance.equals(event.instance())) {
             log.warn("[TaskWebhook] Evento ignorado por instância diferente: {}", event.instance());
             return;
         }
@@ -87,48 +125,37 @@ public class WhatsAppTaskService {
             log.warn("[TaskWebhook] Mensagem ignorada de remetente não autorizado.");
             return;
         }
-        if (!messagesInProgress.add(messageId)) {
-            log.info("[TaskWebhook] Mensagem {} já está em processamento.", messageId);
+
+        String text = extractContent(data);
+        if (!StringUtils.hasText(text)) {
+            log.info("[TaskWebhook] Tipo de mensagem não suportado: {}", data.messageType());
             return;
         }
 
-        try {
-            String text = extractContent(data);
-            if (!StringUtils.hasText(text)) {
-                log.info("[TaskWebhook] Tipo de mensagem não suportado: {}", data.messageType());
-                return;
-            }
-
-            TaskResponseDTO existing = taskService.findBySourceReference(messageId).orElse(null);
-            if (existing != null) {
-                log.info("[TaskWebhook] Mensagem {} já processada.", messageId);
-                sendConfirmationSafely(recipient, existing);
-                return;
-            }
-
-            UserEntity owner = getTaskOwner();
-            ZonedDateTime now = ZonedDateTime.now(ZoneId.of(zoneId));
-            List<ClientEntity> activeClients = clientRepository.findByStatus(ClientStatusEnum.ACTIVE);
-            List<String> clientNames = activeClients.stream()
-                    .map(ClientEntity::getName)
-                    .toList();
-
-            List<TaskAiInterpretationDTO> interpretations = taskAiInterpreterService.interpret(text, now, clientNames);
-            List<TaskRequestDTO> requests = interpretations.stream()
-                    .map(interpretation -> toTaskRequest(
-                            interpretation,
-                            findClient(interpretation.clientName(), text, activeClients)))
-                    .toList();
-            List<TaskResponseDTO> created = taskService.createWhatsAppTasks(requests, owner, messageId);
-
-            sendConfirmationSafely(recipient, created);
-            log.info("[TaskWebhook] {} tarefa(s) criada(s) pela mensagem {}.", created.size(), messageId);
-        } catch (Exception ex) {
-            log.error("[TaskWebhook] Falha ao criar tarefa da mensagem {}: {}", messageId, ex.getMessage(), ex);
-            sendFailure(recipient);
-        } finally {
-            messagesInProgress.remove(messageId);
+        List<TaskResponseDTO> existing = taskService.findAllBySourceMessageId(messageId);
+        if (!existing.isEmpty()) {
+            log.info("[TaskWebhook] Mensagem {} já processada.", messageId);
+            sendConfirmation(recipient, existing);
+            return;
         }
+
+        UserEntity owner = getTaskOwner();
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of(zoneId));
+        List<ClientEntity> activeClients = clientRepository.findByStatus(ClientStatusEnum.ACTIVE);
+        List<String> clientNames = activeClients.stream()
+                .map(ClientEntity::getName)
+                .toList();
+
+        List<TaskAiInterpretationDTO> interpretations = taskAiInterpreterService.interpret(text, now, clientNames);
+        List<TaskRequestDTO> requests = interpretations.stream()
+                .map(interpretation -> toTaskRequest(
+                        interpretation,
+                        findClient(interpretation.clientName(), text, activeClients)))
+                .toList();
+        List<TaskResponseDTO> created = taskService.createWhatsAppTasks(requests, owner, messageId);
+
+        sendConfirmation(recipient, created);
+        log.info("[TaskWebhook] {} tarefa(s) criada(s) pela mensagem {}.", created.size(), messageId);
     }
 
     private UserEntity getTaskOwner() {
@@ -183,9 +210,7 @@ public class WhatsAppTaskService {
                 date,
                 time,
                 interpretation.type() != null ? interpretation.type() : TaskTypeEnum.TAREFA,
-                interpretation.priority() != null ? interpretation.priority() : TaskPriorityEnum.NORMAL,
-                TaskStatusEnum.PENDING,
-                TaskSourceEnum.WHATSAPP
+                interpretation.priority() != null ? interpretation.priority() : TaskPriorityEnum.NORMAL
         );
     }
 
@@ -203,14 +228,6 @@ public class WhatsAppTaskService {
                 Prioridade: %s
                 """.formatted(task.title(), client, schedule, task.type(), task.priority()).strip();
         evolutionApiClient.sendText(recipient, tasksInstance, tasksApiKey, message);
-    }
-
-    private void sendConfirmationSafely(String recipient, TaskResponseDTO task) {
-        try {
-            sendConfirmation(recipient, task);
-        } catch (Exception ex) {
-            log.error("[TaskWebhook] Tarefa {} foi criada, mas a confirmação falhou: {}", task.id(), ex.getMessage());
-        }
     }
 
     private void sendConfirmation(String recipient, List<TaskResponseDTO> tasks) {
@@ -234,15 +251,6 @@ public class WhatsAppTaskService {
                     task.priority()));
         }
         evolutionApiClient.sendText(recipient, tasksInstance, tasksApiKey, message.toString().strip());
-    }
-
-    private void sendConfirmationSafely(String recipient, List<TaskResponseDTO> tasks) {
-        try {
-            sendConfirmation(recipient, tasks);
-        } catch (Exception ex) {
-            log.error("[TaskWebhook] {} tarefa(s) foram criadas, mas a confirmação falhou: {}",
-                    tasks.size(), ex.getMessage());
-        }
     }
 
     private void sendFailure(String recipient) {
@@ -320,8 +328,7 @@ public class WhatsAppTaskService {
 
     private boolean isAllowedSender(String remoteJid) {
         if (!StringUtils.hasText(allowedNumbers)) {
-            log.error("[TaskWebhook] WHATSAPP_TASK_ALLOWED_NUMBERS não configurado.");
-            return false;
+            throw new IllegalStateException("WHATSAPP_TASK_ALLOWED_NUMBERS não configurado.");
         }
 
         String senderNumber = onlyDigits(remoteJid.split("@")[0]);
@@ -332,5 +339,10 @@ public class WhatsAppTaskService {
 
     private String onlyDigits(String value) {
         return value == null ? "" : value.replaceAll("\\D", "");
+    }
+
+    private String extractRecipient(EvolutionWebhookEventDTO event) {
+        if (event == null || event.data() == null || event.data().key() == null) return null;
+        return event.data().key().remoteJid();
     }
 }

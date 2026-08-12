@@ -5,6 +5,9 @@ import com.north.producoes.entity.enums.TaskStatusEnum;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -74,6 +77,14 @@ public interface TaskRepository extends JpaRepository<TaskEntity, Long> {
             LocalDate endDate,
             Pageable pageable);
 
-    Optional<TaskEntity> findBySourceReference(String sourceReference);
+    Optional<TaskEntity> findByIdAndUserId(Long id, Long userId);
+
+    List<TaskEntity> findBySourceReferenceOrSourceReferenceStartingWithOrderByIdAsc(
+            String sourceReference,
+            String sourceReferencePrefix);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE TaskEntity task SET task.client = null WHERE task.client.id = :clientId")
+    void unlinkClient(@Param("clientId") Long clientId);
 
 }

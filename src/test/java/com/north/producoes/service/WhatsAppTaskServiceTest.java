@@ -1,9 +1,11 @@
 package com.north.producoes.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.north.producoes.controller.dto.request.TaskRequestDTO;
 import com.north.producoes.controller.dto.response.TaskResponseDTO;
 import com.north.producoes.entity.ClientEntity;
 import com.north.producoes.entity.UserEntity;
+import com.north.producoes.entity.WhatsAppTaskEventEntity;
 import com.north.producoes.entity.enums.TaskPriorityEnum;
 import com.north.producoes.entity.enums.TaskSourceEnum;
 import com.north.producoes.entity.enums.TaskStatusEnum;
@@ -26,6 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,6 +55,10 @@ class WhatsAppTaskServiceTest {
     private EvolutionApiClient evolutionApiClient;
     @Mock
     private TaskAudioTranscriptionService taskAudioTranscriptionService;
+    @Mock
+    private WhatsAppTaskInboxService inboxService;
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private WhatsAppTaskService service;
@@ -63,6 +70,9 @@ class WhatsAppTaskServiceTest {
         ReflectionTestUtils.setField(service, "defaultUserId", 1L);
         ReflectionTestUtils.setField(service, "zoneId", "America/Sao_Paulo");
         ReflectionTestUtils.setField(service, "allowedNumbers", "5511999999999");
+        ReflectionTestUtils.setField(service, "maxAttempts", 3);
+        ReflectionTestUtils.setField(service, "retryDelayMs", 60000L);
+        ReflectionTestUtils.setField(service, "processingTimeoutMs", 600000L);
     }
 
     @Test
@@ -75,7 +85,7 @@ class WhatsAppTaskServiceTest {
         );
         TaskResponseDTO created = response(client);
 
-        when(taskService.findBySourceReference("MSG-1")).thenReturn(Optional.empty());
+        when(taskService.findAllBySourceMessageId("MSG-1")).thenReturn(List.of());
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(clientRepository.findByStatus(any())).thenReturn(List.of(client));
         when(taskAiInterpreterService.interpret(any(), any(), any())).thenReturn(List.of(interpretation));
@@ -88,8 +98,7 @@ class WhatsAppTaskServiceTest {
         verify(taskService).createWhatsAppTasks(requestCaptor.capture(), eq(admin), eq("MSG-1"));
         assertThat(requestCaptor.getValue()).singleElement().satisfies(request -> {
             assertThat(request.clientId()).isEqualTo(10L);
-            assertThat(request.source()).isEqualTo(TaskSourceEnum.WHATSAPP);
-            assertThat(request.status()).isEqualTo(TaskStatusEnum.PENDING);
+            assertThat(request.title()).isEqualTo("Cobrar fotos");
         });
         verify(evolutionApiClient).sendText(eq("5511999999999@s.whatsapp.net"), eq("north-tasks"),
                 eq("tasks-api-key"),
@@ -124,7 +133,7 @@ class WhatsAppTaskServiceTest {
 
     @Test
     void shouldNotCreateDuplicateTask() {
-        when(taskService.findBySourceReference("MSG-1")).thenReturn(Optional.of(response(client())));
+        when(taskService.findAllBySourceMessageId("MSG-1")).thenReturn(List.of(response(client())));
 
         service.processEvent(event(false, "north-tasks"));
 
@@ -146,7 +155,7 @@ class WhatsAppTaskServiceTest {
 
         when(taskAudioTranscriptionService.transcribe(any(), eq("north-tasks"), eq("tasks-api-key")))
                 .thenReturn("Lembrar de cobrar as fotos da Imperial às dez horas");
-        when(taskService.findBySourceReference("AUDIO-1")).thenReturn(Optional.empty());
+        when(taskService.findAllBySourceMessageId("AUDIO-1")).thenReturn(List.of());
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(clientRepository.findByStatus(any())).thenReturn(List.of(client));
         when(taskAiInterpreterService.interpret(any(), any(), any())).thenReturn(List.of(interpretation));
@@ -180,7 +189,7 @@ class WhatsAppTaskServiceTest {
                 TaskSourceEnum.WHATSAPP, LocalDateTime.now(), null
         );
 
-        when(taskService.findBySourceReference("MSG-1")).thenReturn(Optional.empty());
+        when(taskService.findAllBySourceMessageId("MSG-1")).thenReturn(List.of());
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(clientRepository.findByStatus(any())).thenReturn(List.of(client));
         when(taskAiInterpreterService.interpret(any(), any(), any())).thenReturn(List.of(first, second));
@@ -215,7 +224,7 @@ class WhatsAppTaskServiceTest {
                 TaskSourceEnum.WHATSAPP, LocalDateTime.now(), null
         );
 
-        when(taskService.findBySourceReference("MSG-1")).thenReturn(Optional.empty());
+        when(taskService.findAllBySourceMessageId("MSG-1")).thenReturn(List.of());
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(clientRepository.findByStatus(any())).thenReturn(List.of(registeredClient));
         when(taskAiInterpreterService.interpret(any(), any(), any())).thenReturn(List.of(interpretation));
@@ -232,6 +241,33 @@ class WhatsAppTaskServiceTest {
             assertThat(request.clientName()).isEqualTo("Tower");
             assertThat(request.title()).isEqualTo("Fazer follow-up");
         });
+    }
+
+    @Test
+    void shouldPersistFailureForRetryWhenProcessingStoredEvent() throws Exception {
+        WhatsAppTaskEventEntity storedEvent = new WhatsAppTaskEventEntity();
+        storedEvent.setId(50L);
+        storedEvent.setPayload("{payload}");
+        WhatsAppTaskEventEntity failedEvent = new WhatsAppTaskEventEntity();
+        failedEvent.setId(50L);
+        failedEvent.setAttempts(1);
+
+        when(inboxService.reserve(eq(50L), eq(3), any(Duration.class))).thenReturn(true);
+        when(inboxService.findById(50L)).thenReturn(storedEvent);
+        when(objectMapper.readValue("{payload}", EvolutionWebhookEventDTO.class))
+                .thenReturn(event(false, "north-tasks"));
+        when(taskService.findAllBySourceMessageId("MSG-1")).thenReturn(List.of());
+        when(userRepository.findById(1L)).thenReturn(Optional.of(admin()));
+        when(clientRepository.findByStatus(any())).thenReturn(List.of(client()));
+        when(taskAiInterpreterService.interpret(any(), any(), any()))
+                .thenThrow(new RuntimeException("OpenAI indisponível"));
+        when(inboxService.markFailed(eq(50L), eq("OpenAI indisponível"), any(Duration.class)))
+                .thenReturn(failedEvent);
+
+        service.processStoredEvent(50L);
+
+        verify(inboxService).markFailed(eq(50L), eq("OpenAI indisponível"), any(Duration.class));
+        verify(inboxService, never()).markCompleted(50L);
     }
 
     private EvolutionWebhookEventDTO event(boolean fromMe, String instance) {
