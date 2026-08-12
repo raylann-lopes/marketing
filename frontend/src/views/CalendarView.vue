@@ -5,10 +5,12 @@ import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { postService, type Post, type PostFormData } from '@/services/postService'
 import { clientService, type Client } from '@/services/clientService'
+import { taskService, type TaskRecord } from '@/services/taskService'
 import { getCurrentUserId } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { useFeedback } from '@/lib/feedback'
 import { useIsMobile } from '@/lib/breakpoint'
+import { formatTime } from '@/lib/dateTime'
 import { z } from 'zod'
 
 import CalendarSidebar from '@/components/calendar/CalendarSidebar.vue'
@@ -18,6 +20,8 @@ const route = useRoute()
 const today = new Date()
 const feedback = useFeedback()
 const { isMobile } = useIsMobile()
+const role = localStorage.getItem('role') || sessionStorage.getItem('role')
+const isAdmin = role === 'ADMIN'
 
 const initialDate = (() => {
   const q = route.query.date
@@ -33,6 +37,7 @@ const selectedDay = ref<number | null>(initialDate.getDate())
 const sidebarOpen = ref(true)
 
 const allPosts = ref<Post[]>([])
+const allTasks = ref<TaskRecord[]>([])
 const clients = ref<Client[]>([])
 const isModalOpen = ref(false)
 const isSubmitting = ref(false)
@@ -55,14 +60,16 @@ const currentYear = computed(() => currentDate.value.getFullYear())
 
 async function fetchInitialData() {
   try {
-    const [postsData, clientsData] = await Promise.all([
+    const [postsData, clientsData, tasksData] = await Promise.all([
       postService.getAll(),
-      clientService.getAll()
+      clientService.getAll(),
+      isAdmin ? taskService.getMine(0, 200) : Promise.resolve({ content: [] }),
     ])
     
     interface ApiResponse<T> { data?: T[] }
     allPosts.value = Array.isArray(postsData) ? postsData : (((postsData as unknown) as ApiResponse<Post>).data || [])
     clients.value = Array.isArray(clientsData) ? clientsData : (((clientsData as unknown) as ApiResponse<Client>).data || [])
+    allTasks.value = tasksData.content ?? []
   } catch (error) {
     console.error('Failed to fetch calendar data:', error)
   }
@@ -176,6 +183,17 @@ const postsPerDay = computed<Record<number, DayPost[]>>(() => {
       map[day].push({ label: post.title, color: getStatusColor(post.status) })
     }
   })
+
+  allTasks.value.forEach(task => {
+    if (!task.dateExpires) return
+    const d = new Date(`${task.dateExpires}T12:00:00`)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate()
+      if (!map[day]) map[day] = []
+      map[day].push({ label: task.title, color: getTaskColor(task.priority) })
+    }
+  })
+
   return map
 })
 
@@ -184,15 +202,14 @@ const selectedDayPosts = computed(() => {
   const year = currentDate.value.getFullYear()
   const month = currentDate.value.getMonth()
   
-  return allPosts.value
+  const postItems = allPosts.value
     .filter(p => {
       if (!p.scheduledAt) return false
       const d = new Date(p.scheduledAt)
       return d.getFullYear() === year && d.getMonth() === month && d.getDate() === selectedDay.value
     })
     .map(p => {
-      const d = new Date(p.scheduledAt!)
-      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+      const time = formatTime(p.scheduledAt) ?? '--:--'
       const rawClientId = (p as unknown as { client: { id: number } }).client?.id ?? p.clientId
       const clientObj = clients.value.find(c => String(c.id) === String(rawClientId))
       const clientName = clientObj ? clientObj.name : (rawClientId ? `ID: ${rawClientId}` : null)
@@ -206,7 +223,44 @@ const selectedDayPosts = computed(() => {
         status: null,
       }
     })
+
+  const taskItems = allTasks.value
+    .filter(task => {
+      if (!task.dateExpires) return false
+      const d = new Date(`${task.dateExpires}T12:00:00`)
+      return d.getFullYear() === year && d.getMonth() === month && d.getDate() === selectedDay.value
+    })
+    .map(task => ({
+      time: formatTime(task.timeExpires),
+      tag: 'Tarefa',
+      tagColor: 'bg-teal-100 text-teal-700',
+      title: task.title,
+      description: task.description || priorityLabel(task.priority),
+      client: task.clientName || null,
+      status: task.status,
+    }))
+
+  return [...postItems, ...taskItems]
+    .sort((a, b) => (a.time ?? '99:99').localeCompare(b.time ?? '99:99'))
 })
+
+function getTaskColor(priority: string) {
+  switch (priority) {
+    case 'URGENT': return 'bg-red-500'
+    case 'HIGH': return 'bg-amber-500'
+    case 'LOW': return 'bg-slate-400'
+    default: return 'bg-teal-600'
+  }
+}
+
+function priorityLabel(priority: string) {
+  switch (priority) {
+    case 'URGENT': return 'Prioridade urgente'
+    case 'HIGH': return 'Prioridade alta'
+    case 'LOW': return 'Prioridade baixa'
+    default: return 'Prioridade normal'
+  }
+}
 </script>
 
 <template>

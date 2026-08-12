@@ -42,7 +42,7 @@ defineEmits<{
       <div class="flex-1 overflow-y-auto p-4 space-y-3">
         <div v-if="posts.length === 0" class="flex flex-col items-center justify-center h-40 text-center text-gray-400">
           <Plus class="w-8 h-8 mb-2 opacity-20" />
-          <p class="text-sm">Nenhum post agendado para este dia.</p>
+          <p class="text-sm">Nenhum item agendado para este dia.</p>
         </div>
         <div
           v-for="(post, i) in posts"
@@ -62,7 +62,7 @@ defineEmits<{
       <div class="p-4 border-t border-gray-100">
         <Button class="w-full gap-2" @click="$emit('openPostModal', selectedDay)">
           <Pencil class="w-4 h-4" />
-          Adicionar Novo no Dia
+          Adicionar post no dia
         </Button>
       </div>
     </div>
