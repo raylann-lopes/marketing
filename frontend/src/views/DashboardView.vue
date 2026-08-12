@@ -1,30 +1,39 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { UserPlus, Plus } from 'lucide-vue-next'
+import { CalendarDays, Plus, RefreshCw, UserPlus } from 'lucide-vue-next'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Button from '@/components/ui/Button.vue'
 
 import StatCards from '@/components/dashboard/StatCards.vue'
 import RecentPosts from '@/components/dashboard/RecentPosts.vue'
 import WeeklySchedule from '@/components/dashboard/WeeklySchedule.vue'
-import ClientHealth from '@/components/dashboard/ClientHealth.vue'
 
 import { clientService, type Client } from '@/services/clientService'
 import { postService, type Post } from '@/services/postService'
+import { taskService, type TaskRecord } from '@/services/taskService'
 import { userService } from '@/services/userService'
 
 const router = useRouter()
 const today = new Date()
 const userName = ref('')
+const role = localStorage.getItem('role') || sessionStorage.getItem('role')
+const isAdmin = role === 'ADMIN'
 
-const totalClients = ref(0)
-const postsThisMonth = ref(0)
-const pendingPosts = ref(0)
-const publishedPosts = ref(0)
 const allPosts = ref<Post[]>([])
 const allClients = ref<Client[]>([])
-const recentPosts = ref<Post[]>([])
+const allTasks = ref<TaskRecord[]>([])
+const loading = ref(false)
+const dashboardError = ref('')
+
+type DashboardMetric = {
+  label: string
+  value: number
+  detail: string
+  icon: 'approval' | 'production' | 'schedule' | 'published' | 'clients' | 'tasks' | 'alert'
+  tone: 'amber' | 'blue' | 'violet' | 'green' | 'slate' | 'red'
+  route?: string
+}
 
 const selectedWeekStart = ref(
   (() => {
@@ -35,14 +44,6 @@ const selectedWeekStart = ref(
 )
 
 const selectedWeekDate = ref(new Date(today))
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getDate() === b.getDate() &&
-    a.getMonth() === b.getMonth() &&
-    a.getFullYear() === b.getFullYear()
-  )
-}
 
 function selectWeekDay(date: Date) {
   selectedWeekDate.value = date
@@ -58,18 +59,126 @@ function nextWeek() {
   selectedWeekStart.value.setDate(selectedWeekStart.value.getDate() + 7)
 }
 
-const selectedDayPosts = computed(() =>
-  allPosts.value.filter((p) => {
-    if (!p.scheduledAt) return false
-    return isSameDay(new Date(p.scheduledAt), selectedWeekDate.value)
-  }),
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const todayKey = toDateKey(today)
+
+const todayLabel = computed(() => {
+  const label = today.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+})
+
+const activeClients = computed(() => allClients.value.filter(client => client.status === 'ACTIVE').length)
+
+const waitingApproval = computed(() =>
+  allPosts.value.filter(post => post.status === 'WAITING_APPROVAL').length,
 )
 
+const productionQueue = computed(() =>
+  allPosts.value.filter(post => ['DEMAND', 'IN_PRODUCTION', 'REJECTED'].includes(post.status)).length,
+)
+
+const scheduledNextSevenDays = computed(() => {
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const end = new Date(start)
+  end.setDate(end.getDate() + 7)
+
+  return allPosts.value.filter(post => {
+    if (post.status !== 'SCHEDULE' || !post.scheduledAt) return false
+    const scheduledAt = new Date(post.scheduledAt)
+    return scheduledAt >= start && scheduledAt < end
+  }).length
+})
+
+const publishedThisMonth = computed(() =>
+  allPosts.value.filter(post => {
+    if (post.status !== 'PUBLISHED' || !post.scheduledAt) return false
+    const scheduledAt = new Date(post.scheduledAt)
+    return scheduledAt.getMonth() === today.getMonth() && scheduledAt.getFullYear() === today.getFullYear()
+  }).length,
+)
+
+const tasksToday = computed(() =>
+  allTasks.value.filter(task => task.status === 'PENDING' && task.dateExpires === todayKey).length,
+)
+
+const overdueTasks = computed(() =>
+  allTasks.value.filter(task => task.status === 'PENDING' && task.dateExpires < todayKey).length,
+)
+
+const dashboardStats = computed<DashboardMetric[]>(() => {
+  const metrics: DashboardMetric[] = [
+    {
+      label: 'Aguardando aprovação',
+      value: waitingApproval.value,
+      detail: 'Retorno pendente do cliente',
+      icon: 'approval',
+      tone: 'amber',
+      route: '/approvals',
+    },
+    {
+      label: 'Fila de produção',
+      value: productionQueue.value,
+      detail: 'Demandas, produção e ajustes',
+      icon: 'production',
+      tone: 'blue',
+      route: '/board',
+    },
+    {
+      label: 'Próximos 7 dias',
+      value: scheduledNextSevenDays.value,
+      detail: 'Publicações agendadas',
+      icon: 'schedule',
+      tone: 'violet',
+      route: '/calendar',
+    },
+    {
+      label: 'Publicados no mês',
+      value: publishedThisMonth.value,
+      detail: 'Conteúdos entregues',
+      icon: 'published',
+      tone: 'green',
+      route: '/calendar',
+    },
+    {
+      label: 'Clientes ativos',
+      value: activeClients.value,
+      detail: 'Contas em operação',
+      icon: 'clients',
+      tone: 'slate',
+      route: isAdmin ? '/clients' : undefined,
+    },
+  ]
+
+  metrics.push({
+    label: 'Tarefas de hoje',
+    value: tasksToday.value,
+    detail: overdueTasks.value > 0
+      ? `${overdueTasks.value} ${overdueTasks.value === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}`
+      : 'Nenhuma tarefa atrasada',
+    icon: overdueTasks.value > 0 ? 'alert' : 'tasks',
+    tone: overdueTasks.value > 0 ? 'red' : 'slate',
+    route: '/tasks',
+  })
+
+  return metrics
+})
+
 async function fetchDashboardData() {
+  loading.value = true
+  dashboardError.value = ''
   try {
-    const [clientsData, postsData] = await Promise.all([
+    const [clientsData, postsData, tasksData] = await Promise.all([
       clientService.getAll(),
       postService.getAll(),
+      taskService.getMine(0, 200, { status: 'PENDING' }),
     ])
 
     const clients = Array.isArray(clientsData)
@@ -79,31 +188,17 @@ async function fetchDashboardData() {
 
     allClients.value = clients
     allPosts.value = posts
-
-    totalClients.value = clients.filter((c: Client) => c.status === 'ACTIVE').length
-
-    const monthPosts = posts.filter((p: Post) => {
-      if (!p.scheduledAt) return false
-      const d = new Date(p.scheduledAt)
-      return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()
-    })
-
-    postsThisMonth.value = monthPosts.length
-    pendingPosts.value = posts.filter(
-      (p: Post) => p.status !== 'PUBLISHED' && p.status !== 'FINISHED',
-    ).length
-    publishedPosts.value = posts.filter((p: Post) => p.status === 'PUBLISHED').length
-
-    recentPosts.value = [...posts]
-      .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
-      .slice(0, 8)
+    allTasks.value = tasksData?.content ?? []
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
+    dashboardError.value = 'Não foi possível atualizar todos os indicadores do dashboard.'
+  } finally {
+    loading.value = false
   }
 }
 
 onMounted(async () => {
-  fetchDashboardData()
+  await fetchDashboardData()
   try {
     const me = await userService.getMe()
     userName.value = me.name?.split(' ')[0] || 'North'
@@ -115,13 +210,25 @@ onMounted(async () => {
 
 <template>
   <AppLayout>
-    <div class="flex items-start justify-between mb-6 gap-3">
+    <div class="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div class="min-w-0">
         <h1 class="text-2xl md:text-3xl font-bold text-gray-900 truncate">Olá {{ userName }}.</h1>
-        <p class="text-gray-500 mt-1 text-sm md:text-base">Aqui está o que está acontecendo na empresa hoje.</p>
+        <div class="mt-1 flex items-center gap-2 text-sm text-gray-500">
+          <CalendarDays class="h-4 w-4 shrink-0" />
+          <span>{{ todayLabel }}</span>
+        </div>
       </div>
-      <div class="flex items-center gap-2 md:gap-3 shrink-0">
-        <Button variant="outline" class="gap-2" @click="router.push('/clients')">
+      <div class="flex shrink-0 items-center gap-2 md:gap-3">
+        <Button
+          variant="outline"
+          size="icon"
+          title="Atualizar indicadores"
+          :disabled="loading"
+          @click="fetchDashboardData"
+        >
+          <RefreshCw :class="['h-4 w-4', loading ? 'animate-spin' : '']" />
+        </Button>
+        <Button v-if="isAdmin" variant="outline" class="gap-2" @click="router.push('/clients')">
           <UserPlus class="w-4 h-4" />
           <span class="hidden md:inline">Novo Cliente</span>
         </Button>
@@ -132,30 +239,33 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 space-y-6">
-        <StatCards
-          :total-clients="totalClients"
-          :posts-this-month="postsThisMonth"
-          :pending-posts="pendingPosts"
-          :published-posts="publishedPosts"
-        />
+    <div v-if="dashboardError" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      {{ dashboardError }}
+    </div>
 
-        <RecentPosts :posts="recentPosts" :clients="allClients" />
+    <StatCards :stats="dashboardStats" />
+
+    <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
+      <div class="xl:col-span-8">
+        <RecentPosts
+          :posts="allPosts"
+          :tasks="allTasks"
+          :clients="allClients"
+          show-tasks
+        />
       </div>
 
-      <div class="space-y-6">
+      <div class="space-y-6 xl:col-span-4">
         <WeeklySchedule
           :selected-week-start="selectedWeekStart"
           :selected-week-date="selectedWeekDate"
           :today="today"
-          :selected-day-posts="selectedDayPosts"
+          :posts="allPosts"
+          :tasks="allTasks"
           @prev-week="prevWeek"
           @next-week="nextWeek"
           @select-day="selectWeekDay"
         />
-
-        <ClientHealth :clients="allClients" />
       </div>
     </div>
   </AppLayout>

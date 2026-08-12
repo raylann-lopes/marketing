@@ -6,10 +6,10 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/dashboard', component: () => import('@/views/DashboardView.vue') },
+  { path: '/tasks', component: () => import('@/views/TasksView.vue') },
   { path: '/board', component: () => import('@/views/BoardView.vue') },
   { path: '/calendar', component: () => import('@/views/CalendarView.vue') },
-  { path: '/clients', component: () => import('@/views/ClientsView.vue') },
-  { path: '/clients/:id/workspace', component: () => import('@/views/ClientWorkspaceView.vue') },
+  { path: '/clients', component: () => import('@/views/ClientsView.vue'), meta: { requiresAdmin: true } },
   { path: '/ideas', component: () => import('@/views/ContentIdeasView.vue') },
   {
     path: '/client-reports',

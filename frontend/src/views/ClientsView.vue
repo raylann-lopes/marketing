@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { X, Pencil, Trash2, MessageCircle, HardDrive, Sparkles, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
@@ -22,7 +21,6 @@ const loading = ref(true)
 const error = ref('')
 const selectedClient = ref<Client | null>(null)
 const feedback = useFeedback()
-const router = useRouter()
 
 const currentPage = ref(1)
 const itemsPerPage = 9
@@ -277,21 +275,6 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
-function openClientWorkspace(client: Client) {
-  if (!client.id) return
-  router.push({
-    path: `/clients/${client.id}/workspace`,
-    query: {
-      name: client.name,
-      email: client.email,
-      niche: client.niche || '',
-      status: client.status || '',
-      number: client.number || '',
-      driveLink: client.driveLink || '',
-      voiceTone: client.voiceTone || '',
-    },
-  })
-}
 </script>
 
 <template>
@@ -511,12 +494,6 @@ function openClientWorkspace(client: Client) {
                     <span class="text-xs font-medium text-gray-600">Google Drive</span>
                   </a>
                 </div>
-                <button
-                  class="mt-2 w-full rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
-                  @click="openClientWorkspace(selectedClient)"
-                >
-                  Abrir Workspace do Cliente
-                </button>
               </div>
 
               <div class="bg-purple-50 rounded-xl p-3 flex items-center gap-3">

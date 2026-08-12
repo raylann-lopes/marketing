@@ -14,6 +14,7 @@ public interface ClientRepository extends JpaRepository<ClientEntity, Long> {
     Optional<ClientEntity> findByEmail(String email);
     Optional<ClientEntity> findByNumber(String number);
     Optional<ClientEntity> findByWhatsappGroupId(String whatsappGroupId);
+    Optional<ClientEntity> findFirstByNameIgnoreCase(String name);
     boolean existsByEmailAndIdNot(String email, Long id);
     boolean existsByNumberAndIdNot(String number, Long id);
     List<ClientEntity> findByStatus(ClientStatusEnum status);

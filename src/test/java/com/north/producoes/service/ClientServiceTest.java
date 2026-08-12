@@ -46,6 +46,9 @@ class ClientServiceTest {
     private com.north.producoes.repository.CommentRepository commentRepository;
 
     @Mock
+    private com.north.producoes.repository.TaskRepository taskRepository;
+
+    @Mock
     private FinanceService financeService;
 
     @InjectMocks
@@ -293,6 +296,7 @@ class ClientServiceTest {
 
             clientService.deleteClientById(1L);
 
+            verify(taskRepository).unlinkClient(1L);
             verify(clientRepository).deleteById(1L);
         }
 
