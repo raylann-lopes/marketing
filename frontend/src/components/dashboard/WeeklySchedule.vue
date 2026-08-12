@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from 'lucide-vue-next'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { type Post } from '@/services/postService'
+import { type TaskRecord } from '@/services/taskService'
+import { formatTime } from '@/lib/dateTime'
 
-interface Props {
+const props = defineProps<{
   selectedWeekStart: Date
   selectedWeekDate: Date
   today: Date
-  selectedDayPosts: Post[]
-}
+  posts: Post[]
+  tasks: TaskRecord[]
+}>()
 
-const props = defineProps<Props>()
 defineEmits<{
   (e: 'prevWeek'): void
   (e: 'nextWeek'): void
@@ -23,120 +25,160 @@ defineEmits<{
 const router = useRouter()
 const weekDays = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM']
 
-const visibleWeekDates = computed(() => {
-  const dates: Date[] = []
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(props.selectedWeekStart)
-    d.setDate(d.getDate() + i)
-    dates.push(d)
-  }
-  return dates
-})
+const visibleWeekDates = computed(() => Array.from({ length: 7 }, (_, index) => {
+  const date = new Date(props.selectedWeekStart)
+  date.setDate(date.getDate() + index)
+  return date
+}))
 
 const weekNavLabel = computed(() => {
-  const start = props.selectedWeekStart
   const end = new Date(props.selectedWeekStart)
   end.setDate(end.getDate() + 6)
-  const m1 = start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  const m2 = end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-  return `${m1} — ${m2}`
+  const startLabel = props.selectedWeekStart.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  const endLabel = end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return `${startLabel} — ${endLabel}`
 })
 
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getDate() === b.getDate() &&
-    a.getMonth() === b.getMonth() &&
-    a.getFullYear() === b.getFullYear()
-  )
-}
+const selectedDayItems = computed(() => {
+  const posts = props.posts
+    .filter(post => post.scheduledAt && isSameDay(new Date(post.scheduledAt), props.selectedWeekDate))
+    .map(post => ({
+      id: `post-${post.id}`,
+      title: post.title,
+      subtitle: 'Post',
+      time: formatTime(post.scheduledAt) ?? '--:--',
+      status: statusLabel[post.status] || post.status,
+      variant: post.status === 'PUBLISHED' ? 'success' as const : 'purple' as const,
+      route: '/calendar',
+    }))
+
+  const tasks = props.tasks
+    .filter(task => task.dateExpires === toDateKey(props.selectedWeekDate))
+    .map(task => ({
+      id: `task-${task.id}`,
+      title: task.title,
+      subtitle: task.clientName || 'Tarefa',
+      time: formatTime(task.timeExpires) ?? '--:--',
+      status: task.priority === 'URGENT' ? 'Urgente' : 'Tarefa',
+      variant: task.priority === 'URGENT' || task.priority === 'HIGH' ? 'warning' as const : 'outline' as const,
+      route: '/tasks',
+    }))
+
+  return [...posts, ...tasks].sort((a, b) => a.time.localeCompare(b.time))
+})
 
 const selectedDayLabel = computed(() => {
-  if (isSameDay(props.selectedWeekDate, props.today)) return 'Publicações de Hoje'
-  return `Publicações de ${props.selectedWeekDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}`
+  if (isSameDay(props.selectedWeekDate, props.today)) return 'Agenda de hoje'
+  return props.selectedWeekDate.toLocaleDateString('pt-BR', {
+    weekday: 'long', day: '2-digit', month: 'long',
+  })
 })
 
 const statusLabel: Record<string, string> = {
   DEMAND: 'Demanda',
-  IN_PRODUCTION: 'Em Produção',
-  WAITING_APPROVAL: 'Aguard. Aprovação',
+  IN_PRODUCTION: 'Em produção',
+  WAITING_APPROVAL: 'Em aprovação',
   FINISHED: 'Finalizado',
   SCHEDULE: 'Agendado',
   PUBLISHED: 'Publicado',
+  REJECTED: 'Revisão',
+}
+
+function isSameDay(first: Date, second: Date) {
+  return toDateKey(first) === toDateKey(second)
+}
+
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function dayItemCount(date: Date) {
+  const postCount = props.posts.filter(post => post.scheduledAt && isSameDay(new Date(post.scheduledAt), date)).length
+  const taskCount = props.tasks.filter(task => task.dateExpires === toDateKey(date)).length
+  return postCount + taskCount
 }
 </script>
 
 <template>
-  <Card class="p-5">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="font-semibold text-gray-900">Cronograma Semanal</h2>
-      <div class="flex items-center gap-1">
-        <button class="p-1 hover:bg-gray-100 rounded" @click="$emit('prevWeek')">
-          <ChevronLeft class="w-4 h-4 text-gray-500" />
+  <Card class="rounded-lg p-5">
+    <div class="mb-4 flex items-start justify-between gap-3">
+      <div>
+        <h2 class="font-semibold text-gray-900">Agenda semanal</h2>
+        <p class="mt-0.5 text-xs text-gray-500">Publicações e tarefas no mesmo calendário.</p>
+      </div>
+      <div class="flex shrink-0 items-center gap-1">
+        <button title="Semana anterior" class="rounded p-1 hover:bg-gray-100" @click="$emit('prevWeek')">
+          <ChevronLeft class="h-4 w-4 text-gray-500" />
         </button>
-        <span class="text-[10px] text-gray-400 font-medium px-1">{{ weekNavLabel }}</span>
-        <button class="p-1 hover:bg-gray-100 rounded" @click="$emit('nextWeek')">
-          <ChevronRight class="w-4 h-4 text-gray-500" />
+        <span class="px-1 text-[10px] font-medium text-gray-400">{{ weekNavLabel }}</span>
+        <button title="Próxima semana" class="rounded p-1 hover:bg-gray-100" @click="$emit('nextWeek')">
+          <ChevronRight class="h-4 w-4 text-gray-500" />
         </button>
       </div>
     </div>
 
-    <!-- Week days -->
-    <div class="grid grid-cols-7 gap-1 text-center mb-3">
-      <div v-for="(day, i) in weekDays" :key="day" class="space-y-1">
-        <p class="text-xs text-gray-400">{{ day }}</p>
+    <div class="grid grid-cols-7 gap-1 text-center">
+      <div v-for="(day, index) in weekDays" :key="day" class="space-y-1">
+        <p class="text-[10px] text-gray-400">{{ day }}</p>
         <button
           :class="[
-            'w-full aspect-square rounded-full text-sm font-medium flex items-center justify-center transition-colors relative',
-            isSameDay(visibleWeekDates[i]!, selectedWeekDate)
+            'relative flex aspect-square w-full items-center justify-center rounded-full text-sm font-medium transition-colors',
+            isSameDay(visibleWeekDates[index]!, selectedWeekDate)
               ? 'bg-primary text-white shadow-sm'
-              : isSameDay(visibleWeekDates[i]!, today)
+              : isSameDay(visibleWeekDates[index]!, today)
                 ? 'ring-2 ring-primary text-primary'
                 : 'text-gray-600 hover:bg-gray-100',
           ]"
-          @click="$emit('selectDay', visibleWeekDates[i]!)"
+          @click="$emit('selectDay', visibleWeekDates[index]!)"
         >
-          {{ visibleWeekDates[i]!.getDate() }}
+          {{ visibleWeekDates[index]!.getDate() }}
+          <span
+            v-if="dayItemCount(visibleWeekDates[index]!) > 0"
+            :class="[
+              'absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold',
+              isSameDay(visibleWeekDates[index]!, selectedWeekDate)
+                ? 'bg-white text-primary'
+                : 'bg-violet-100 text-violet-700',
+            ]"
+          >
+            {{ dayItemCount(visibleWeekDates[index]!) }}
+          </span>
         </button>
       </div>
     </div>
 
-    <!-- Posts do dia selecionado -->
-    <div class="mt-4">
-      <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
-        {{ selectedDayLabel }}
-      </p>
-      <div v-if="selectedDayPosts.length === 0" class="text-sm text-gray-500 text-center py-4">
-        Nenhum post agendado para este dia.
+    <div class="mt-5 border-t border-gray-100 pt-4">
+      <p class="mb-3 text-xs font-semibold capitalize text-gray-500">{{ selectedDayLabel }}</p>
+      <div v-if="selectedDayItems.length === 0" class="py-5 text-center">
+        <CalendarDays class="mx-auto h-6 w-6 text-gray-300" />
+        <p class="mt-2 text-xs text-gray-400">Nenhum compromisso neste dia.</p>
       </div>
-      <div class="space-y-3">
-        <div v-for="post in selectedDayPosts" :key="post.id" class="flex gap-3">
-          <div class="w-1 rounded-full bg-primary shrink-0" />
-          <div class="flex-1">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-primary">
-                {{
-                  new Date(post.scheduledAt).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-                }}
-              </span>
-              <Badge variant="outline" class="text-[10px]">{{
-                statusLabel[post.status] || post.status
-              }}</Badge>
-            </div>
-            <p class="text-sm font-medium text-gray-800 mt-0.5">{{ post.title }}</p>
-            <p class="text-xs mt-0.5 text-gray-500">{{ post.theme }}</p>
+      <div v-else class="max-h-[250px] space-y-2 overflow-y-auto pr-1">
+        <button
+          v-for="item in selectedDayItems"
+          :key="item.id"
+          class="flex w-full gap-3 rounded-md border-l-2 border-primary px-2 py-1.5 text-left hover:bg-gray-50"
+          @click="router.push(item.route)"
+        >
+          <div class="flex w-12 shrink-0 items-center gap-1 text-[11px] font-semibold text-gray-500">
+            <Clock3 class="h-3 w-3" /> {{ item.time }}
           </div>
-        </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-start justify-between gap-2">
+              <p class="truncate text-xs font-semibold text-gray-800">{{ item.title }}</p>
+              <Badge :variant="item.variant" class="shrink-0 px-1.5 text-[9px]">{{ item.status }}</Badge>
+            </div>
+            <p class="mt-0.5 truncate text-[10px] text-gray-400">{{ item.subtitle }}</p>
+          </div>
+        </button>
       </div>
     </div>
 
     <button
-      class="w-full mt-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+      class="mt-4 w-full rounded-md border border-gray-200 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50"
       @click="router.push('/calendar')"
     >
-      Ver Calendário Completo
+      Ver calendário completo
     </button>
   </Card>
 </template>
