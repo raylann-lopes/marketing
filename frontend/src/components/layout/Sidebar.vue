@@ -45,6 +45,7 @@ const navItems: NavItem[] = [
   { label: 'Calendário Editorial', to: '/calendar', icon: CalendarDays },
   { label: 'Aprovações', to: '/approvals', icon: CheckCircle2 },
   { label: 'Ideias de Conteúdo', to: '/ideas', icon: Lightbulb },
+  { label: 'Tarefas', to: '/tasks', icon: ListChecks },
 ]
 
 function logout() {
@@ -59,7 +60,6 @@ function logout() {
 }
 
 if (isAdmin) {
-  navItems.push({ label: 'Tarefas', to: '/tasks', icon: ListChecks })
   navItems.push({ label: 'Relatórios do Cliente', to: '/client-reports', icon: FileText })
   navItems.push({ label: 'Clientes', to: '/clients', icon: Users })
   navItems.push({ label: 'Financeiro', to: '/finance', icon: CreditCard })

@@ -105,14 +105,6 @@ const publishedThisMonth = computed(() =>
   }).length,
 )
 
-const postsThisMonth = computed(() =>
-  allPosts.value.filter(post => {
-    if (!post.scheduledAt) return false
-    const scheduledAt = new Date(post.scheduledAt)
-    return scheduledAt.getMonth() === today.getMonth() && scheduledAt.getFullYear() === today.getFullYear()
-  }).length,
-)
-
 const tasksToday = computed(() =>
   allTasks.value.filter(task => task.status === 'PENDING' && task.dateExpires === todayKey).length,
 )
@@ -165,25 +157,16 @@ const dashboardStats = computed<DashboardMetric[]>(() => {
     },
   ]
 
-  metrics.push(isAdmin
-    ? {
-        label: 'Tarefas de hoje',
-        value: tasksToday.value,
-        detail: overdueTasks.value > 0
-          ? `${overdueTasks.value} ${overdueTasks.value === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}`
-          : 'Nenhuma tarefa atrasada',
-        icon: overdueTasks.value > 0 ? 'alert' : 'tasks',
-        tone: overdueTasks.value > 0 ? 'red' : 'slate',
-        route: '/tasks',
-      }
-    : {
-        label: 'Posts no mês',
-        value: postsThisMonth.value,
-        detail: 'Volume do calendário editorial',
-        icon: 'schedule',
-        tone: 'slate',
-        route: '/calendar',
-      })
+  metrics.push({
+    label: 'Tarefas de hoje',
+    value: tasksToday.value,
+    detail: overdueTasks.value > 0
+      ? `${overdueTasks.value} ${overdueTasks.value === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}`
+      : 'Nenhuma tarefa atrasada',
+    icon: overdueTasks.value > 0 ? 'alert' : 'tasks',
+    tone: overdueTasks.value > 0 ? 'red' : 'slate',
+    route: '/tasks',
+  })
 
   return metrics
 })
@@ -195,9 +178,7 @@ async function fetchDashboardData() {
     const [clientsData, postsData, tasksData] = await Promise.all([
       clientService.getAll(),
       postService.getAll(),
-      isAdmin
-        ? taskService.getMine(0, 200, { status: 'PENDING' })
-        : Promise.resolve(null),
+      taskService.getMine(0, 200, { status: 'PENDING' }),
     ])
 
     const clients = Array.isArray(clientsData)
@@ -268,9 +249,9 @@ onMounted(async () => {
       <div class="xl:col-span-8">
         <RecentPosts
           :posts="allPosts"
-          :tasks="isAdmin ? allTasks : []"
+          :tasks="allTasks"
           :clients="allClients"
-          :show-tasks="isAdmin"
+          show-tasks
         />
       </div>
 
@@ -280,7 +261,7 @@ onMounted(async () => {
           :selected-week-date="selectedWeekDate"
           :today="today"
           :posts="allPosts"
-          :tasks="isAdmin ? allTasks : []"
+          :tasks="allTasks"
           @prev-week="prevWeek"
           @next-week="nextWeek"
           @select-day="selectWeekDay"

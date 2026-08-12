@@ -20,9 +20,6 @@ const route = useRoute()
 const today = new Date()
 const feedback = useFeedback()
 const { isMobile } = useIsMobile()
-const role = localStorage.getItem('role') || sessionStorage.getItem('role')
-const isAdmin = role === 'ADMIN'
-
 const initialDate = (() => {
   const q = route.query.date
   if (q && typeof q === 'string') {
@@ -63,7 +60,7 @@ async function fetchInitialData() {
     const [postsData, clientsData, tasksData] = await Promise.all([
       postService.getAll(),
       clientService.getAll(),
-      isAdmin ? taskService.getMine(0, 200) : Promise.resolve({ content: [] }),
+      taskService.getMine(0, 200),
     ])
     
     interface ApiResponse<T> { data?: T[] }

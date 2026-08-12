@@ -6,7 +6,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/dashboard', component: () => import('@/views/DashboardView.vue') },
-  { path: '/tasks', component: () => import('@/views/TasksView.vue'), meta: { requiresAdmin: true } },
+  { path: '/tasks', component: () => import('@/views/TasksView.vue') },
   { path: '/board', component: () => import('@/views/BoardView.vue') },
   { path: '/calendar', component: () => import('@/views/CalendarView.vue') },
   { path: '/clients', component: () => import('@/views/ClientsView.vue'), meta: { requiresAdmin: true } },
